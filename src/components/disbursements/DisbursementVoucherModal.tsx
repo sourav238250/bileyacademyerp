@@ -232,11 +232,11 @@ export const DisbursementVoucherModal: React.FC<DisbursementVoucherModalProps> =
             <div>
               <div className="h-10 flex items-center justify-center">
                 <span className="font-serif italic text-sm text-purple-900 font-semibold border-b border-slate-400 px-4">
-                  {disbursement.authorizedBy || authConfig?.directorName || 'Dr. Birendra Nath Biley'}
+                  {disbursement.authorizedBy || authConfig?.directorName || 'Mr. Sourav Dinda'}
                 </span>
               </div>
               <p className="text-xs font-bold text-slate-900 mt-1">
-                {disbursement.authorizedBy || authConfig?.directorName || 'Dr. Birendra Nath Biley'}
+                {disbursement.authorizedBy || authConfig?.directorName || 'Mr. Sourav Dinda'}
               </p>
               <p className="text-[10px] text-slate-500">
                 {authConfig?.directorDesignation || 'Director & Founder'}

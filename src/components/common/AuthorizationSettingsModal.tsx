@@ -39,7 +39,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
   const [formData, setFormData] = useState<InstitutionalAuthorizationConfig>(authConfig || DEFAULT_AUTHORIZATION_CONFIG);
   
   // Profile state for active staff
-  const [adminName, setAdminName] = useState(currentAdmin?.name || 'Dr. Birendra Nath Biley');
+  const [adminName, setAdminName] = useState(currentAdmin?.name || 'Mr. Sourav Dinda');
   const [adminDesignation, setAdminDesignation] = useState(currentAdmin?.designation || 'Director & Founder');
   const [adminEmail, setAdminEmail] = useState(currentAdmin?.email || 'director@bileyacademy.edu');
 
@@ -412,7 +412,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                     required
                     value={adminName}
                     onChange={(e) => setAdminName(e.target.value)}
-                    placeholder="e.g. Dr. Birendra Nath Biley"
+                    placeholder="e.g. Mr. Sourav Dinda"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -547,7 +547,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                     required
                     value={formData.directorName}
                     onChange={(e) => handleChange('directorName', e.target.value)}
-                    placeholder="e.g. Dr. Birendra Nath Biley"
+                    placeholder="e.g. Mr. Sourav Dinda"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">Primary authority signature on term report cards.</p>

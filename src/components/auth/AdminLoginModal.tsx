@@ -23,7 +23,7 @@ export const DEMO_ADMIN_ACCOUNTS: { user: AdminUser; password: string; descripti
   {
     user: {
       id: 'ADM-001',
-      name: 'Dr. Birendra Nath Biley',
+      name: 'Mr. Sourav Dinda',
       email: 'director@bileyacademy.edu',
       role: 'Super Admin / Director',
       designation: 'Director & Founder',

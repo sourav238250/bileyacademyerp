@@ -29,7 +29,7 @@ import {
 import { INITIAL_DISBURSEMENTS } from '../data/initialDisbursementsData';
 
 export const DEFAULT_AUTHORIZATION_CONFIG: InstitutionalAuthorizationConfig = {
-  directorName: 'Dr. Birendra Nath Biley',
+  directorName: 'Mr. Sourav Dinda',
   directorDesignation: 'Director & Founder',
   directorAuthoritySubtext: 'Biley Academy Governing Board',
 
@@ -110,6 +110,11 @@ export function saveItemToStorage<T>(key: string, value: T): void {
 }
 
 export function loadInitialState(): AppStateData {
+  const loadedAuthConfig = loadFromStorage<InstitutionalAuthorizationConfig>(STORAGE_KEYS.AUTH_CONFIG, DEFAULT_AUTHORIZATION_CONFIG);
+  if (loadedAuthConfig && (loadedAuthConfig.directorName === 'Dr. Birendra Nath Biley' || !loadedAuthConfig.directorName)) {
+    loadedAuthConfig.directorName = 'Mr. Sourav Dinda';
+  }
+
   return {
     students: loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS),
     faculty: loadFromStorage<Faculty[]>(STORAGE_KEYS.FACULTY, INITIAL_FACULTY),
@@ -122,7 +127,7 @@ export function loadInitialState(): AppStateData {
     attendance: loadFromStorage<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE, INITIAL_ATTENDANCE),
     questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
     assignments: loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS),
-    authConfig: loadFromStorage<InstitutionalAuthorizationConfig>(STORAGE_KEYS.AUTH_CONFIG, DEFAULT_AUTHORIZATION_CONFIG),
+    authConfig: loadedAuthConfig,
   };
 }
 

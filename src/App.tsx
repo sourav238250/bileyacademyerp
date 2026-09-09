@@ -62,10 +62,16 @@ export default function App() {
 
   // Admin Auth State
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(() => {
-    return loadFromStorage<AdminUser | null>(
+    const stored = loadFromStorage<AdminUser | null>(
       'biley_academy_admin_user_v1',
       DEMO_ADMIN_ACCOUNTS[0].user
     );
+    if (stored && (stored.name === 'Dr. Birendra Nath Biley' || (stored.role === 'Super Admin / Director' && stored.name.includes('Birendra')))) {
+      const updated = { ...stored, name: 'Mr. Sourav Dinda' };
+      localStorage.setItem('biley_academy_admin_user_v1', JSON.stringify(updated));
+      return updated;
+    }
+    return stored;
   });
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
   const [isPermissionsMatrixOpen, setIsPermissionsMatrixOpen] = useState(false);

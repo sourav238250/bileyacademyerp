@@ -71,7 +71,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [invoiceBillNo, setInvoiceBillNo] = useState<string>('');
   const [authorizedBy, setAuthorizedBy] = useState<string>(
-    currentAdmin?.name || authConfig?.directorName || 'Dr. Birendra Nath Biley'
+    currentAdmin?.name || authConfig?.directorName || 'Mr. Sourav Dinda'
   );
   const [purposeDescription, setPurposeDescription] = useState<string>('');
   const [status, setStatus] = useState<DisbursementStatus>('Disbursed');
@@ -108,7 +108,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
       setPaymentMode(defaultLedger === 'Salary' || defaultLedger === 'Assets' ? 'Bank NEFT / RTGS' : 'Corporate UPI / IMPS');
       setTransactionRef('');
       setInvoiceBillNo('');
-      setAuthorizedBy(currentAdmin?.name || authConfig?.directorName || 'Dr. Birendra Nath Biley');
+      setAuthorizedBy(currentAdmin?.name || authConfig?.directorName || 'Mr. Sourav Dinda');
       setPurposeDescription('');
       setStatus('Disbursed');
       setNotes('');

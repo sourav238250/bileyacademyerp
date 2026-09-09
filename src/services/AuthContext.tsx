@@ -34,7 +34,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(() => {
     try {
       const stored = localStorage.getItem(ADMIN_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
+      if (stored) {
+        const parsed: AdminUser = JSON.parse(stored);
+        if (parsed.name === 'Dr. Birendra Nath Biley' || (parsed.role === 'Super Admin / Director' && parsed.name.includes('Birendra'))) {
+          parsed.name = 'Mr. Sourav Dinda';
+          localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(parsed));
+        }
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }

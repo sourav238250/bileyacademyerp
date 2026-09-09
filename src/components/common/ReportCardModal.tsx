@@ -43,7 +43,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
     authConfig.classMentorDefaultDesignation || 'Class Mentor & Faculty In-Charge'
   );
   const [directorName, setDirectorName] = useState(
-    authConfig.directorName || 'Dr. Birendra Nath Biley'
+    authConfig.directorName || 'Mr. Sourav Dinda'
   );
   const [directorDesignation, setDirectorDesignation] = useState(
     authConfig.directorDesignation || 'Academic Director'
