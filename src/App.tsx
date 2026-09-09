@@ -169,17 +169,11 @@ export default function App() {
       authConfig,
     };
     
-    // Save locally
+    // Save locally for instant offline persistence
     saveToStorage(currentState);
 
-    // Debounce cloud push slightly to avoid spamming network
-    const timeoutId = setTimeout(() => {
-      firebaseSyncService.pushStateToCloud(currentState).catch((err) => {
-        console.warn('Firestore background update sync warning:', err);
-      });
-    }, 400);
-
-    return () => clearTimeout(timeoutId);
+    // Schedule debounced, hash-checked cloud push
+    firebaseSyncService.scheduleCloudPush(currentState);
   }, [students, faculty, subjects, exams, results, deposits, disbursements, timetable, attendance, questionBank, assignments, authConfig, isLoaded]);
 
   // Authorization Config Handler

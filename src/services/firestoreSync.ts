@@ -11,22 +11,8 @@ import {
   loadInitialState,
   saveToStorage,
 } from '../utils/storage';
-import {
-  Student,
-  Faculty,
-  Subject,
-  Exam,
-  ExamResult,
-  FeeDeposit,
-  PaymentDisbursement,
-  TimetableSlot,
-  AttendanceRecord,
-  QuestionBankItem,
-  AssignmentSet,
-  InstitutionalAuthorizationConfig,
-} from '../types';
 
-// Root document collection for the single institutional workspace
+// Root document collection for the institutional workspace
 const INSTITUTION_COLLECTION = 'biley_academy_erp';
 const ROOT_DOC_ID = 'institutional_state_v1';
 
@@ -38,16 +24,40 @@ export type SyncStatusCallback = (status: {
   error: string | null;
 }) => void;
 
+function createDataHash(data: AppStateData): string {
+  try {
+    return JSON.stringify({
+      students: data.students || [],
+      faculty: data.faculty || [],
+      subjects: data.subjects || [],
+      exams: data.exams || [],
+      results: data.results || [],
+      deposits: data.deposits || [],
+      disbursements: data.disbursements || [],
+      timetable: data.timetable || [],
+      attendance: data.attendance || [],
+      questionBank: data.questionBank || [],
+      assignments: data.assignments || [],
+      authConfig: data.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
+    });
+  } catch {
+    return '';
+  }
+}
+
 class FirebaseSyncService {
   private unsubscribeFirestore: (() => void) | null = null;
   private isWritingToCloud = false;
+  private pendingWriteData: AppStateData | null = null;
+  private lastSyncedHash = '';
   private lastCloudSyncTime: Date | null = null;
   private isConnected = false;
+  private writeTimer: any = null;
   private statusListeners: Set<SyncStatusCallback> = new Set();
+  public isRemoteUpdateUnderway = false;
 
   public subscribeToStatus(listener: SyncStatusCallback): () => void {
     this.statusListeners.add(listener);
-    // Send immediate current status
     listener({
       isConnected: this.isConnected,
       isSyncing: this.isWritingToCloud,
@@ -61,18 +71,21 @@ class FirebaseSyncService {
 
   private notifyStatus(error: string | null = null) {
     for (const listener of this.statusListeners) {
-      listener({
-        isConnected: this.isConnected,
-        isSyncing: this.isWritingToCloud,
-        lastSyncedAt: this.lastCloudSyncTime,
-        error,
-      });
+      try {
+        listener({
+          isConnected: this.isConnected,
+          isSyncing: this.isWritingToCloud,
+          lastSyncedAt: this.lastCloudSyncTime,
+          error,
+        });
+      } catch (e) {
+        console.error('Status listener error:', e);
+      }
     }
   }
 
   /**
-   * Initializes real-time bidirectional sync with Firestore.
-   * If Firestore is empty, it seeds the initial mock dataset.
+   * Initializes real-time listener with Firestore.
    */
   public initRealtimeSync(onDataReceived: SyncCallback): () => void {
     try {
@@ -80,12 +93,18 @@ class FirebaseSyncService {
 
       this.unsubscribeFirestore = onSnapshot(
         docRef,
+        { includeMetadataChanges: true },
         (snapshot) => {
           this.isConnected = true;
+
+          // If snapshot is from local cache write (hasPendingWrites), do not echo back
+          if (snapshot.metadata.hasPendingWrites) {
+            return;
+          }
+
           if (snapshot.exists()) {
             const remoteData = snapshot.data() as Partial<AppStateData>;
 
-            // Parse and merge data safely
             const merged: AppStateData = {
               students: remoteData.students || [],
               faculty: remoteData.faculty || [],
@@ -101,30 +120,38 @@ class FirebaseSyncService {
               authConfig: remoteData.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
             };
 
+            const incomingHash = createDataHash(merged);
+
+            // Skip if identical to what was already synced
+            if (incomingHash && incomingHash === this.lastSyncedHash) {
+              return;
+            }
+
+            this.lastSyncedHash = incomingHash;
             this.lastCloudSyncTime = new Date();
             this.notifyStatus(null);
 
-            // Update local storage copy as offline fallback
+            // Save locally for offline support
             saveToStorage(merged);
 
-            // Notify application listeners only if not triggered by our own write
-            if (!this.isWritingToCloud) {
-              onDataReceived(merged, 'cloud');
-            }
+            // Flag remote update to prevent App.tsx from immediately re-pushing
+            this.isRemoteUpdateUnderway = true;
+            onDataReceived(merged, 'cloud');
+            setTimeout(() => {
+              this.isRemoteUpdateUnderway = false;
+            }, 300);
           } else {
-            // First time connection: seed local storage state to cloud
+            // First-time database bootstrap
             const initialLocalState = loadInitialState();
-            this.pushStateToCloud(initialLocalState).catch((err) => {
-              console.warn('Initial cloud seed attempt:', err);
-            });
+            this.lastSyncedHash = createDataHash(initialLocalState);
+            this.scheduleCloudPush(initialLocalState);
             onDataReceived(initialLocalState, 'local');
           }
         },
         (error) => {
-          console.error('Firestore real-time sync error:', error);
+          console.warn('Firestore real-time sync notification:', error);
           this.isConnected = false;
           this.notifyStatus(error.message);
-          // Fallback to local storage state
           const localState = loadInitialState();
           onDataReceived(localState, 'local');
         }
@@ -145,50 +172,97 @@ class FirebaseSyncService {
   }
 
   /**
-   * Pushes full or updated state data to Firestore backend document.
+   * Schedules a debounced, rate-limited push to Firestore to eliminate write exhaustion.
    */
-  public async pushStateToCloud(data: AppStateData): Promise<void> {
+  public scheduleCloudPush(data: AppStateData): void {
+    // If an update was just triggered from remote cloud snapshot, skip pushing it back!
+    if (this.isRemoteUpdateUnderway) {
+      return;
+    }
+
+    const currentHash = createDataHash(data);
+    if (!currentHash || currentHash === this.lastSyncedHash) {
+      // Nothing changed, don't write
+      return;
+    }
+
+    this.pendingWriteData = data;
+
+    if (this.writeTimer) {
+      clearTimeout(this.writeTimer);
+    }
+
+    this.writeTimer = setTimeout(() => {
+      this.flushPendingWrite();
+    }, 1000);
+  }
+
+  private async flushPendingWrite(): Promise<void> {
+    if (this.isWritingToCloud || !this.pendingWriteData) {
+      return;
+    }
+
+    const dataToSave = this.pendingWriteData;
+    this.pendingWriteData = null;
+
+    const dataHash = createDataHash(dataToSave);
+    if (dataHash === this.lastSyncedHash) {
+      return;
+    }
+
     this.isWritingToCloud = true;
     this.notifyStatus(null);
 
     try {
       const docRef = doc(db, INSTITUTION_COLLECTION, ROOT_DOC_ID);
-      
-      // Sanitize payload (ensure no undefined properties)
       const sanitized: AppStateData = {
-        students: JSON.parse(JSON.stringify(data.students || [])),
-        faculty: JSON.parse(JSON.stringify(data.faculty || [])),
-        subjects: JSON.parse(JSON.stringify(data.subjects || [])),
-        exams: JSON.parse(JSON.stringify(data.exams || [])),
-        results: JSON.parse(JSON.stringify(data.results || [])),
-        deposits: JSON.parse(JSON.stringify(data.deposits || [])),
-        disbursements: JSON.parse(JSON.stringify(data.disbursements || [])),
-        timetable: JSON.parse(JSON.stringify(data.timetable || [])),
-        attendance: JSON.parse(JSON.stringify(data.attendance || [])),
-        questionBank: JSON.parse(JSON.stringify(data.questionBank || [])),
-        assignments: JSON.parse(JSON.stringify(data.assignments || [])),
-        authConfig: JSON.parse(JSON.stringify(data.authConfig || DEFAULT_AUTHORIZATION_CONFIG)),
+        students: JSON.parse(JSON.stringify(dataToSave.students || [])),
+        faculty: JSON.parse(JSON.stringify(dataToSave.faculty || [])),
+        subjects: JSON.parse(JSON.stringify(dataToSave.subjects || [])),
+        exams: JSON.parse(JSON.stringify(dataToSave.exams || [])),
+        results: JSON.parse(JSON.stringify(dataToSave.results || [])),
+        deposits: JSON.parse(JSON.stringify(dataToSave.deposits || [])),
+        disbursements: JSON.parse(JSON.stringify(dataToSave.disbursements || [])),
+        timetable: JSON.parse(JSON.stringify(dataToSave.timetable || [])),
+        attendance: JSON.parse(JSON.stringify(dataToSave.attendance || [])),
+        questionBank: JSON.parse(JSON.stringify(dataToSave.questionBank || [])),
+        assignments: JSON.parse(JSON.stringify(dataToSave.assignments || [])),
+        authConfig: JSON.parse(JSON.stringify(dataToSave.authConfig || DEFAULT_AUTHORIZATION_CONFIG)),
       };
 
-      await setDoc(docRef, {
-        ...sanitized,
-        updatedAt: new Date().toISOString(),
-        institutionName: 'Biley Academy',
-      }, { merge: true });
+      await setDoc(
+        docRef,
+        {
+          ...sanitized,
+          updatedAt: new Date().toISOString(),
+          institutionName: 'Biley Academy',
+        },
+        { merge: true }
+      );
 
+      this.lastSyncedHash = dataHash;
       this.lastCloudSyncTime = new Date();
       this.isConnected = true;
       this.notifyStatus(null);
     } catch (err: any) {
-      console.error('Error saving state to Firestore backend:', err);
-      this.notifyStatus(err?.message || 'Failed to save to cloud');
-      throw err;
+      console.warn('Firestore write warning:', err);
+      this.notifyStatus(err?.message || 'Cloud write delayed');
     } finally {
-      // Delay releasing write lock slightly to ignore immediate local snapshot echo
-      setTimeout(() => {
-        this.isWritingToCloud = false;
-      }, 500);
+      this.isWritingToCloud = false;
+      this.notifyStatus(null);
+
+      // If more mutations accumulated while this write was in flight, schedule next write
+      if (this.pendingWriteData) {
+        setTimeout(() => this.flushPendingWrite(), 800);
+      }
     }
+  }
+
+  /**
+   * Direct push wrapper
+   */
+  public async pushStateToCloud(data: AppStateData): Promise<void> {
+    this.scheduleCloudPush(data);
   }
 
   /**
@@ -215,6 +289,7 @@ class FirebaseSyncService {
           assignments: remoteData.assignments || [],
           authConfig: remoteData.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
         };
+        this.lastSyncedHash = createDataHash(merged);
         this.lastCloudSyncTime = new Date();
         this.isConnected = true;
         this.notifyStatus(null);

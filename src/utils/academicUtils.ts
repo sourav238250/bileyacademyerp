@@ -18,24 +18,28 @@ export const CLASS_LEVELS: ClassLevel[] = ['1', '2', '3', '4', '5', '6', '7', '8
 
 export const STANDARD_SUBJECT_NAMES = [
   'Mathematics',
+  'Science',
+  'English',
+  'Computer',
   'Physics',
   'Chemistry',
   'Biology',
   'Computer Science',
   'Computer Application',
-  'English',
 ] as const;
 
 export type StandardSubjectName = (typeof STANDARD_SUBJECT_NAMES)[number];
 
 export const STANDARD_SUBJECT_CODES: Record<StandardSubjectName, string> = {
   'Mathematics': 'MTH',
+  'Science': 'SCI',
+  'English': 'ENG',
+  'Computer': 'COMP',
   'Physics': 'PHY',
   'Chemistry': 'CHM',
   'Biology': 'BIO',
   'Computer Science': 'CS',
   'Computer Application': 'CA',
-  'English': 'ENG',
 };
 
 export const STREAMS_FOR_CLASS: Record<ClassLevel, string[]> = {

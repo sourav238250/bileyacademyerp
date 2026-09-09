@@ -219,6 +219,91 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
             />
           </div>
         </div>
+
+        {/* Primary Curriculum Standard Notice (Class 1-4) */}
+        {(selectedClass === 'all' || ['1', '2', '3', '4'].includes(selectedClass)) && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 bg-slate-50/80 p-2.5 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                WBBPE & CBSE Standard
+              </span>
+              <span className="text-xs font-medium text-slate-700">
+                Primary Classes (1 to 4) curriculum is standardized to 4 Core Subjects:
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-800 flex-wrap">
+              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">1. Mathematics</span>
+              <span className="px-2 py-0.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded">2. Science (EVS)</span>
+              <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded">3. English</span>
+              <span className="px-2 py-0.5 bg-purple-50 text-purple-800 border border-purple-200 rounded">4. Computer</span>
+            </div>
+          </div>
+        )}
+
+        {/* Middle School Curriculum Standard Notice (Class 5-8) */}
+        {(selectedClass === 'all' || ['5', '6', '7', '8'].includes(selectedClass)) && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-100">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                WBBSE & CBSE Standard
+              </span>
+              <span className="text-xs font-medium text-slate-700">
+                Middle School Classes (5 to 8) curriculum is standardized to 5 Core Subjects:
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-800 flex-wrap">
+              <span className="px-2 py-0.5 bg-white text-emerald-900 border border-emerald-200 rounded shadow-2xs">1. Mathematics</span>
+              <span className="px-2 py-0.5 bg-white text-cyan-900 border border-cyan-200 rounded shadow-2xs">2. Science</span>
+              <span className="px-2 py-0.5 bg-white text-green-900 border border-green-200 rounded shadow-2xs">3. Biology</span>
+              <span className="px-2 py-0.5 bg-white text-amber-900 border border-amber-200 rounded shadow-2xs">4. English</span>
+              <span className="px-2 py-0.5 bg-white text-purple-900 border border-purple-200 rounded shadow-2xs">5. Computer</span>
+            </div>
+          </div>
+        )}
+
+        {/* Secondary Curriculum Standard Notice (Class 9-10) */}
+        {(selectedClass === 'all' || ['9', '10'].includes(selectedClass)) && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                WBBSE & CBSE Secondary Standard (Semester-Wise)
+              </span>
+              <span className="text-xs font-medium text-slate-700">
+                Secondary Classes (9 to 10) curriculum is standardized to 5 Core Subjects:
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-800 flex-wrap">
+              <span className="px-2 py-0.5 bg-white text-indigo-900 border border-indigo-200 rounded shadow-2xs">1. Mathematics</span>
+              <span className="px-2 py-0.5 bg-white text-cyan-900 border border-cyan-200 rounded shadow-2xs">2. Science</span>
+              <span className="px-2 py-0.5 bg-white text-emerald-900 border border-emerald-200 rounded shadow-2xs">3. Biology</span>
+              <span className="px-2 py-0.5 bg-white text-amber-900 border border-amber-200 rounded shadow-2xs">4. English</span>
+              <span className="px-2 py-0.5 bg-white text-purple-900 border border-purple-200 rounded shadow-2xs">5. Computer</span>
+            </div>
+          </div>
+        )}
+
+        {/* Higher Secondary Curriculum Standard Notice (Class 11-12) */}
+        {(selectedClass === 'all' || ['11', '12'].includes(selectedClass)) && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 bg-rose-50/70 p-2.5 rounded-lg border border-rose-100">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                WBCHSE & CBSE Higher Secondary Standard (Semester-Wise)
+              </span>
+              <span className="text-xs font-medium text-slate-700">
+                Higher Secondary Classes (11 & 12) curriculum is standardized to 7 Core Subjects:
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-800 flex-wrap">
+              <span className="px-2 py-0.5 bg-white text-indigo-900 border border-indigo-200 rounded shadow-2xs">1. Mathematics</span>
+              <span className="px-2 py-0.5 bg-white text-blue-900 border border-blue-200 rounded shadow-2xs">2. Physics</span>
+              <span className="px-2 py-0.5 bg-white text-amber-900 border border-amber-200 rounded shadow-2xs">3. Chemistry</span>
+              <span className="px-2 py-0.5 bg-white text-emerald-900 border border-emerald-200 rounded shadow-2xs">4. Biology</span>
+              <span className="px-2 py-0.5 bg-white text-rose-900 border border-rose-200 rounded shadow-2xs">5. English</span>
+              <span className="px-2 py-0.5 bg-white text-teal-900 border border-teal-200 rounded shadow-2xs">6. Computer Application</span>
+              <span className="px-2 py-0.5 bg-white text-purple-900 border border-purple-200 rounded shadow-2xs">7. Computer Science</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Subject Cards Grid */}
@@ -298,6 +383,14 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
                 {sub.textbook && (
                   <p className="text-[11px] text-slate-500 mt-2 line-clamp-1">
                     <strong className="text-slate-700">Course Book:</strong> {sub.textbook}
+                  </p>
+                )}
+
+                {/* Syllabus Description */}
+                {sub.description && (
+                  <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-2 leading-relaxed bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <span className="font-semibold text-slate-700">Syllabus: </span>
+                    {sub.description}
                   </p>
                 )}
               </div>

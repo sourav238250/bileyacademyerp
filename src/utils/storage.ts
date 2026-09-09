@@ -115,16 +115,126 @@ export function loadInitialState(): AppStateData {
     loadedAuthConfig.directorName = 'Mr. Sourav Dinda';
   }
 
+  const loadedSubjects = loadFromStorage<Subject[]>(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS);
+  // Filter out any obsolete subjects for standardized classes 1 to 12 that no longer exist in INITIAL_SUBJECTS
+  const standardClassLevels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const sanitizedLoadedSubjects = loadedSubjects.filter((sub) => {
+    if (standardClassLevels.includes(sub.classLevel)) {
+      return INITIAL_SUBJECTS.some((init) => init.id === sub.id);
+    }
+    return true;
+  });
+
+  // Merge and sync curriculum subjects into loaded subjects
+  const subjectIdMap = new Set(sanitizedLoadedSubjects.map((s) => s.id));
+  const mergedSubjects = sanitizedLoadedSubjects.map((sub) => {
+    const initSub = INITIAL_SUBJECTS.find((s) => s.id === sub.id);
+    if (initSub) {
+      return {
+        ...sub,
+        name: initSub.name,
+        code: initSub.code,
+        textbook: initSub.textbook,
+        description: initSub.description,
+        facultyId: sub.facultyId || initSub.facultyId,
+        weeklyHours: sub.weeklyHours || initSub.weeklyHours,
+      };
+    }
+    return sub;
+  });
+  for (const initSub of INITIAL_SUBJECTS) {
+    if (!subjectIdMap.has(initSub.id)) {
+      mergedSubjects.push(initSub);
+      subjectIdMap.add(initSub.id);
+    }
+  }
+
+  const validSubjectIds = new Set(mergedSubjects.map((s) => s.id));
+
+  const loadedFaculty = loadFromStorage<Faculty[]>(STORAGE_KEYS.FACULTY, INITIAL_FACULTY);
+  // Ensure faculty assignedSubjectIds reflect updated curriculum subjects
+  const mergedFaculty = loadedFaculty.map((fac) => {
+    const initFac = INITIAL_FACULTY.find((f) => f.id === fac.id);
+    if (initFac) {
+      const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
+        .filter((id) => validSubjectIds.has(id));
+      return {
+        ...fac,
+        assignedSubjectIds: combinedSubjectIds,
+      };
+    }
+    return {
+      ...fac,
+      assignedSubjectIds: (fac.assignedSubjectIds || []).filter((id) => validSubjectIds.has(id)),
+    };
+  });
+
+  const loadedStudents = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
+  const sanitizedStudents = loadedStudents.map((st) => {
+    if (standardClassLevels.includes(st.classLevel) && st.enrolledSubjectIds) {
+      const filteredEnrolled = st.enrolledSubjectIds.filter((id) => validSubjectIds.has(id));
+      if (filteredEnrolled.length === 0) {
+        // Default to all subjects for that class
+        const classSubs = mergedSubjects.filter((s) => s.classLevel === st.classLevel).map((s) => s.id);
+        return {
+          ...st,
+          enrolledSubjectIds: classSubs,
+        };
+      }
+      return {
+        ...st,
+        enrolledSubjectIds: filteredEnrolled,
+      };
+    }
+    return st;
+  });
+
+  const loadedExams = loadFromStorage<Exam[]>(STORAGE_KEYS.EXAMS, INITIAL_EXAMS);
+  const sanitizedExams = loadedExams.map((ex) => {
+    const initEx = INITIAL_EXAMS.find((e) => e.id === ex.id);
+    if (initEx && standardClassLevels.includes(ex.classLevel)) {
+      return initEx;
+    }
+    return ex;
+  });
+
+  const loadedResults = loadFromStorage<ExamResult[]>(STORAGE_KEYS.RESULTS, INITIAL_RESULTS);
+  const sanitizedResults = loadedResults.map((res) => {
+    const initRes = INITIAL_RESULTS.find((r) => r.id === res.id);
+    if (initRes && standardClassLevels.includes(res.classLevel)) {
+      return initRes;
+    }
+    return res;
+  });
+
+  const loadedTimetable = loadFromStorage<TimetableSlot[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
+  const sanitizedTimetable = loadedTimetable.map((slot) => {
+    const initSlot = INITIAL_TIMETABLE.find((t) => t.id === slot.id);
+    if (initSlot && standardClassLevels.includes(slot.classLevel)) {
+      return initSlot;
+    }
+    return slot;
+  });
+
+  const loadedAttendance = loadFromStorage<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE, INITIAL_ATTENDANCE);
+  const sanitizedAttendance = loadedAttendance.map((att) => {
+    const initAtt = INITIAL_ATTENDANCE.find((a) => a.id === att.id);
+    if (initAtt && standardClassLevels.includes(att.classLevel)) {
+      return initAtt;
+    }
+    return att;
+  });
+
   return {
-    students: loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS),
-    faculty: loadFromStorage<Faculty[]>(STORAGE_KEYS.FACULTY, INITIAL_FACULTY),
-    subjects: loadFromStorage<Subject[]>(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS),
-    exams: loadFromStorage<Exam[]>(STORAGE_KEYS.EXAMS, INITIAL_EXAMS),
-    results: loadFromStorage<ExamResult[]>(STORAGE_KEYS.RESULTS, INITIAL_RESULTS),
+    students: sanitizedStudents,
+    faculty: mergedFaculty,
+    subjects: mergedSubjects,
+    exams: sanitizedExams,
+    results: sanitizedResults,
     deposits: loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS),
     disbursements: loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS),
-    timetable: loadFromStorage<TimetableSlot[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE),
-    attendance: loadFromStorage<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE, INITIAL_ATTENDANCE),
+    timetable: sanitizedTimetable,
+    attendance: sanitizedAttendance,
     questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
     assignments: loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS),
     authConfig: loadedAuthConfig,
