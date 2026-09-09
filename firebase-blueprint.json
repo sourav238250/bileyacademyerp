@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "InstitutionalState": {
+      "title": "InstitutionalState",
+      "description": "Entire institutional dataset synchronized in real-time for Biley Academy ERP",
+      "type": "object",
+      "properties": {
+        "institutionName": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "students": { "type": "array" },
+        "faculty": { "type": "array" },
+        "subjects": { "type": "array" },
+        "exams": { "type": "array" },
+        "results": { "type": "array" },
+        "deposits": { "type": "array" },
+        "disbursements": { "type": "array" },
+        "timetable": { "type": "array" },
+        "attendance": { "type": "array" },
+        "questionBank": { "type": "array" },
+        "assignments": { "type": "array" },
+        "authConfig": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "biley_academy_erp/{docId}": {
+      "schema": "InstitutionalState",
+      "description": "Root document containing academic records, admissions, timetable, fees, question bank, and accounting ledger"
+    }
+  }
+}

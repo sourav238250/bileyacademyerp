@@ -24,6 +24,7 @@ import {
   AppStateData,
   DEFAULT_AUTHORIZATION_CONFIG,
 } from './utils/storage';
+import { firebaseSyncService } from './services/firestoreSync';
 
 // Layout components
 import { Header } from './components/Header';
@@ -103,28 +104,51 @@ export default function App() {
     setActiveTab('fees');
   };
 
-  // Initial Load from LocalStorage
+  // Initial Load & Real-time Firestore Database Sync
   useEffect(() => {
-    const data = loadInitialState();
-    setStudents(data.students);
-    setFaculty(data.faculty);
-    setSubjects(data.subjects);
-    setExams(data.exams);
-    setResults(data.results);
-    setDeposits(data.deposits);
-    setDisbursements(data.disbursements || []);
-    setTimetable(data.timetable);
-    setAttendance(data.attendance || []);
-    setQuestionBank(data.questionBank || []);
-    setAssignments(data.assignments || []);
-    setAuthConfig(data.authConfig || DEFAULT_AUTHORIZATION_CONFIG);
+    // 1. First populate immediately from local storage for instantaneous render
+    const localData = loadInitialState();
+    setStudents(localData.students);
+    setFaculty(localData.faculty);
+    setSubjects(localData.subjects);
+    setExams(localData.exams);
+    setResults(localData.results);
+    setDeposits(localData.deposits);
+    setDisbursements(localData.disbursements || []);
+    setTimetable(localData.timetable);
+    setAttendance(localData.attendance || []);
+    setQuestionBank(localData.questionBank || []);
+    setAssignments(localData.assignments || []);
+    setAuthConfig(localData.authConfig || DEFAULT_AUTHORIZATION_CONFIG);
     setIsLoaded(true);
+
+    // 2. Attach real-time cloud listener to synchronize with Firebase Firestore backend
+    const unsubscribe = firebaseSyncService.initRealtimeSync((cloudData) => {
+      setStudents(cloudData.students || []);
+      setFaculty(cloudData.faculty || []);
+      setSubjects(cloudData.subjects || []);
+      setExams(cloudData.exams || []);
+      setResults(cloudData.results || []);
+      setDeposits(cloudData.deposits || []);
+      setDisbursements(cloudData.disbursements || []);
+      setTimetable(cloudData.timetable || []);
+      setAttendance(cloudData.attendance || []);
+      setQuestionBank(cloudData.questionBank || []);
+      setAssignments(cloudData.assignments || []);
+      if (cloudData.authConfig) {
+        setAuthConfig(cloudData.authConfig);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  // Save to LocalStorage on State Mutation
+  // Save to LocalStorage and push changes to Firestore on State Mutation
   useEffect(() => {
     if (!isLoaded) return;
-    saveToStorage({
+    const currentState: AppStateData = {
       students,
       faculty,
       subjects,
@@ -137,7 +161,19 @@ export default function App() {
       questionBank,
       assignments,
       authConfig,
-    });
+    };
+    
+    // Save locally
+    saveToStorage(currentState);
+
+    // Debounce cloud push slightly to avoid spamming network
+    const timeoutId = setTimeout(() => {
+      firebaseSyncService.pushStateToCloud(currentState).catch((err) => {
+        console.warn('Firestore background update sync warning:', err);
+      });
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
   }, [students, faculty, subjects, exams, results, deposits, disbursements, timetable, attendance, questionBank, assignments, authConfig, isLoaded]);
 
   // Authorization Config Handler

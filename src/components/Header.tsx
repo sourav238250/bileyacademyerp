@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavigationTab, AdminUser } from '../types';
 import { InstituteLogo } from './common/InstituteLogo';
+import { FirebaseSyncStatusBadge } from './common/FirebaseSyncStatusBadge';
 import {
   GraduationCap,
   Sparkles,
@@ -110,6 +111,9 @@ export const Header: React.FC<HeaderProps> = ({
               <CreditCard className="w-3.5 h-3.5" />
               <span>Deposit Fee</span>
             </button>
+
+            {/* Cloud Sync Status Badge */}
+            <FirebaseSyncStatusBadge />
 
             {/* Student & Parent Portal Toggle Switch */}
             <button

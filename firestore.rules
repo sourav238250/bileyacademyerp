@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public read and write for the Biley Academy ERP institutional state document
+    // Allows administrative operations, front desk queries, student report checks, and real-time syncing
+    match /biley_academy_erp/{docId} {
+      allow read, write: if true;
+    }
+    
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
