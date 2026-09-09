@@ -105,9 +105,16 @@ export function getAvailableSubjectsForStudent(
   stream: string,
   subjects: Subject[]
 ): Subject[] {
-  return subjects.filter(
-    (s) => s.classLevel === classLevel && (s.stream === 'General' || s.stream === stream)
-  );
+  return subjects.filter((s) => {
+    if (s.classLevel !== classLevel) return false;
+    // For Higher Secondary (Class 11 & 12), all 7 standardized subjects
+    // (Maths, Physics, Chemistry, Biology, English, Computer Application, Computer Science)
+    // are available for comprehensive coaching enrollment regardless of stream selection
+    if (['11', '12'].includes(classLevel)) {
+      return true;
+    }
+    return s.stream === 'General' || s.stream === stream || stream === 'General';
+  });
 }
 
 /**

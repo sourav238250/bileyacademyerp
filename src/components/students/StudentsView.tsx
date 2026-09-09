@@ -58,6 +58,10 @@ import {
   Clock,
   HelpCircle,
   XCircle,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  FileText,
 } from 'lucide-react';
 
 interface StudentsViewProps {
@@ -122,6 +126,114 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   // Selected student for Profile View modal
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [expandedSyllabusSubjectId, setExpandedSyllabusSubjectId] = useState<string | null>(null);
+
+  // Helper for subject visual themes and badges
+  const getSubjectColorStyles = (code: string, name: string) => {
+    const upper = (code + ' ' + name).toUpperCase();
+    if (upper.includes('MATH') || upper.includes('MTH')) {
+      return {
+        bg: 'bg-indigo-50/60',
+        border: 'border-indigo-200',
+        activeBorder: 'border-indigo-600',
+        activeBg: 'bg-indigo-50/90',
+        activeRing: 'ring-indigo-500',
+        badge: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+        checkBg: 'bg-indigo-600',
+        text: 'text-indigo-900',
+        iconBg: 'bg-indigo-600',
+      };
+    }
+    if (upper.includes('PHY')) {
+      return {
+        bg: 'bg-blue-50/60',
+        border: 'border-blue-200',
+        activeBorder: 'border-blue-600',
+        activeBg: 'bg-blue-50/90',
+        activeRing: 'ring-blue-500',
+        badge: 'bg-blue-100 text-blue-800 border-blue-300',
+        checkBg: 'bg-blue-600',
+        text: 'text-blue-900',
+        iconBg: 'bg-blue-600',
+      };
+    }
+    if (upper.includes('CHEM') || upper.includes('CHM')) {
+      return {
+        bg: 'bg-amber-50/60',
+        border: 'border-amber-200',
+        activeBorder: 'border-amber-600',
+        activeBg: 'bg-amber-50/90',
+        activeRing: 'ring-amber-500',
+        badge: 'bg-amber-100 text-amber-800 border-amber-300',
+        checkBg: 'bg-amber-600',
+        text: 'text-amber-900',
+        iconBg: 'bg-amber-600',
+      };
+    }
+    if (upper.includes('BIO')) {
+      return {
+        bg: 'bg-emerald-50/60',
+        border: 'border-emerald-200',
+        activeBorder: 'border-emerald-600',
+        activeBg: 'bg-emerald-50/90',
+        activeRing: 'ring-emerald-500',
+        badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        checkBg: 'bg-emerald-600',
+        text: 'text-emerald-900',
+        iconBg: 'bg-emerald-600',
+      };
+    }
+    if (upper.includes('ENG')) {
+      return {
+        bg: 'bg-rose-50/60',
+        border: 'border-rose-200',
+        activeBorder: 'border-rose-600',
+        activeBg: 'bg-rose-50/90',
+        activeRing: 'ring-rose-500',
+        badge: 'bg-rose-100 text-rose-800 border-rose-300',
+        checkBg: 'bg-rose-600',
+        text: 'text-rose-900',
+        iconBg: 'bg-rose-600',
+      };
+    }
+    if (upper.includes('COMPUTER APPLICATION') || upper.includes('CA-') || upper.includes('CA')) {
+      return {
+        bg: 'bg-teal-50/60',
+        border: 'border-teal-200',
+        activeBorder: 'border-teal-600',
+        activeBg: 'bg-teal-50/90',
+        activeRing: 'ring-teal-500',
+        badge: 'bg-teal-100 text-teal-800 border-teal-300',
+        checkBg: 'bg-teal-600',
+        text: 'text-teal-900',
+        iconBg: 'bg-teal-600',
+      };
+    }
+    if (upper.includes('COMPUTER SCIENCE') || upper.includes('CS-') || upper.includes('CS')) {
+      return {
+        bg: 'bg-purple-50/60',
+        border: 'border-purple-200',
+        activeBorder: 'border-purple-600',
+        activeBg: 'bg-purple-50/90',
+        activeRing: 'ring-purple-500',
+        badge: 'bg-purple-100 text-purple-800 border-purple-300',
+        checkBg: 'bg-purple-600',
+        text: 'text-purple-900',
+        iconBg: 'bg-purple-600',
+      };
+    }
+    return {
+      bg: 'bg-slate-50/60',
+      border: 'border-slate-200',
+      activeBorder: 'border-slate-800',
+      activeBg: 'bg-slate-50/90',
+      activeRing: 'ring-slate-700',
+      badge: 'bg-slate-100 text-slate-800 border-slate-300',
+      checkBg: 'bg-slate-800',
+      text: 'text-slate-900',
+      iconBg: 'bg-slate-700',
+    };
+  };
 
   // Form State for Admission / Edit
   const [formData, setFormData] = useState<Partial<Student>>({
@@ -285,6 +397,62 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         enrolledSubjectIds: updated,
       });
     }
+  };
+
+  // Apply smart package preset (Pure Science, Engineering, Medical, Applied Tech, etc.)
+  const applySubjectPreset = (presetKey: string) => {
+    const available = getAvailableSubjectsForStudent(
+      (formData.classLevel as ClassLevel) || '10',
+      formData.stream || 'General',
+      subjects
+    );
+
+    if (presetKey === 'ALL') {
+      setFormData({
+        ...formData,
+        enrollmentType: 'All Subjects Combo',
+        enrolledSubjectIds: available.map((s) => s.id),
+      });
+      return;
+    }
+
+    let targetCodes: string[] = [];
+    if (presetKey === 'PCMB_ENG') {
+      targetCodes = ['PHY', 'CHM', 'MTH', 'BIO', 'ENG'];
+    } else if (presetKey === 'PCM_CS_ENG') {
+      targetCodes = ['PHY', 'CHM', 'MTH', 'CS', 'ENG'];
+    } else if (presetKey === 'PCM_CA_ENG') {
+      targetCodes = ['PHY', 'CHM', 'MTH', 'CA', 'ENG'];
+    } else if (presetKey === 'PCB_CA_ENG') {
+      targetCodes = ['PHY', 'CHM', 'BIO', 'CA', 'ENG'];
+    } else if (presetKey === 'PCB_CS_ENG') {
+      targetCodes = ['PHY', 'CHM', 'BIO', 'CS', 'ENG'];
+    } else if (presetKey === 'TECH_FOCUS') {
+      targetCodes = ['MTH', 'CS', 'CA', 'ENG'];
+    } else if (presetKey === 'ALL_5_CORE') {
+      targetCodes = ['MTH', 'SCI', 'BIO', 'ENG', 'CA', 'COMP'];
+    } else if (presetKey === 'ALL_4_CORE') {
+      targetCodes = ['MTH', 'SCI', 'ENG', 'CA', 'COMP'];
+    }
+
+    const matched = available.filter((s) => {
+      const codeUpper = (s.code + ' ' + s.name).toUpperCase();
+      return targetCodes.some((code) => codeUpper.includes(code) || s.id.includes(code));
+    });
+
+    const matchedIds = matched.map((s) => s.id);
+    const finalIds = matchedIds.length > 0 ? matchedIds : available.map((s) => s.id);
+    const mode = finalIds.length === 1
+      ? 'Single Subject'
+      : finalIds.length === available.length
+      ? 'All Subjects Combo'
+      : 'Multiple Subjects';
+
+    setFormData({
+      ...formData,
+      enrollmentType: mode,
+      enrolledSubjectIds: finalIds,
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -935,15 +1103,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </div>
               </div>
 
-              {/* 2. Coaching Subject Enrollment (Single Subject vs Multiple Subjects) */}
+              {/* 2. Coaching Subject Enrollment (Single Subject vs Multiple Subjects vs Stream Presets) */}
               <div className="pt-4 border-t border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <BookOpen className="w-4 h-4 text-indigo-600" /> 2. Coaching Subject Enrollment
+                      <BookOpen className="w-4 h-4 text-indigo-600" /> 2. Coaching Subject Enrollment & Curriculum
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      Students may enroll for single subject coaching, multiple selected subjects, or full combo.
+                      Standardized curriculum for WBBSE (WBCHSE) & CBSE. Select single subject, multi-subject package, or standard stream combo.
                     </p>
                   </div>
 
@@ -985,42 +1153,225 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
                 </div>
 
+                {/* Stage Curriculum Header Info Banner */}
+                <div className="mb-3 p-2.5 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-sky-50/50 to-indigo-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                      {formData.classLevel}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block">
+                        {['11', '12'].includes(formData.classLevel || '')
+                          ? `Class ${formData.classLevel} Higher Secondary (HS) Curriculum`
+                          : ['9', '10'].includes(formData.classLevel || '')
+                          ? `Class ${formData.classLevel} Secondary (Madhyamik / Board) Curriculum`
+                          : ['6', '7', '8'].includes(formData.classLevel || '')
+                          ? `Class ${formData.classLevel} Upper Primary Curriculum`
+                          : `Class ${formData.classLevel} Primary Foundation Curriculum`}
+                      </span>
+                      <span className="text-[10px] text-slate-600">
+                        {['11', '12'].includes(formData.classLevel || '')
+                          ? '7 Subjects: Mathematics, Physics, Chemistry, Biology, English, Computer Application & Computer Science (WBCHSE & CBSE)'
+                          : ['9', '10'].includes(formData.classLevel || '')
+                          ? '5 Subjects: Mathematics, Science (Physical Science), Biology (Life Science), English & Computer (WBBSE & CBSE)'
+                          : ['6', '7', '8'].includes(formData.classLevel || '')
+                          ? '5 Subjects: Mathematics, Science, Biology, English & Computer'
+                          : '4 Subjects: Mathematics, Science, English & Computer'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-indigo-800 text-[10px] font-bold font-mono tracking-tight self-start sm:self-center">
+                    {formData.enrolledSubjectIds?.length || 0} / {formAvailableSubjects.length} Subjects Enrolled
+                  </span>
+                </div>
+
+                {/* Stream Package Quick Presets */}
+                <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" /> Presets:
+                  </span>
+
+                  {['11', '12'].includes(formData.classLevel || '') ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => applySubjectPreset('PCMB_ENG')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-indigo-200 bg-indigo-50/50 text-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer"
+                        title="Physics, Chemistry, Mathematics, Biology, English"
+                      >
+                        ⚛️ Pure Science (PCMB+Eng)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySubjectPreset('PCM_CS_ENG')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-purple-200 bg-purple-50/50 text-purple-800 hover:bg-purple-100 transition-colors cursor-pointer"
+                        title="Physics, Chemistry, Mathematics, Computer Science, English"
+                      >
+                        🚀 Engineering (PCM+CS+Eng)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySubjectPreset('PCM_CA_ENG')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-teal-200 bg-teal-50/50 text-teal-800 hover:bg-teal-100 transition-colors cursor-pointer"
+                        title="Physics, Chemistry, Mathematics, Computer Application, English"
+                      >
+                        💻 Applied Tech (PCM+CA+Eng)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySubjectPreset('PCB_CA_ENG')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-emerald-200 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+                        title="Physics, Chemistry, Biology, Computer Application, English"
+                      >
+                        🧬 Medical Track (PCB+CA+Eng)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySubjectPreset('ALL')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-300 bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                        title="All 7 Higher Secondary Subjects"
+                      >
+                        🌟 All 7 HS Subjects Combo
+                      </button>
+                    </>
+                  ) : ['9', '10'].includes(formData.classLevel || '') ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => applySubjectPreset('ALL_5_CORE')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-300 bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                      >
+                        🌟 All 5 Core Subjects Combo (Maths, Sci, Bio, Eng, Comp)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetEnrollmentMode('Single Subject')}
+                        className="px-2 py-1 text-[10px] font-bold rounded-lg border border-indigo-200 bg-indigo-50/50 text-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer"
+                      >
+                        🎯 Single Subject Focus
+                      </button>
+                    </>
+                  ) : ['6', '7', '8'].includes(formData.classLevel || '') ? (
+                    <button
+                      type="button"
+                      onClick={() => applySubjectPreset('ALL_5_CORE')}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-300 bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      🌟 All 5 Core Subjects Combo
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => applySubjectPreset('ALL_4_CORE')}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-300 bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      🌟 All 4 Core Subjects Combo
+                    </button>
+                  )}
+                </div>
+
                 {/* Available Subjects Selection Grid */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                     {formAvailableSubjects.map((sub) => {
                       const isSelected = formData.enrolledSubjectIds?.includes(sub.id);
+                      const styles = getSubjectColorStyles(sub.code, sub.name);
+                      const assignedTeacher = faculty.find((f) => f.id === sub.facultyId);
+                      const isExpandedSyllabus = expandedSyllabusSubjectId === sub.id;
+
                       return (
                         <div
                           key={sub.id}
-                          onClick={() => handleToggleSubject(sub.id)}
-                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                          className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-2.5 ${
                             isSelected
-                              ? 'border-indigo-500 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-400'
+                              ? `${styles.activeBorder} ${styles.activeBg} shadow-xs ring-1 ${styles.activeRing}`
                               : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                           }`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-900 text-xs">{sub.name}</span>
-                              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-200/80 text-slate-700">
-                                {sub.code}
-                              </span>
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div
+                                onClick={() => handleToggleSubject(sub.id)}
+                                className="flex-1 cursor-pointer"
+                              >
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`font-bold text-xs ${styles.text}`}>
+                                    {sub.name}
+                                  </span>
+                                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border ${styles.badge}`}>
+                                    {sub.code}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-1">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    {sub.weeklyHours}h/wk
+                                  </span>
+                                  {assignedTeacher && (
+                                    <span className="truncate max-w-[120px] font-medium text-slate-600">
+                                      • {assignedTeacher.name}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div
+                                onClick={() => handleToggleSubject(sub.id)}
+                                className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? `${styles.checkBg} text-white`
+                                    : 'border border-slate-300 bg-white text-transparent'
+                                }`}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </div>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {sub.weeklyHours} hours/week coaching
-                            </p>
+
+                            {sub.textbook && (
+                              <p className="text-[10px] text-slate-500 mt-1.5 line-clamp-1 italic">
+                                📖 {sub.textbook}
+                              </p>
+                            )}
                           </div>
 
-                          <div
-                            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
-                              isSelected
-                                ? 'bg-indigo-600 text-white'
-                                : 'border border-slate-300 bg-white text-transparent'
-                            }`}
-                          >
-                            <Check className="w-3.5 h-3.5" />
+                          {/* Syllabus Quick Dropdown / Details Button */}
+                          <div className="pt-2 border-t border-slate-200/60">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedSyllabusSubjectId(isExpandedSyllabus ? null : sub.id);
+                              }}
+                              className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 flex items-center justify-between w-full cursor-pointer py-0.5"
+                            >
+                              <span className="flex items-center gap-1">
+                                <FileText className="w-3 h-3 text-indigo-500" />
+                                {isExpandedSyllabus ? 'Hide Semester Topics' : 'View Semester Topics'}
+                              </span>
+                              {isExpandedSyllabus ? (
+                                <ChevronUp className="w-3 h-3 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="w-3 h-3 text-slate-400" />
+                              )}
+                            </button>
+
+                            {isExpandedSyllabus && (
+                              <div className="mt-2 p-2 rounded-lg bg-white/90 border border-slate-200 text-[10px] text-slate-700 space-y-1.5">
+                                <p className="leading-relaxed">
+                                  {sub.description || 'Standard curriculum aligned to Board specifications.'}
+                                </p>
+                                <div className="flex items-center gap-1 pt-1 font-mono text-[9px] text-slate-500 font-semibold">
+                                  <span className="px-1 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                    WBBSE / WBCHSE
+                                  </span>
+                                  <span className="px-1 py-0.2 rounded bg-sky-50 text-sky-700 border border-sky-100">
+                                    CBSE Board
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1038,24 +1389,33 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     };
                     const summary = computeStudentFeeSummary(tempStudent, [], DEFAULT_FEE_STRUCTURE, subjects);
                     const enrolledCount = formData.enrolledSubjectIds?.length || 0;
+                    const key = `${formData.classLevel}-${formData.stream}`;
+                    const structure = DEFAULT_FEE_STRUCTURE[key] || DEFAULT_FEE_STRUCTURE['10-General'];
 
                     return (
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                         <div>
                           <p className="font-bold text-slate-900 flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Coaching Enrollment Summary: {enrolledCount} Subject(s) Selected
+                            Coaching Enrollment: {enrolledCount} of {formAvailableSubjects.length} Subject(s) Selected
                           </p>
                           <p className="text-[11px] text-slate-600 mt-0.5">
                             {formData.enrollmentType === 'Single Subject'
                               ? 'Targeted Single Subject Coaching Specialization'
                               : formData.enrollmentType === 'Multiple Subjects'
                               ? 'Custom Multi-Subject Coaching Package'
-                              : 'Complete Comprehensive Curriculum Coaching Package'}
+                              : 'Complete Comprehensive All-Subjects Combo Package'}
                           </p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
+                            <span>Admission Fee: {formatCurrency(structure.admissionFee)}</span>
+                            <span>•</span>
+                            <span>Materials & Lab: {formatCurrency(structure.materialsFee)}</span>
+                            <span>•</span>
+                            <span>Exam: {formatCurrency(structure.examFeePerTerm)}/term</span>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shrink-0">
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase font-bold block">Monthly Tuition</span>
                             <span className="text-sm font-black text-slate-900">
