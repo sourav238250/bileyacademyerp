@@ -158,6 +158,13 @@ export function loadInitialState(): AppStateData {
     if (initFac) {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
+      if (fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh') {
+        return {
+          ...fac,
+          ...initFac,
+          assignedSubjectIds: combinedSubjectIds,
+        };
+      }
       return {
         ...fac,
         assignedSubjectIds: combinedSubjectIds,
