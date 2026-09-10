@@ -472,7 +472,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                     required
                     value={formData.accountsSignatoryName}
                     onChange={(e) => handleChange('accountsSignatoryName', e.target.value)}
-                    placeholder="e.g. S. Mukherjee"
+                    placeholder="e.g. S. Dinda"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">Printed on student fee deposit receipts.</p>
@@ -514,7 +514,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                     type="text"
                     value={formData.defaultCollectedBy}
                     onChange={(e) => handleChange('defaultCollectedBy', e.target.value)}
-                    placeholder="e.g. Accounts Dept - S. Mukherjee"
+                    placeholder="e.g. Accounts Dept - S. Dinda"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -630,7 +630,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                     required
                     value={formData.examControllerName}
                     onChange={(e) => handleChange('examControllerName', e.target.value)}
-                    placeholder="e.g. Dr. Debabrata Roy"
+                    placeholder="e.g. Mr. Soumyadip Dinda"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                   />
                 </div>

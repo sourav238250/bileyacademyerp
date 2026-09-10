@@ -39,7 +39,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   // Editable authorization signatory fields
   const [signatoryName, setSignatoryName] = useState(
-    authConfig.accountsSignatoryName || 'S. Mukherjee'
+    authConfig.accountsSignatoryName || 'S. Dinda'
   );
   const [signatoryDesignation, setSignatoryDesignation] = useState(
     authConfig.accountsSignatoryDesignation || 'Chief Accounts Officer'
@@ -48,7 +48,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     authConfig.accountsAuthoritySubtext || 'Biley Academy Treasury'
   );
   const [collectedByName, setCollectedByName] = useState(
-    deposit?.collectedBy || authConfig.defaultCollectedBy || 'Accounts Dept - S. Mukherjee'
+    deposit?.collectedBy || authConfig.defaultCollectedBy || 'Accounts Dept - S. Dinda'
   );
   const [sealText, setSealText] = useState(
     authConfig.sealVerificationText || 'PAID'

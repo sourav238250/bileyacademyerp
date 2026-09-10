@@ -143,7 +143,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('UPI / GPay / PhonePe');
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [selectedMonths, setSelectedMonths] = useState<string[]>(['Current Quarter']);
-  const [collectedBy, setCollectedBy] = useState<string>('Accounts Dept - S. Mukherjee');
+  const [collectedBy, setCollectedBy] = useState<string>('Accounts Dept - S. Dinda');
   const [remarks, setRemarks] = useState<string>('Tuition installment received with receipt issued.');
 
   const handleOpenDepositModal = (studentId?: string, customAmount?: number) => {

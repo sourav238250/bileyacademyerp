@@ -39,12 +39,12 @@ export const DEFAULT_AUTHORIZATION_CONFIG: InstitutionalAuthorizationConfig = {
   classMentorDefaultName: 'Prof. Ananya Sen',
   classMentorDefaultDesignation: 'Class Mentor & Faculty In-Charge',
 
-  accountsSignatoryName: 'S. Mukherjee',
+  accountsSignatoryName: 'S. Dinda',
   accountsSignatoryDesignation: 'Chief Accounts Officer',
   accountsAuthoritySubtext: 'Biley Academy Treasury',
-  defaultCollectedBy: 'Accounts Dept - S. Mukherjee',
+  defaultCollectedBy: 'Accounts Dept - S. Dinda',
 
-  examControllerName: 'Dr. Debabrata Roy',
+  examControllerName: 'Mr. Soumyadip Dinda',
   examControllerDesignation: 'Controller of Examinations',
   preparedByFacultyName: 'Dr. Anirban Mukherjee',
   preparedByDesignation: 'Senior Faculty Specialist',
@@ -111,8 +111,16 @@ export function saveItemToStorage<T>(key: string, value: T): void {
 
 export function loadInitialState(): AppStateData {
   const loadedAuthConfig = loadFromStorage<InstitutionalAuthorizationConfig>(STORAGE_KEYS.AUTH_CONFIG, DEFAULT_AUTHORIZATION_CONFIG);
-  if (loadedAuthConfig && (loadedAuthConfig.directorName === 'Dr. Birendra Nath Biley' || !loadedAuthConfig.directorName)) {
-    loadedAuthConfig.directorName = 'Mr. Sourav Dinda';
+  if (loadedAuthConfig) {
+    if (loadedAuthConfig.directorName === 'Dr. Birendra Nath Biley' || !loadedAuthConfig.directorName) {
+      loadedAuthConfig.directorName = 'Mr. Sourav Dinda';
+    }
+    if (loadedAuthConfig.accountsSignatoryName === 'S. Mukherjee' || !loadedAuthConfig.accountsSignatoryName) {
+      loadedAuthConfig.accountsSignatoryName = 'S. Dinda';
+    }
+    if (loadedAuthConfig.defaultCollectedBy === 'Accounts Dept - S. Mukherjee' || !loadedAuthConfig.defaultCollectedBy) {
+      loadedAuthConfig.defaultCollectedBy = 'Accounts Dept - S. Dinda';
+    }
   }
 
   const loadedSubjects = loadFromStorage<Subject[]>(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS);
@@ -158,7 +166,11 @@ export function loadInitialState(): AppStateData {
     if (initFac) {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
-      if (fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh') {
+      if (
+        fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh' ||
+        fac.id === 'FAC-03' || fac.name === 'Dr. Debabrata Roy' ||
+        fac.id === 'FAC-02' || fac.name === 'Prof. Sangeeta Sharma'
+      ) {
         return {
           ...fac,
           ...initFac,

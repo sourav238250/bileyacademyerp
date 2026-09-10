@@ -205,11 +205,11 @@ export const DisbursementVoucherModal: React.FC<DisbursementVoucherModalProps> =
             <div>
               <div className="h-10 flex items-center justify-center">
                 <span className="font-serif italic text-sm text-slate-700 font-semibold border-b border-slate-400 px-4">
-                  {authConfig?.accountsSignatoryName || 'S. Mukherjee'}
+                  {authConfig?.accountsSignatoryName || 'S. Dinda'}
                 </span>
               </div>
               <p className="text-xs font-bold text-slate-900 mt-1">
-                {authConfig?.accountsSignatoryName || 'S. Mukherjee'}
+                {authConfig?.accountsSignatoryName || 'S. Dinda'}
               </p>
               <p className="text-[10px] text-slate-500">
                 {authConfig?.accountsSignatoryDesignation || 'Chief Accounts Officer'}

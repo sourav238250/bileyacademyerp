@@ -45,7 +45,7 @@ export const DEMO_ADMIN_ACCOUNTS: { user: AdminUser; password: string; descripti
   {
     user: {
       id: 'ADM-003',
-      name: 'S. Mukherjee',
+      name: 'S. Dinda',
       email: 'accounts@bileyacademy.edu',
       role: 'Accounts & Cashier',
       designation: 'Chief Accounts Officer',
@@ -56,10 +56,10 @@ export const DEMO_ADMIN_ACCOUNTS: { user: AdminUser; password: string; descripti
   {
     user: {
       id: 'ADM-004',
-      name: 'Dr. Debabrata Roy',
+      name: 'Mr. Soumyadip Dinda',
       email: 'faculty@bileyacademy.edu',
       role: 'Faculty Mentor',
-      designation: 'Senior Physics Lead',
+      designation: 'Senior Chemistry Lead',
     },
     password: 'admin',
     description: 'Class timetable, marks evaluation & student performance reviews',
