@@ -32,6 +32,7 @@ import { Navigation } from './components/Navigation';
 
 // Auth components
 import { AdminLoginModal, DEMO_ADMIN_ACCOUNTS } from './components/auth/AdminLoginModal';
+import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { PermissionsMatrixModal } from './components/common/PermissionsMatrixModal';
 import { AuthorizationSettingsModal } from './components/common/AuthorizationSettingsModal';
 import { AccessDeniedGate } from './components/common/AccessDeniedGate';
@@ -90,6 +91,7 @@ export default function App() {
   const [assignments, setAssignments] = useState<AssignmentSet[]>([]);
   const [authConfig, setAuthConfig] = useState<InstitutionalAuthorizationConfig>(DEFAULT_AUTHORIZATION_CONFIG);
   const [isAuthorizationSettingsOpen, setIsAuthorizationSettingsOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Modal display states
@@ -444,6 +446,7 @@ export default function App() {
         onAdminLogout={handleAdminLogout}
         onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
         onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
+        onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
       />
 
       {/* Main Navigation Bar */}
@@ -788,10 +791,18 @@ export default function App() {
         authConfig={authConfig}
         onSaveAuthConfig={handleSaveAuthConfig}
         currentAdmin={currentAdmin}
+        onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
         onUpdateCurrentAdmin={(admin) => {
           setCurrentAdmin(admin);
           saveItemToStorage('biley_academy_admin_user_v1', admin);
         }}
+      />
+
+      {/* Staff Session Change Password & Security Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        currentAdmin={currentAdmin}
       />
 
       {/* Admin Login Modal */}

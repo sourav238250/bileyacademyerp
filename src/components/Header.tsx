@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ChevronDown,
   User,
+  Key,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -32,6 +33,7 @@ interface HeaderProps {
   onAdminLogout: () => void;
   onOpenPermissionsMatrix?: () => void;
   onOpenAuthorizationSettings?: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -47,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   onAdminLogout,
   onOpenPermissionsMatrix,
   onOpenAuthorizationSettings,
+  onOpenChangePassword,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const isStudentPortal = activeTab === 'student-portal';
@@ -178,6 +181,23 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
 
                     <div className="p-1 space-y-0.5 text-xs font-medium text-slate-700">
+                      {onOpenChangePassword && (
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            onOpenChangePassword();
+                          }}
+                          id="header-dropdown-change-password-btn"
+                          className="w-full text-left px-3 py-2 hover:bg-amber-50 rounded-lg flex items-center gap-2 cursor-pointer text-slate-900 font-bold group transition-colors"
+                        >
+                          <Key className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+                          <span className="flex-1">Change Password & Security</span>
+                          <span className="text-[9px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold uppercase">
+                            Key
+                          </span>
+                        </button>
+                      )}
+
                       {onOpenAuthorizationSettings && (
                         <button
                           onClick={() => {
@@ -185,11 +205,11 @@ export const Header: React.FC<HeaderProps> = ({
                             onOpenAuthorizationSettings();
                           }}
                           id="header-dropdown-edit-auth-btn"
-                          className="w-full text-left px-3 py-2 hover:bg-amber-50 rounded-lg flex items-center gap-2 cursor-pointer text-slate-900 font-bold"
+                          className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded-lg flex items-center gap-2 cursor-pointer text-slate-800 font-semibold"
                         >
                           <ShieldCheck className="w-4 h-4 text-amber-600" />
                           <span className="flex-1">Edit Authorization Names</span>
-                          <span className="text-[9px] bg-amber-200/60 text-amber-900 px-1.5 py-0.5 rounded font-bold uppercase">
+                          <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold uppercase">
                             Config
                           </span>
                         </button>

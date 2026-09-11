@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { AdminUser, AdminRole } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { AdminUser, AdminRole, StaffCredential } from '../../types';
 import { InstituteLogo } from '../common/InstituteLogo';
 import { auth, googleProvider, signInWithPopup } from '../../services/firebase';
+import {
+  getStaffCredentials,
+  DEFAULT_STAFF_CREDENTIALS,
+} from '../../utils/storage';
 import {
   GraduationCap,
   Lock,
@@ -19,52 +23,17 @@ import {
   Globe,
 } from 'lucide-react';
 
-export const DEMO_ADMIN_ACCOUNTS: { user: AdminUser; password: string; description: string }[] = [
-  {
-    user: {
-      id: 'ADM-001',
-      name: 'Mr. Sourav Dinda',
-      email: 'director@bileyacademy.edu',
-      role: 'Super Admin / Director',
-      designation: 'Director & Founder',
-    },
-    password: 'admin',
-    description: 'Full administrative access across all modules, faculty & finances',
+export const DEMO_ADMIN_ACCOUNTS = DEFAULT_STAFF_CREDENTIALS.map((c) => ({
+  user: {
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    role: c.role,
+    designation: c.designation,
   },
-  {
-    user: {
-      id: 'ADM-002',
-      name: 'Prof. Ananya Sen',
-      email: 'academic@bileyacademy.edu',
-      role: 'Academic Administrator',
-      designation: 'Academic Dean & Admissions Head',
-    },
-    password: 'admin',
-    description: 'Admissions, curriculum distribution, examinations & report cards',
-  },
-  {
-    user: {
-      id: 'ADM-003',
-      name: 'S. Dinda',
-      email: 'accounts@bileyacademy.edu',
-      role: 'Accounts & Cashier',
-      designation: 'Chief Accounts Officer',
-    },
-    password: 'admin',
-    description: 'Student fee deposits, receipts, dues tracking & financial ledgers',
-  },
-  {
-    user: {
-      id: 'ADM-004',
-      name: 'Mr. Soumyadip Dinda',
-      email: 'faculty@bileyacademy.edu',
-      role: 'Faculty Mentor',
-      designation: 'Senior Chemistry Lead',
-    },
-    password: 'admin',
-    description: 'Class timetable, marks evaluation & student performance reviews',
-  },
-];
+  password: c.password,
+  description: c.description || '',
+}));
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -79,12 +48,29 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   onLoginSuccess,
   isMandatoryLock = false,
 }) => {
+  const [credentialsList, setCredentialsList] = useState<StaffCredential[]>(DEFAULT_STAFF_CREDENTIALS);
   const [email, setEmail] = useState('director@bileyacademy.edu');
   const [password, setPassword] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const activeCredentials = getStaffCredentials();
+      setCredentialsList(activeCredentials);
+      if (activeCredentials.length > 0) {
+        // keep current email or pick first
+        const currentMatch = activeCredentials.find(
+          (c) => c.email.toLowerCase() === email.toLowerCase()
+        );
+        if (currentMatch) {
+          setPassword(currentMatch.password || 'admin');
+        }
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -121,17 +107,35 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      const match = DEMO_ADMIN_ACCOUNTS.find(
-        (acc) => acc.user.email.toLowerCase() === email.trim().toLowerCase()
+      const activeCredentials = getStaffCredentials();
+      const match = activeCredentials.find(
+        (acc) => acc.email.toLowerCase() === email.trim().toLowerCase()
       );
 
-      if (match && (match.password === password || password === 'admin' || password === 'admin123')) {
-        const loggedUser: AdminUser = {
-          ...match.user,
-          lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        onLoginSuccess(loggedUser);
-        if (onClose) onClose();
+      if (match) {
+        const expectedPassword = match.password || 'admin';
+        const isCorrect =
+          password === expectedPassword ||
+          (expectedPassword === 'admin' && (password === 'admin' || password === 'admin123'));
+
+        if (isCorrect) {
+          const loggedUser: AdminUser = {
+            id: match.id,
+            name: match.name,
+            email: match.email,
+            role: match.role,
+            designation: match.designation,
+            lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          onLoginSuccess(loggedUser);
+          if (onClose) onClose();
+          setIsLoading(false);
+          return;
+        } else {
+          setErrorMessage('Invalid password for this staff account. Please check or use changed password.');
+          setIsLoading(false);
+          return;
+        }
       } else {
         // Allow custom email if entered with simple password
         if (email.includes('@') && password.length >= 3) {
@@ -153,12 +157,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     }, 300);
   };
 
-  const handleQuickLogin = (account: (typeof DEMO_ADMIN_ACCOUNTS)[0]) => {
-    setEmail(account.user.email);
-    setPassword(account.password);
+  const handleQuickLogin = (account: StaffCredential) => {
+    setEmail(account.email);
+    setPassword(account.password || 'admin');
     setErrorMessage('');
     const loggedUser: AdminUser = {
-      ...account.user,
+      id: account.id,
+      name: account.name,
+      email: account.email,
+      role: account.role,
+      designation: account.designation,
       lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     onLoginSuccess(loggedUser);
@@ -320,23 +328,23 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {DEMO_ADMIN_ACCOUNTS.map((acc) => (
+              {credentialsList.map((acc) => (
                 <button
-                  key={acc.user.id}
+                  key={acc.id}
                   type="button"
                   onClick={() => handleQuickLogin(acc)}
                   className="text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50/70 hover:border-amber-300 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-slate-900 group-hover:text-amber-900 truncate">
-                      {acc.user.name.split(' ')[0]} {acc.user.name.split(' ').slice(-1)[0]}
+                      {acc.name.split(' ')[0]} {acc.name.split(' ').slice(-1)[0]}
                     </span>
                     <span className="text-[9px] font-bold uppercase bg-slate-200 group-hover:bg-amber-200 text-slate-800 px-1.5 py-0.5 rounded">
-                      {acc.user.role.split('/')[0].trim()}
+                      {acc.role.split('/')[0].trim()}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">
-                    {acc.user.designation}
+                    {acc.designation}
                   </p>
                 </button>
               ))}

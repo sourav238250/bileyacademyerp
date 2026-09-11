@@ -14,6 +14,7 @@ import {
   UserCheck,
   Stamp,
   Edit3,
+  Key,
 } from 'lucide-react';
 
 interface AuthorizationSettingsModalProps {
@@ -24,6 +25,7 @@ interface AuthorizationSettingsModalProps {
   currentAdmin?: AdminUser | null;
   onUpdateCurrentAdmin?: (admin: AdminUser) => void;
   defaultTab?: 'all' | 'restrictions' | 'treasury' | 'accounts' | 'academic' | 'exams' | 'profile';
+  onOpenChangePassword?: () => void;
 }
 
 export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProps> = ({
@@ -34,6 +36,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
   currentAdmin,
   onUpdateCurrentAdmin,
   defaultTab = 'all',
+  onOpenChangePassword,
 }) => {
   const [activeCategory, setActiveCategory] = useState<'all' | 'restrictions' | 'treasury' | 'accounts' | 'academic' | 'exams' | 'profile'>(defaultTab);
   const [formData, setFormData] = useState<InstitutionalAuthorizationConfig>(authConfig || DEFAULT_AUTHORIZATION_CONFIG);
@@ -444,6 +447,26 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                   />
                 </div>
               </div>
+
+              {onOpenChangePassword && (
+                <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs text-amber-900">
+                    <Key className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Account Security & Login PIN</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenChangePassword();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    <span>Change Session Password</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -28,6 +28,17 @@ export interface AdminUser {
   lastLogin?: string;
 }
 
+export interface StaffCredential {
+  id: string;
+  name: string;
+  email: string;
+  role: AdminRole;
+  designation: string;
+  password: string;
+  description?: string;
+  lastPasswordChangedAt?: string;
+}
+
 export type DisbursementLedgerCategory =
   | 'Salary'
   | 'Vendors'

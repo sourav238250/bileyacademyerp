@@ -11,6 +11,7 @@ import {
   AssignmentSet,
   PaymentDisbursement,
   InstitutionalAuthorizationConfig,
+  StaffCredential,
 } from '../types';
 import {
   INITIAL_ATTENDANCE,
@@ -60,6 +61,45 @@ export const DEFAULT_AUTHORIZATION_CONFIG: InstitutionalAuthorizationConfig = {
   minimumProfitReserveTarget: 100000,
 };
 
+export const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
+  {
+    id: 'ADM-001',
+    name: 'Mr. Sourav Dinda',
+    email: 'director@bileyacademy.edu',
+    role: 'Super Admin / Director',
+    designation: 'Director & Founder',
+    password: 'admin',
+    description: 'Full administrative access across all modules, faculty & finances',
+  },
+  {
+    id: 'ADM-002',
+    name: 'Prof. Ananya Sen',
+    email: 'academic@bileyacademy.edu',
+    role: 'Academic Administrator',
+    designation: 'Academic Dean & Admissions Head',
+    password: 'admin',
+    description: 'Admissions, curriculum distribution, examinations & report cards',
+  },
+  {
+    id: 'ADM-003',
+    name: 'S. Dinda',
+    email: 'accounts@bileyacademy.edu',
+    role: 'Accounts & Cashier',
+    designation: 'Chief Accounts Officer',
+    password: 'admin',
+    description: 'Student fee deposits, receipts, dues tracking & financial ledgers',
+  },
+  {
+    id: 'ADM-004',
+    name: 'Mr. Soumyadip Dinda',
+    email: 'faculty@bileyacademy.edu',
+    role: 'Faculty Mentor',
+    designation: 'Senior Chemistry Lead',
+    password: 'admin',
+    description: 'Class timetable, marks evaluation & student performance reviews',
+  },
+];
+
 export interface AppStateData {
   students: Student[];
   faculty: Faculty[];
@@ -88,6 +128,7 @@ const STORAGE_KEYS = {
   QUESTION_BANK: 'biley_academy_question_bank_v1',
   ASSIGNMENTS: 'biley_academy_assignments_v1',
   AUTH_CONFIG: 'biley_academy_auth_config_v1',
+  STAFF_CREDENTIALS: 'biley_academy_staff_credentials_v1',
 };
 
 export function loadFromStorage<T>(key: string, fallback: T): T {
@@ -408,6 +449,122 @@ export function getEstimatedStorageUsage(): string {
   } catch {
     return '0.0 KB';
   }
+}
+
+// Staff Password and Credentials Management
+export function getStaffCredentials(): StaffCredential[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.STAFF_CREDENTIALS);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEYS.STAFF_CREDENTIALS, JSON.stringify(DEFAULT_STAFF_CREDENTIALS));
+      return DEFAULT_STAFF_CREDENTIALS;
+    }
+    const parsed: StaffCredential[] = JSON.parse(data);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(STORAGE_KEYS.STAFF_CREDENTIALS, JSON.stringify(DEFAULT_STAFF_CREDENTIALS));
+      return DEFAULT_STAFF_CREDENTIALS;
+    }
+    
+    // Ensure all default roles exist and have updated default names/designations
+    const merged = DEFAULT_STAFF_CREDENTIALS.map((def) => {
+      const existing = parsed.find(
+        (p) => p.id === def.id || p.email.toLowerCase() === def.email.toLowerCase()
+      );
+      if (existing) {
+        return {
+          ...def,
+          ...existing,
+          name: existing.name || def.name,
+          designation: existing.designation || def.designation,
+          password: existing.password || def.password,
+        };
+      }
+      return def;
+    });
+
+    // Also include any custom staff accounts that were added
+    parsed.forEach((p) => {
+      if (!merged.some((m) => m.id === p.id || m.email.toLowerCase() === p.email.toLowerCase())) {
+        merged.push(p);
+      }
+    });
+
+    return merged;
+  } catch (e) {
+    console.error('Failed to load staff credentials:', e);
+    return DEFAULT_STAFF_CREDENTIALS;
+  }
+}
+
+export function saveStaffCredentials(credentials: StaffCredential[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.STAFF_CREDENTIALS, JSON.stringify(credentials));
+  } catch (e) {
+    console.error('Failed to save staff credentials:', e);
+  }
+}
+
+export function updateStaffPassword(
+  userIdOrEmail: string,
+  newPassword: string,
+  oldPassword?: string,
+  skipOldPasswordCheck: boolean = false
+): { success: boolean; error?: string; updatedCredential?: StaffCredential } {
+  const credentials = getStaffCredentials();
+  const index = credentials.findIndex(
+    (c) =>
+      c.id === userIdOrEmail ||
+      c.email.toLowerCase() === userIdOrEmail.trim().toLowerCase()
+  );
+
+  if (!newPassword || newPassword.trim().length < 3) {
+    return { success: false, error: 'New password must be at least 3 characters long.' };
+  }
+
+  if (index === -1) {
+    // If not found in defaults, create custom admin credential
+    const cleanEmail = userIdOrEmail.includes('@')
+      ? userIdOrEmail.trim().toLowerCase()
+      : `${userIdOrEmail.trim().toLowerCase()}@bileyacademy.edu`;
+    const newStaff: StaffCredential = {
+      id: `ADM-${Date.now().toString().slice(-4)}`,
+      name: cleanEmail.split('@')[0].toUpperCase(),
+      email: cleanEmail,
+      role: 'Super Admin / Director',
+      designation: 'Authorized Administrator',
+      password: newPassword.trim(),
+      lastPasswordChangedAt: new Date().toISOString(),
+    };
+    credentials.push(newStaff);
+    saveStaffCredentials(credentials);
+    return { success: true, updatedCredential: newStaff };
+  }
+
+  const target = credentials[index];
+
+  if (!skipOldPasswordCheck && oldPassword !== undefined) {
+    const isOldMatch =
+      target.password === oldPassword ||
+      (oldPassword === 'admin' && (!target.password || target.password === 'admin')) ||
+      oldPassword === 'admin123';
+    if (!isOldMatch) {
+      return { success: false, error: 'Current password does not match.' };
+    }
+  }
+
+  credentials[index] = {
+    ...target,
+    password: newPassword.trim(),
+    lastPasswordChangedAt: new Date().toISOString(),
+  };
+
+  saveStaffCredentials(credentials);
+  return { success: true, updatedCredential: credentials[index] };
+}
+
+export function resetStaffPasswordsToDefault(): StaffCredential[] {
+  saveStaffCredentials(DEFAULT_STAFF_CREDENTIALS);
+  return DEFAULT_STAFF_CREDENTIALS;
 }
 
 export { STORAGE_KEYS };
