@@ -103,16 +103,6 @@ export const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
     password: 'admin',
     description: 'Class timetable, marks evaluation & student performance reviews',
   },
-  {
-    id: 'ADM-005',
-    username: 'pranab',
-    name: 'Mr. Pranab Bhattacharjya',
-    email: 'sangeeta.maths@bileyacademy.edu',
-    role: 'Faculty Mentor',
-    designation: 'Senior Mathematics Lead',
-    password: 'admin',
-    description: 'Shortcut tricks in Calculus, Coordinate Geometry & problem-solving',
-  },
 ];
 
 export interface AppStateData {
@@ -479,10 +469,18 @@ export function getStaffCredentials(): StaffCredential[] {
       localStorage.setItem(STORAGE_KEYS.STAFF_CREDENTIALS, JSON.stringify(DEFAULT_STAFF_CREDENTIALS));
       return DEFAULT_STAFF_CREDENTIALS;
     }
+
+    // Filter out removed staff accounts
+    const filteredParsed = parsed.filter(
+      (p) =>
+        p.id !== 'ADM-005' &&
+        p.name !== 'Mr. Pranab Bhattacharjya' &&
+        p.username !== 'pranab'
+    );
     
     // Ensure all default roles exist and have updated default names/designations
     const merged = DEFAULT_STAFF_CREDENTIALS.map((def) => {
-      const existing = parsed.find(
+      const existing = filteredParsed.find(
         (p) => p.id === def.id || p.email.toLowerCase() === def.email.toLowerCase()
       );
       if (existing) {
@@ -498,7 +496,7 @@ export function getStaffCredentials(): StaffCredential[] {
     });
 
     // Also include any custom staff accounts that were added
-    parsed.forEach((p) => {
+    filteredParsed.forEach((p) => {
       if (!merged.some((m) => m.id === p.id || m.email.toLowerCase() === p.email.toLowerCase())) {
         merged.push(p);
       }

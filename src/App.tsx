@@ -67,6 +67,10 @@ export default function App() {
       'biley_academy_admin_user_v1',
       null
     );
+    if (stored && (stored.name === 'Mr. Pranab Bhattacharjya' || stored.id === 'ADM-005')) {
+      localStorage.removeItem('biley_academy_admin_user_v1');
+      return null;
+    }
     if (stored && (stored.name === 'Dr. Birendra Nath Biley' || (stored.role === 'Super Admin / Director' && stored.name.includes('Birendra')))) {
       const updated = { ...stored, name: 'Mr. Sourav Dinda' };
       localStorage.setItem('biley_academy_admin_user_v1', JSON.stringify(updated));

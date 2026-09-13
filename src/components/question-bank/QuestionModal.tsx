@@ -506,7 +506,7 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
               <label className="block text-slate-600 font-semibold mb-1">Author / Faculty</label>
               <input
                 type="text"
-                placeholder="e.g. Mr. Pranab Bhattacharjya"
+                placeholder="e.g. Mr. Soumyadip Dinda"
                 value={authorFacultyName}
                 onChange={(e) => setAuthorFacultyName(e.target.value)}
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"
