@@ -4,6 +4,7 @@ import { InstituteLogo } from '../common/InstituteLogo';
 import { auth, googleProvider, signInWithPopup } from '../../services/firebase';
 import {
   getStaffCredentials,
+  verifyStaffCredentials,
   DEFAULT_STAFF_CREDENTIALS,
 } from '../../utils/storage';
 import {
@@ -21,6 +22,7 @@ import {
   X,
   AlertCircle,
   Globe,
+  User,
 } from 'lucide-react';
 
 export const DEMO_ADMIN_ACCOUNTS = DEFAULT_STAFF_CREDENTIALS.map((c) => ({
@@ -40,6 +42,8 @@ interface AdminLoginModalProps {
   onClose?: () => void;
   onLoginSuccess: (admin: AdminUser) => void;
   isMandatoryLock?: boolean;
+  sectionTitle?: string;
+  prefillIdentifier?: string;
 }
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
@@ -47,9 +51,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   onClose,
   onLoginSuccess,
   isMandatoryLock = false,
+  sectionTitle,
+  prefillIdentifier,
 }) => {
   const [credentialsList, setCredentialsList] = useState<StaffCredential[]>(DEFAULT_STAFF_CREDENTIALS);
-  const [email, setEmail] = useState('director@bileyacademy.edu');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('director');
   const [password, setPassword] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -60,17 +66,19 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     if (isOpen) {
       const activeCredentials = getStaffCredentials();
       setCredentialsList(activeCredentials);
-      if (activeCredentials.length > 0) {
-        // keep current email or pick first
-        const currentMatch = activeCredentials.find(
-          (c) => c.email.toLowerCase() === email.toLowerCase()
+      if (prefillIdentifier) {
+        setUsernameOrEmail(prefillIdentifier);
+        const match = activeCredentials.find(
+          (c) =>
+            (c.username && c.username.toLowerCase() === prefillIdentifier.toLowerCase()) ||
+            c.email.toLowerCase() === prefillIdentifier.toLowerCase()
         );
-        if (currentMatch) {
-          setPassword(currentMatch.password || 'admin');
+        if (match) {
+          setPassword(match.password || 'admin');
         }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, prefillIdentifier]);
 
   if (!isOpen) return null;
 
@@ -107,70 +115,21 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      const activeCredentials = getStaffCredentials();
-      const match = activeCredentials.find(
-        (acc) => acc.email.toLowerCase() === email.trim().toLowerCase()
-      );
-
-      if (match) {
-        const expectedPassword = match.password || 'admin';
-        const isCorrect =
-          password === expectedPassword ||
-          (expectedPassword === 'admin' && (password === 'admin' || password === 'admin123'));
-
-        if (isCorrect) {
-          const loggedUser: AdminUser = {
-            id: match.id,
-            name: match.name,
-            email: match.email,
-            role: match.role,
-            designation: match.designation,
-            lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          };
-          onLoginSuccess(loggedUser);
-          if (onClose) onClose();
-          setIsLoading(false);
-          return;
-        } else {
-          setErrorMessage('Invalid password for this staff account. Please check or use changed password.');
-          setIsLoading(false);
-          return;
-        }
+      const result = verifyStaffCredentials(usernameOrEmail, password);
+      if (result.success && result.user) {
+        onLoginSuccess(result.user);
+        if (onClose) onClose();
       } else {
-        // Allow custom email if entered with simple password
-        if (email.includes('@') && password.length >= 3) {
-          const customAdmin: AdminUser = {
-            id: `ADM-${Date.now().toString().slice(-4)}`,
-            name: email.split('@')[0].toUpperCase(),
-            email: email.trim(),
-            role: 'Super Admin / Director',
-            designation: 'Verified Administrator',
-            lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          };
-          onLoginSuccess(customAdmin);
-          if (onClose) onClose();
-        } else {
-          setErrorMessage('Invalid credentials. Select one of the quick demo roles below or enter valid credentials.');
-        }
+        setErrorMessage(result.error || 'Authentication failed. Please verify your username and password.');
       }
       setIsLoading(false);
-    }, 300);
+    }, 250);
   };
 
-  const handleQuickLogin = (account: StaffCredential) => {
-    setEmail(account.email);
+  const handleQuickSelectAccount = (account: StaffCredential) => {
+    setUsernameOrEmail(account.username || account.email);
     setPassword(account.password || 'admin');
     setErrorMessage('');
-    const loggedUser: AdminUser = {
-      id: account.id,
-      name: account.name,
-      email: account.email,
-      role: account.role,
-      designation: account.designation,
-      lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    onLoginSuccess(loggedUser);
-    if (onClose) onClose();
   };
 
   return (
@@ -182,7 +141,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           {!isMandatoryLock && onClose && (
             <button
               onClick={onClose}
-              className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -193,17 +152,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase font-bold tracking-widest bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
-                  Secure ERP Access
+                  Staff Authentication
                 </span>
                 <span className="text-[11px] text-amber-400/80 font-medium">Since 2026</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
-                Biley Academy Staff Login
+                {sectionTitle ? `Sign In to Access ${sectionTitle}` : 'Biley Academy Staff Login'}
               </h2>
             </div>
           </div>
           <p className="text-xs text-slate-300 mt-2">
-            Enter administrative credentials to manage student admissions, subject curriculum, exams, and fee registers.
+            Please authenticate with your proper user name and password to access this institutional management section.
           </p>
         </div>
 
@@ -248,7 +207,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div className="flex items-center my-4">
               <div className="flex-1 border-t border-slate-200"></div>
               <span className="px-3 text-[10px] uppercase font-bold text-slate-600 bg-white tracking-widest">
-                Or Staff PIN Access
+                Or Staff Username & Password
               </span>
               <div className="flex-1 border-t border-slate-200"></div>
             </div>
@@ -257,16 +216,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Staff Email Address
+                Staff User Name / Email
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="admin@bileyacademy.edu"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. director, accounts, academic, faculty"
+                  value={usernameOrEmail}
+                  onChange={(e) => setUsernameOrEmail(e.target.value)}
                   className="w-full pl-10 pr-3 py-2.5 text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50/50"
                 />
               </div>
@@ -275,7 +234,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Access Password / Security PIN
+                  Password
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">Demo: admin</span>
               </div>
@@ -310,21 +269,21 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>Authenticate & Open Admin Dashboard</span>
+                  <span>Verify Credentials & Enter Section</span>
                   <ArrowRight className="w-4 h-4 text-amber-400" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Logins Section */}
+          {/* Quick Staff Account Profiles */}
           <div className="pt-4 border-t border-slate-200">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                1-Click Quick Demo Roles
+                Select Staff Profile:
               </span>
-              <span className="text-[10px] text-slate-400">Click any role to test</span>
+              <span className="text-[10px] text-slate-400">Click to fill username</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -332,15 +291,20 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <button
                   key={acc.id}
                   type="button"
-                  onClick={() => handleQuickLogin(acc)}
-                  className="text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50/70 hover:border-amber-300 transition-all cursor-pointer group"
+                  onClick={() => handleQuickSelectAccount(acc)}
+                  className={`text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                    usernameOrEmail.toLowerCase() === (acc.username || '').toLowerCase() ||
+                    usernameOrEmail.toLowerCase() === acc.email.toLowerCase()
+                      ? 'border-amber-500 bg-amber-50/80 ring-1 ring-amber-400'
+                      : 'border-slate-200 bg-slate-50 hover:bg-amber-50/70 hover:border-amber-300'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-slate-900 group-hover:text-amber-900 truncate">
                       {acc.name.split(' ')[0]} {acc.name.split(' ').slice(-1)[0]}
                     </span>
                     <span className="text-[9px] font-bold uppercase bg-slate-200 group-hover:bg-amber-200 text-slate-800 px-1.5 py-0.5 rounded">
-                      {acc.role.split('/')[0].trim()}
+                      {acc.username || acc.role.split('/')[0].trim()}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">

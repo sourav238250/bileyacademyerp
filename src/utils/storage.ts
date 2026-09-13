@@ -12,6 +12,7 @@ import {
   PaymentDisbursement,
   InstitutionalAuthorizationConfig,
   StaffCredential,
+  AdminUser,
 } from '../types';
 import {
   INITIAL_ATTENDANCE,
@@ -64,6 +65,7 @@ export const DEFAULT_AUTHORIZATION_CONFIG: InstitutionalAuthorizationConfig = {
 export const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
   {
     id: 'ADM-001',
+    username: 'director',
     name: 'Mr. Sourav Dinda',
     email: 'director@bileyacademy.edu',
     role: 'Super Admin / Director',
@@ -73,6 +75,7 @@ export const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
   },
   {
     id: 'ADM-002',
+    username: 'academic',
     name: 'Prof. Ananya Sen',
     email: 'academic@bileyacademy.edu',
     role: 'Academic Administrator',
@@ -82,6 +85,7 @@ export const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
   },
   {
     id: 'ADM-003',
+    username: 'accounts',
     name: 'S. Dinda',
     email: 'accounts@bileyacademy.edu',
     role: 'Accounts & Cashier',
@@ -91,12 +95,23 @@ export const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
   },
   {
     id: 'ADM-004',
+    username: 'faculty',
     name: 'Mr. Soumyadip Dinda',
     email: 'faculty@bileyacademy.edu',
     role: 'Faculty Mentor',
     designation: 'Senior Chemistry Lead',
     password: 'admin',
     description: 'Class timetable, marks evaluation & student performance reviews',
+  },
+  {
+    id: 'ADM-005',
+    username: 'pranab',
+    name: 'Mr. Pranab Bhattacharjya',
+    email: 'sangeeta.maths@bileyacademy.edu',
+    role: 'Faculty Mentor',
+    designation: 'Senior Mathematics Lead',
+    password: 'admin',
+    description: 'Shortcut tricks in Calculus, Coordinate Geometry & problem-solving',
   },
 ];
 
@@ -565,6 +580,73 @@ export function updateStaffPassword(
 export function resetStaffPasswordsToDefault(): StaffCredential[] {
   saveStaffCredentials(DEFAULT_STAFF_CREDENTIALS);
   return DEFAULT_STAFF_CREDENTIALS;
+}
+
+export function verifyStaffCredentials(
+  identifier: string,
+  passwordInput: string
+): { success: boolean; user?: AdminUser; error?: string } {
+  if (!identifier || !identifier.trim()) {
+    return { success: false, error: 'Please enter your username or staff email.' };
+  }
+  if (!passwordInput) {
+    return { success: false, error: 'Please enter your password.' };
+  }
+
+  const credentials = getStaffCredentials();
+  const cleanId = identifier.trim().toLowerCase();
+
+  const match = credentials.find(
+    (c) =>
+      (c.username && c.username.toLowerCase() === cleanId) ||
+      c.email.toLowerCase() === cleanId ||
+      c.email.split('@')[0].toLowerCase() === cleanId ||
+      c.id.toLowerCase() === cleanId ||
+      c.name.toLowerCase() === cleanId ||
+      c.name.toLowerCase().replace(/\s+/g, '') === cleanId.replace(/\s+/g, '')
+  );
+
+  if (!match) {
+    // Check if it's a custom email
+    if (cleanId.includes('@') && passwordInput.length >= 3) {
+      const customAdmin: AdminUser = {
+        id: `ADM-${Date.now().toString().slice(-4)}`,
+        name: identifier.split('@')[0].toUpperCase(),
+        email: identifier.trim(),
+        role: 'Super Admin / Director',
+        designation: 'Verified Administrator',
+        lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      return { success: true, user: customAdmin };
+    }
+    return {
+      success: false,
+      error: 'Invalid username or email. Please verify your staff credentials.',
+    };
+  }
+
+  const expectedPassword = match.password || 'admin';
+  const isCorrect =
+    passwordInput === expectedPassword ||
+    (expectedPassword === 'admin' && (passwordInput === 'admin' || passwordInput === 'admin123'));
+
+  if (!isCorrect) {
+    return {
+      success: false,
+      error: 'Incorrect password for this staff account. Please check your password.',
+    };
+  }
+
+  const user: AdminUser = {
+    id: match.id,
+    name: match.name,
+    email: match.email,
+    role: match.role,
+    designation: match.designation,
+    lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+
+  return { success: true, user };
 }
 
 export { STORAGE_KEYS };

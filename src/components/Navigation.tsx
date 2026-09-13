@@ -64,7 +64,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: UserPlus,
       badge: studentCount,
       badgeColor: 'bg-slate-700',
-      openBadge: isSignedOut ? 'Open' : undefined,
+      requiresAuth: true,
     },
     { id: 'subjects', label: 'Subject Distribution', icon: BookOpen, requiresAuth: true },
     { id: 'faculty', label: 'Faculty Allocation', icon: Users, requiresAuth: true },
@@ -99,7 +99,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: CreditCard,
       badge: pendingDuesCount && pendingDuesCount > 0 ? `${pendingDuesCount} Dues` : undefined,
       badgeColor: 'bg-amber-600',
-      openBadge: isSignedOut ? 'Open' : undefined,
+      requiresAuth: true,
     },
     {
       id: 'disbursements',

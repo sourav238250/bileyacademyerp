@@ -30,6 +30,7 @@ export interface AdminUser {
 
 export interface StaffCredential {
   id: string;
+  username?: string;
   name: string;
   email: string;
   role: AdminRole;

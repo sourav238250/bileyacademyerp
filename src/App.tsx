@@ -65,7 +65,7 @@ export default function App() {
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(() => {
     const stored = loadFromStorage<AdminUser | null>(
       'biley_academy_admin_user_v1',
-      DEMO_ADMIN_ACCOUNTS[0].user
+      null
     );
     if (stored && (stored.name === 'Dr. Birendra Nath Biley' || (stored.role === 'Super Admin / Director' && stored.name.includes('Birendra')))) {
       const updated = { ...stored, name: 'Mr. Sourav Dinda' };
@@ -75,6 +75,8 @@ export default function App() {
     return stored;
   });
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+  const [loginModalSectionTitle, setLoginModalSectionTitle] = useState<string | undefined>(undefined);
+  const [pendingActionAfterLogin, setPendingActionAfterLogin] = useState<(() => void) | null>(null);
   const [isPermissionsMatrixOpen, setIsPermissionsMatrixOpen] = useState(false);
 
   // Application Data States
@@ -348,11 +350,30 @@ export default function App() {
 
   // Cross-Navigation Shortcuts
   const handleQuickNewAdmission = () => {
+    if (!currentAdmin) {
+      setLoginModalSectionTitle('Student Admissions & Registration');
+      setPendingActionAfterLogin(() => () => {
+        setActiveTab('students');
+        setIsNewAdmissionModalOpen(true);
+      });
+      setIsAdminLoginModalOpen(true);
+      return;
+    }
     setActiveTab('students');
     setIsNewAdmissionModalOpen(true);
   };
 
   const handleQuickFeeDeposit = (studentId?: string) => {
+    if (!currentAdmin) {
+      setLoginModalSectionTitle('Fee Deposit & Financial Receipts');
+      setPendingActionAfterLogin(() => () => {
+        setTargetStudentForFee(studentId);
+        setActiveTab('fees');
+        setIsFeeDepositModalOpen(true);
+      });
+      setIsAdminLoginModalOpen(true);
+      return;
+    }
     setTargetStudentForFee(studentId);
     setActiveTab('fees');
     setIsFeeDepositModalOpen(true);
@@ -367,6 +388,11 @@ export default function App() {
     setCurrentAdmin(admin);
     saveItemToStorage('biley_academy_admin_user_v1', admin);
     setIsAdminLoginModalOpen(false);
+    if (pendingActionAfterLogin) {
+      const action = pendingActionAfterLogin;
+      setPendingActionAfterLogin(null);
+      action();
+    }
   };
 
   const handleAdminLogout = () => {
@@ -495,31 +521,52 @@ export default function App() {
         )}
 
         {activeTab === 'students' && (
-          <StudentsView
-            students={students}
-            subjects={subjects}
-            deposits={deposits}
-            results={results}
-            authConfig={authConfig}
-            onAddStudent={handleAddStudent}
-            onUpdateStudent={handleUpdateStudent}
-            onDeleteStudent={handleDeleteStudent}
-            onViewIdCard={(st) => setSelectedIdCardStudent(st)}
-            onDepositFee={(stId) => handleQuickFeeDeposit(stId)}
-            isAdmissionModalOpen={isNewAdmissionModalOpen}
-            setIsAdmissionModalOpen={setIsNewAdmissionModalOpen}
-            currentAdmin={currentAdmin}
-            onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-            onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
-            onOpenAuthSettings={() => setIsAuthorizationSettingsOpen(true)}
-          />
+          !currentAdmin ? (
+            <AccessDeniedGate
+              sectionName="Student Admissions & Registration"
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Student Admissions & Registration');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onNavigateToPortal={() => setActiveTab('student-portal')}
+              onNavigateToTab={setActiveTab}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              requiredRoleHint={evaluateSectionAuthorization(null, 'students').requiredRole}
+              onDirectLogin={handleLoginSuccess}
+            />
+          ) : (
+            <StudentsView
+              students={students}
+              subjects={subjects}
+              deposits={deposits}
+              results={results}
+              authConfig={authConfig}
+              onAddStudent={handleAddStudent}
+              onUpdateStudent={handleUpdateStudent}
+              onDeleteStudent={handleDeleteStudent}
+              onViewIdCard={(st) => setSelectedIdCardStudent(st)}
+              onDepositFee={(stId) => handleQuickFeeDeposit(stId)}
+              isAdmissionModalOpen={isNewAdmissionModalOpen}
+              setIsAdmissionModalOpen={setIsNewAdmissionModalOpen}
+              currentAdmin={currentAdmin}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Student Admissions & Registration');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              onOpenAuthSettings={() => setIsAuthorizationSettingsOpen(true)}
+            />
+          )
         )}
 
         {activeTab === 'subjects' && (
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Subject Distribution & Syllabus"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Subject Distribution & Syllabus');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -534,7 +581,10 @@ export default function App() {
               onUpdateSubject={handleUpdateSubject}
               onDeleteSubject={handleDeleteSubject}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Subject Distribution & Syllabus');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
             />
           )
@@ -544,7 +594,10 @@ export default function App() {
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Faculty Allocation & Timetable"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Faculty Allocation & Timetable');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -563,7 +616,10 @@ export default function App() {
               onUpdateTimetableSlot={handleUpdateTimetableSlot}
               onDeleteTimetableSlot={handleDeleteTimetableSlot}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Faculty Allocation & Timetable');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
             />
           )
@@ -573,7 +629,10 @@ export default function App() {
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Daily Student Attendance Register"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Daily Student Attendance Register');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -588,7 +647,10 @@ export default function App() {
               attendance={attendance}
               onSaveAttendance={handleSaveAttendance}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Daily Student Attendance Register');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
             />
           )
@@ -598,7 +660,10 @@ export default function App() {
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Question Bank & Homework Assignments"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Question Bank & Homework Assignments');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -616,7 +681,10 @@ export default function App() {
               onSaveAssignment={handleSaveAssignment}
               onDeleteAssignment={handleDeleteAssignment}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Question Bank & Homework Assignments');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
             />
           )
@@ -626,7 +694,10 @@ export default function App() {
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Examination Management & Schedules"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Examination Management & Schedules');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -642,7 +713,10 @@ export default function App() {
               onDeleteExam={handleDeleteExam}
               onNavigateToResults={handleNavigateToExamResults}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Examination Management & Schedules');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
             />
           )
@@ -652,7 +726,10 @@ export default function App() {
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Marks Entry & Student Report Cards"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Marks Entry & Student Report Cards');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -670,7 +747,10 @@ export default function App() {
               onViewReportCard={(res) => setSelectedReportCardResult(res)}
               initialSelectedExamId={targetExamForResults}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Marks Entry & Student Report Cards');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
               onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
             />
@@ -678,29 +758,50 @@ export default function App() {
         )}
 
         {activeTab === 'fees' && (
-          <FeesView
-            students={students}
-            deposits={deposits}
-            authConfig={authConfig}
-            onAddDeposit={handleAddDeposit}
-            onDeleteDeposit={handleDeleteDeposit}
-            onViewReceipt={(dep) => setSelectedReceiptDeposit(dep)}
-            isDepositModalOpen={isFeeDepositModalOpen}
-            setIsDepositModalOpen={setIsFeeDepositModalOpen}
-            preselectedStudentId={targetStudentForFee}
-            initialActiveTab={targetFeesTab}
-            currentAdmin={currentAdmin}
-            onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-            onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
-            onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
-          />
+          !currentAdmin ? (
+            <AccessDeniedGate
+              sectionName="Fee Deposits & Financial Accounts"
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Fee Deposits & Financial Accounts');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onNavigateToPortal={() => setActiveTab('student-portal')}
+              onNavigateToTab={setActiveTab}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              requiredRoleHint={evaluateSectionAuthorization(null, 'fees').requiredRole}
+              onDirectLogin={handleLoginSuccess}
+            />
+          ) : (
+            <FeesView
+              students={students}
+              deposits={deposits}
+              authConfig={authConfig}
+              onAddDeposit={handleAddDeposit}
+              onDeleteDeposit={handleDeleteDeposit}
+              onViewReceipt={(dep) => setSelectedReceiptDeposit(dep)}
+              isDepositModalOpen={isFeeDepositModalOpen}
+              setIsDepositModalOpen={setIsFeeDepositModalOpen}
+              preselectedStudentId={targetStudentForFee}
+              initialActiveTab={targetFeesTab}
+              currentAdmin={currentAdmin}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Fee Deposits & Financial Accounts');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
+            />
+          )
         )}
 
         {activeTab === 'disbursements' && (
           !currentAdmin ? (
             <AccessDeniedGate
               sectionName="Institutional Disbursements & P&L Treasury"
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Institutional Disbursements & P&L Treasury');
+                setIsAdminLoginModalOpen(true);
+              }}
               onNavigateToPortal={() => setActiveTab('student-portal')}
               onNavigateToTab={setActiveTab}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
@@ -718,7 +819,10 @@ export default function App() {
               onDeleteDisbursement={handleDeleteDisbursement}
               onViewVoucher={(disb) => setSelectedVoucherDisbursement(disb)}
               currentAdmin={currentAdmin}
-              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Institutional Disbursements & P&L Treasury');
+                setIsAdminLoginModalOpen(true);
+              }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
               onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
             />
@@ -808,7 +912,12 @@ export default function App() {
       {/* Admin Login Modal */}
       <AdminLoginModal
         isOpen={isAdminLoginModalOpen}
-        onClose={() => setIsAdminLoginModalOpen(false)}
+        sectionTitle={loginModalSectionTitle}
+        onClose={() => {
+          setIsAdminLoginModalOpen(false);
+          setLoginModalSectionTitle(undefined);
+          setPendingActionAfterLogin(null);
+        }}
         onLoginSuccess={handleLoginSuccess}
       />
 
