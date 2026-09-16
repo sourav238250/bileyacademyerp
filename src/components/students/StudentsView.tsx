@@ -1406,10 +1406,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               ? 'Custom Multi-Subject Coaching Package'
                               : 'Complete Comprehensive All-Subjects Combo Package'}
                           </p>
-                          <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
-                            <span>Admission Fee: {formatCurrency(structure.admissionFee)}</span>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-slate-500">
+                            <span>Admission: {formatCurrency(structure.admissionFee)}</span>
                             <span>•</span>
-                            <span>Materials & Lab: {formatCurrency(structure.materialsFee)}</span>
+                            <span>Study Material & Lab: {formatCurrency(structure.materialsFee)}</span>
+                            <span>•</span>
+                            <span>Annual Dev & Others: {formatCurrency(structure.annualDevelopmentFee ?? 50)}</span>
                             <span>•</span>
                             <span>Exam: {formatCurrency(structure.examFeePerTerm)}/term</span>
                           </div>

@@ -58,24 +58,31 @@ export const STREAMS_FOR_CLASS: Record<ClassLevel, string[]> = {
 };
 
 export const DEFAULT_FEE_STRUCTURE: Record<string, FeeStructure> = {
-  '1-General': { classLevel: '1', stream: 'General', admissionFee: 1000, monthlyTuitionFee: 800, perSubjectMonthlyFee: 250, examFeePerTerm: 300, materialsFee: 500 },
-  '2-General': { classLevel: '2', stream: 'General', admissionFee: 1000, monthlyTuitionFee: 900, perSubjectMonthlyFee: 280, examFeePerTerm: 300, materialsFee: 600 },
-  '3-General': { classLevel: '3', stream: 'General', admissionFee: 1200, monthlyTuitionFee: 1000, perSubjectMonthlyFee: 300, examFeePerTerm: 350, materialsFee: 700 },
-  '4-General': { classLevel: '4', stream: 'General', admissionFee: 1200, monthlyTuitionFee: 1100, perSubjectMonthlyFee: 320, examFeePerTerm: 350, materialsFee: 750 },
-  '5-General': { classLevel: '5', stream: 'General', admissionFee: 1500, monthlyTuitionFee: 1200, perSubjectMonthlyFee: 350, examFeePerTerm: 400, materialsFee: 800 },
-  '6-General': { classLevel: '6', stream: 'General', admissionFee: 1500, monthlyTuitionFee: 1400, perSubjectMonthlyFee: 380, examFeePerTerm: 400, materialsFee: 900 },
-  '7-General': { classLevel: '7', stream: 'General', admissionFee: 1800, monthlyTuitionFee: 1600, perSubjectMonthlyFee: 420, examFeePerTerm: 500, materialsFee: 1000 },
-  '8-General': { classLevel: '8', stream: 'General', admissionFee: 1800, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 480, examFeePerTerm: 500, materialsFee: 1200 },
-  '9-General': { classLevel: '9', stream: 'General', admissionFee: 2500, monthlyTuitionFee: 2400, perSubjectMonthlyFee: 600, examFeePerTerm: 800, materialsFee: 1800 },
-  '10-General': { classLevel: '10', stream: 'General', admissionFee: 3000, monthlyTuitionFee: 2800, perSubjectMonthlyFee: 700, examFeePerTerm: 1000, materialsFee: 2200 },
-  '11-Science': { classLevel: '11', stream: 'Science', admissionFee: 4000, monthlyTuitionFee: 3800, perSubjectMonthlyFee: 900, examFeePerTerm: 1200, materialsFee: 3500 },
-  '11-Commerce': { classLevel: '11', stream: 'Commerce', admissionFee: 3500, monthlyTuitionFee: 3200, perSubjectMonthlyFee: 800, examFeePerTerm: 1000, materialsFee: 2500 },
-  '11-Arts': { classLevel: '11', stream: 'Arts', admissionFee: 3000, monthlyTuitionFee: 2800, perSubjectMonthlyFee: 700, examFeePerTerm: 1000, materialsFee: 2000 },
-  '11-General': { classLevel: '11', stream: 'General', admissionFee: 3500, monthlyTuitionFee: 3000, perSubjectMonthlyFee: 750, examFeePerTerm: 1000, materialsFee: 2200 },
-  '12-Science': { classLevel: '12', stream: 'Science', admissionFee: 4500, monthlyTuitionFee: 4200, perSubjectMonthlyFee: 1000, examFeePerTerm: 1500, materialsFee: 4000 },
-  '12-Commerce': { classLevel: '12', stream: 'Commerce', admissionFee: 4000, monthlyTuitionFee: 3500, perSubjectMonthlyFee: 850, examFeePerTerm: 1200, materialsFee: 2800 },
-  '12-Arts': { classLevel: '12', stream: 'Arts', admissionFee: 3500, monthlyTuitionFee: 3000, perSubjectMonthlyFee: 750, examFeePerTerm: 1200, materialsFee: 2200 },
-  '12-General': { classLevel: '12', stream: 'General', admissionFee: 4000, monthlyTuitionFee: 3500, perSubjectMonthlyFee: 850, examFeePerTerm: 1200, materialsFee: 2800 },
+  // Class 1 to 4: Admission: 100, Tuition: 300/subject, Exam: 50, Study Material & Lab Fees: 50, Annual Development & others: 50
+  '1-General': { classLevel: '1', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '2-General': { classLevel: '2', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '3-General': { classLevel: '3', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '4-General': { classLevel: '4', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 5 to 8: Admission: 100, Tuition: 350/subject, Exam: 50, Study Material & Lab Fees: 50, Annual Development & others: 50
+  '5-General': { classLevel: '5', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '6-General': { classLevel: '6', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '7-General': { classLevel: '7', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '8-General': { classLevel: '8', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 9 to 10: Admission: 100, Tuition: 400/subject, Exam: 100, Study Material & Lab Fees: 50, Annual Development & others: 50
+  '9-General': { classLevel: '9', stream: 'General', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '10-General': { classLevel: '10', stream: 'General', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 11 to 12: Admission: 100, Tuition: 450/subject, Exam: 100, Study Material & Lab Fees: 50, Annual Development & others: 50
+  '11-Science': { classLevel: '11', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Commerce': { classLevel: '11', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Arts': { classLevel: '11', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-General': { classLevel: '11', stream: 'General', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Science': { classLevel: '12', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Commerce': { classLevel: '12', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Arts': { classLevel: '12', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-General': { classLevel: '12', stream: 'General', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
 };
 
 export function formatCurrency(amount: number): string {
@@ -183,30 +190,22 @@ export function computeStudentFeeSummary(
   }
 
   // Monthly Tuition calculation based on coaching enrollment
-  const perSubRate = structure.perSubjectMonthlyFee || Math.round(structure.monthlyTuitionFee / totalAvailableCount);
-  let effectiveMonthlyTuition: number;
-
-  if (coachingMode === 'Single Subject') {
-    effectiveMonthlyTuition = perSubRate;
-  } else if (coachingMode === 'Multiple Subjects') {
-    // Multi-subject rate capped at full bundle
-    effectiveMonthlyTuition = Math.min(structure.monthlyTuitionFee, enrolledCount * perSubRate);
-  } else {
-    // Full package combo
-    effectiveMonthlyTuition = structure.monthlyTuitionFee;
-  }
+  const perSubRate = structure.perSubjectMonthlyFee || 350;
+  const effectiveMonthlyTuition = Math.max(1, enrolledCount) * perSubRate;
 
   // Materials & Lab fee: full package or proportional for single/multi subjects
   const effectiveMaterialsFee = coachingMode === 'All Subjects Combo'
-    ? structure.materialsFee
-    : Math.round(structure.materialsFee * (enrolledCount / totalAvailableCount));
+    ? (structure.materialsFee ?? 0)
+    : Math.round((structure.materialsFee ?? 0) * (enrolledCount / (totalAvailableCount || 1)));
 
-  // Base calculation for 1 Academic Year (12 months tuition + admission + 2 exam terms + materials)
+  // Base calculation for 1 Academic Year (12 months tuition + admission + 2 exam terms + materials + annual development fee)
+  const annualDevFee = structure.annualDevelopmentFee ?? 50;
   const grossAnnual =
     structure.admissionFee +
     effectiveMonthlyTuition * 12 +
     structure.examFeePerTerm * 2 +
-    effectiveMaterialsFee;
+    effectiveMaterialsFee +
+    annualDevFee;
 
   const scholarshipDiscount = Math.round((grossAnnual * (student.scholarshipPercent || 0)) / 100);
   const netPayable = grossAnnual - scholarshipDiscount;

@@ -10,7 +10,20 @@ export type FeeStatus = 'Paid' | 'Partial' | 'Overdue' | 'Due Soon';
 
 export type PaymentMode = 'Cash' | 'UPI / GPay / PhonePe' | 'Net Banking' | 'Cheque' | 'Debit/Credit Card';
 
-export type FeeHeadType = 'Tuition Fee' | 'Admission Fee' | 'Exam Fee' | 'Study Material & Lab Fee' | 'Annual Development Fee';
+export type FeeHeadType =
+  | 'Tuition Fee'
+  | 'Admission Fee'
+  | 'Exam Fee'
+  | 'Study Material and Lab Fees'
+  | 'Annual Development Fees and others'
+  | 'Study Material & Lab Fee'
+  | 'Annual Development Fee';
+
+export interface FeeHeadBreakdownItem {
+  head: string;
+  amount: number;
+  details?: string;
+}
 
 export type AdminRole =
   | 'Super Admin / Director'
@@ -267,6 +280,7 @@ export interface FeeStructure {
   perSubjectMonthlyFee: number; // Rate per individual enrolled coaching subject
   examFeePerTerm: number;
   materialsFee: number;
+  annualDevelopmentFee?: number;
 }
 
 export interface FeeDeposit {
@@ -276,6 +290,8 @@ export interface FeeDeposit {
   depositDate: string;
   amountPaid: number;
   feeHead: FeeHeadType;
+  selectedFeeHeads?: string[];
+  headBreakdown?: FeeHeadBreakdownItem[];
   monthsCovered?: string[]; // e.g. ["April 2026", "May 2026"]
   paymentMode: PaymentMode;
   transactionRef?: string;

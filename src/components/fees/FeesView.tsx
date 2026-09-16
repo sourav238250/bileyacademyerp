@@ -47,6 +47,7 @@ import {
   Sparkles,
   RefreshCw,
   Info,
+  Check,
 } from 'lucide-react';
 
 interface FeesViewProps {
@@ -106,7 +107,11 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const [feeStructures, setFeeStructures] = useState<Record<string, FeeStructure>>(() => {
     try {
       const saved = localStorage.getItem('biley_academy_custom_fee_structure_v1');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure default rates are updated with latest scheme if not customized
+        return { ...DEFAULT_FEE_STRUCTURE, ...parsed };
+      }
     } catch (e) {
       console.error('Failed to load fee structures:', e);
     }
@@ -121,56 +126,304 @@ export const FeesView: React.FC<FeesViewProps> = ({
   // Interactive Fee Calculator State
   const [calcClass, setCalcClass] = useState<ClassLevel>('10');
   const [calcStream, setCalcStream] = useState<string>('General');
-  const [calcMode, setCalcMode] = useState<'full' | 'perSubject'>('full');
+  const [calcMode, setCalcMode] = useState<'full' | 'perSubject'>('perSubject');
   const [calcSubjectCount, setCalcSubjectCount] = useState<number>(4);
   const [calcScholarship, setCalcScholarship] = useState<number>(0);
 
   // Edit Fee Rate Modal State
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editAdmissionFee, setEditAdmissionFee] = useState<number>(0);
-  const [editMonthlyFee, setEditMonthlyFee] = useState<number>(0);
-  const [editPerSubjectFee, setEditPerSubjectFee] = useState<number>(0);
-  const [editExamFee, setEditExamFee] = useState<number>(0);
-  const [editMaterialsFee, setEditMaterialsFee] = useState<number>(0);
+  const [editAdmissionFee, setEditAdmissionFee] = useState<number>(100);
+  const [editMonthlyFee, setEditMonthlyFee] = useState<number>(400);
+  const [editPerSubjectFee, setEditPerSubjectFee] = useState<number>(400);
+  const [editExamFee, setEditExamFee] = useState<number>(100);
+  const [editMaterialsFee, setEditMaterialsFee] = useState<number>(50);
+  const [editAnnualDevFee, setEditAnnualDevFee] = useState<number>(50);
   const [structureSuccessNotice, setStructureSuccessNotice] = useState<string | null>(null);
 
-  // Form State for Fee Deposit Modal
+  // Form State for Fee Deposit Modal - Supports Multiple Simultaneous Fee Heads
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
     preselectedStudentId || students[0]?.id || ''
   );
-  const [feeHead, setFeeHead] = useState<FeeHeadType>('Tuition Fee');
-  const [amountPaid, setAmountPaid] = useState<number>(3000);
+  const [selectedFeeHeads, setSelectedFeeHeads] = useState<FeeHeadType[]>(['Tuition Fee']);
+  const [amountPaid, setAmountPaid] = useState<number>(1400);
+  const [tuitionSubjectCount, setTuitionSubjectCount] = useState<number>(4);
+  const [tuitionMonthsCount, setTuitionMonthsCount] = useState<number>(1);
+  const [examTermCount, setExamTermCount] = useState<number>(1);
+  const [isCustomAmount, setIsCustomAmount] = useState<boolean>(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('UPI / GPay / PhonePe');
   const [transactionRef, setTransactionRef] = useState<string>('');
-  const [selectedMonths, setSelectedMonths] = useState<string[]>(['Current Quarter']);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>(['Current Month']);
   const [collectedBy, setCollectedBy] = useState<string>('Accounts Dept - S. Dinda');
   const [remarks, setRemarks] = useState<string>('Tuition installment received with receipt issued.');
 
-  const handleOpenDepositModal = (studentId?: string, customAmount?: number) => {
+  // Helper to compute individual head rate & amount
+  const getHeadRateAndAmount = (
+    head: FeeHeadType,
+    studentId: string,
+    subjectsCount: number,
+    monthsCount: number,
+    termsCount: number
+  ): { amount: number; rateDisplay: string; details: string } => {
+    const student = students.find((s) => s.id === studentId);
+    const structKey = student ? `${student.classLevel}-${student.stream}` : '1-General';
+    const st =
+      feeStructures[structKey] ||
+      feeStructures[`${student?.classLevel || '1'}-General`] ||
+      DEFAULT_FEE_STRUCTURE[structKey] ||
+      DEFAULT_FEE_STRUCTURE['1-General'];
+
+    switch (head) {
+      case 'Tuition Fee': {
+        const perSub = st.perSubjectMonthlyFee || 350;
+        const amount = perSub * Math.max(1, subjectsCount) * Math.max(1, monthsCount);
+        return {
+          amount,
+          rateDisplay: `₹${perSub}/subj/mo`,
+          details: `Tuition for ${subjectsCount} subject(s) × ${monthsCount} month(s)`,
+        };
+      }
+      case 'Admission Fee':
+        return {
+          amount: st.admissionFee,
+          rateDisplay: `₹${st.admissionFee}`,
+          details: 'One-time admission & session enrollment fee',
+        };
+      case 'Exam Fee': {
+        const amount = st.examFeePerTerm * Math.max(1, termsCount);
+        return {
+          amount,
+          rateDisplay: `₹${st.examFeePerTerm}/term`,
+          details: `Term exam assessment fee (${termsCount} term(s))`,
+        };
+      }
+      case 'Study Material and Lab Fees':
+      case 'Study Material & Lab Fee':
+        return {
+          amount: st.materialsFee,
+          rateDisplay: `₹${st.materialsFee}`,
+          details: 'Study materials, worksheets & laboratory fee',
+        };
+      case 'Annual Development Fees and others':
+      case 'Annual Development Fee':
+        return {
+          amount: st.annualDevelopmentFee ?? 50,
+          rateDisplay: `₹${st.annualDevelopmentFee ?? 50}/yr`,
+          details: 'Annual development, library & amenities fee',
+        };
+      default:
+        return {
+          amount: 300,
+          rateDisplay: '₹300',
+          details: 'Institutional fee',
+        };
+    }
+  };
+
+  // Helper to compute combined total across multiple selected fee heads
+  const calculateTotalForHeads = (
+    heads: FeeHeadType[],
+    studentId: string,
+    subjectsCount: number,
+    monthsCount: number,
+    termsCount: number
+  ) => {
+    let total = 0;
+    const breakdown: { head: FeeHeadType; amount: number; rateDisplay: string; details: string }[] = [];
+
+    for (const h of heads) {
+      const item = getHeadRateAndAmount(h, studentId, subjectsCount, monthsCount, termsCount);
+      total += item.amount;
+      breakdown.push({
+        head: h,
+        amount: item.amount,
+        rateDisplay: item.rateDisplay,
+        details: item.details,
+      });
+    }
+
+    return { total, breakdown };
+  };
+
+  const handleOpenDepositModal = (studentId?: string, customAmount?: number, defaultHead?: FeeHeadType) => {
     const sId = studentId || preselectedStudentId || students[0]?.id || '';
     setSelectedStudentId(sId);
     
-    // Auto-calculate suggested monthly amount
     const targetStudent = students.find((s) => s.id === sId);
-    if (customAmount) {
+    const initialHead = defaultHead || 'Tuition Fee';
+    const initialHeads: FeeHeadType[] = [initialHead];
+    setSelectedFeeHeads(initialHeads);
+
+    const initialSubjCount =
+      targetStudent?.enrolledSubjectIds?.length && targetStudent.enrolledSubjectIds.length > 0
+        ? targetStudent.enrolledSubjectIds.length
+        : 4;
+    setTuitionSubjectCount(initialSubjCount);
+    setTuitionMonthsCount(1);
+    setExamTermCount(1);
+
+    if (customAmount !== undefined) {
       setAmountPaid(customAmount);
-    } else if (targetStudent) {
-      const summary = computeStudentFeeSummary(targetStudent, deposits);
-      setAmountPaid(summary.dueAmount > 0 ? Math.min(summary.dueAmount, 5000) : 2500);
+      setIsCustomAmount(true);
+    } else {
+      const { total } = calculateTotalForHeads(initialHeads, sId, initialSubjCount, 1, 1);
+      setAmountPaid(total);
+      setIsCustomAmount(false);
     }
+
+    if (initialHead === 'Admission Fee') {
+      setRemarks('One-time institutional admission & registration fee.');
+    } else if (initialHead === 'Tuition Fee') {
+      setRemarks(`Tuition fee for ${initialSubjCount} subject(s) (1 month).`);
+    } else if (initialHead === 'Exam Fee') {
+      setRemarks('Term examination assessment fee.');
+    } else if (initialHead === 'Study Material and Lab Fees') {
+      setRemarks('Study material and lab fees.');
+    } else if (initialHead === 'Annual Development Fees and others') {
+      setRemarks('Annual development fees and others fund.');
+    }
+
+    setSelectedMonths(['Current Month']);
     setTransactionRef(`UPI/${new Date().getFullYear()}${Math.floor(100000 + Math.random() * 900000)}`);
     setIsDepositModalOpen(true);
   };
 
+  // Toggle Fee Head in multi-selection mode
+  const handleToggleFeeHeadInDeposit = (head: FeeHeadType) => {
+    let nextHeads: FeeHeadType[];
+    if (selectedFeeHeads.includes(head)) {
+      if (selectedFeeHeads.length === 1) {
+        // Prevent deselecting all heads (keep at least one)
+        return;
+      }
+      nextHeads = selectedFeeHeads.filter((h) => h !== head);
+    } else {
+      nextHeads = [...selectedFeeHeads, head];
+    }
+    setSelectedFeeHeads(nextHeads);
+    setIsCustomAmount(false);
+
+    const { total, breakdown } = calculateTotalForHeads(
+      nextHeads,
+      selectedStudentId,
+      tuitionSubjectCount,
+      tuitionMonthsCount,
+      examTermCount
+    );
+    setAmountPaid(total);
+
+    const desc = breakdown.map((b) => b.head).join(', ');
+    setRemarks(`Fee payment received for: ${desc}.`);
+  };
+
+  // Apply Quick Preset for heads
+  const handleApplyHeadsPreset = (preset: 'tuition' | 'admission_tuition' | 'all') => {
+    let nextHeads: FeeHeadType[];
+    if (preset === 'tuition') {
+      nextHeads = ['Tuition Fee'];
+    } else if (preset === 'admission_tuition') {
+      nextHeads = ['Admission Fee', 'Tuition Fee'];
+    } else {
+      nextHeads = [
+        'Tuition Fee',
+        'Admission Fee',
+        'Exam Fee',
+        'Study Material and Lab Fees',
+        'Annual Development Fees and others',
+      ];
+    }
+    setSelectedFeeHeads(nextHeads);
+    setIsCustomAmount(false);
+
+    const { total, breakdown } = calculateTotalForHeads(
+      nextHeads,
+      selectedStudentId,
+      tuitionSubjectCount,
+      tuitionMonthsCount,
+      examTermCount
+    );
+    setAmountPaid(total);
+    const desc = breakdown.map((b) => b.head).join(', ');
+    setRemarks(`Fee payment received for: ${desc}.`);
+  };
+
+  const handleStudentChangeInDeposit = (newStudentId: string) => {
+    setSelectedStudentId(newStudentId);
+    const targetStudent = students.find((s) => s.id === newStudentId);
+    const newSubjCount =
+      targetStudent?.enrolledSubjectIds?.length && targetStudent.enrolledSubjectIds.length > 0
+        ? targetStudent.enrolledSubjectIds.length
+        : tuitionSubjectCount;
+    setTuitionSubjectCount(newSubjCount);
+
+    if (!isCustomAmount) {
+      const { total } = calculateTotalForHeads(
+        selectedFeeHeads,
+        newStudentId,
+        newSubjCount,
+        tuitionMonthsCount,
+        examTermCount
+      );
+      setAmountPaid(total);
+    }
+  };
+
+  const handleTuitionParamsChange = (newSubjCount: number, newMonthsCount: number) => {
+    setTuitionSubjectCount(newSubjCount);
+    setTuitionMonthsCount(newMonthsCount);
+    setIsCustomAmount(false);
+    const { total } = calculateTotalForHeads(
+      selectedFeeHeads,
+      selectedStudentId,
+      newSubjCount,
+      newMonthsCount,
+      examTermCount
+    );
+    setAmountPaid(total);
+    setSelectedMonths(newMonthsCount === 1 ? ['Current Month'] : [`${newMonthsCount} Months Bundle`]);
+  };
+
+  const handleExamTermsChange = (newTerms: number) => {
+    setExamTermCount(newTerms);
+    setIsCustomAmount(false);
+    const { total } = calculateTotalForHeads(
+      selectedFeeHeads,
+      selectedStudentId,
+      tuitionSubjectCount,
+      tuitionMonthsCount,
+      newTerms
+    );
+    setAmountPaid(total);
+    setSelectedMonths(newTerms === 1 ? ['Term Examination'] : ['Annual (2 Terms) Examination']);
+  };
+
   const handleDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentId || amountPaid <= 0) {
-      alert('Please select a student and enter a valid positive payment amount.');
+    if (!selectedStudentId || amountPaid < 0 || selectedFeeHeads.length === 0) {
+      alert('Please select a student, at least one fee head, and enter a valid non-negative amount.');
       return;
     }
 
     const student = students.find((s) => s.id === selectedStudentId);
     const receiptNo = generateReceiptNumber(deposits.length);
+
+    const { total: standardCalculatedTotal, breakdown } = calculateTotalForHeads(
+      selectedFeeHeads,
+      selectedStudentId,
+      tuitionSubjectCount,
+      tuitionMonthsCount,
+      examTermCount
+    );
+
+    // If custom amount override, distribute proportionally across breakdown items
+    const finalBreakdown = breakdown.map((b) => ({
+      head: b.head,
+      amount: isCustomAmount
+        ? Math.round((Number(amountPaid) * (b.amount / (standardCalculatedTotal || 1))))
+        : b.amount,
+      details: b.details,
+    }));
+
+    const primaryFeeHead = selectedFeeHeads.join(', ');
 
     const newDeposit: FeeDeposit = {
       id: receiptNo,
@@ -178,7 +431,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
       studentId: selectedStudentId,
       depositDate: new Date().toISOString().split('T')[0],
       amountPaid: Number(amountPaid),
-      feeHead,
+      feeHead: (selectedFeeHeads.length === 1 ? selectedFeeHeads[0] : primaryFeeHead) as any,
+      selectedFeeHeads: selectedFeeHeads,
+      headBreakdown: finalBreakdown,
       monthsCovered: selectedMonths,
       paymentMode,
       transactionRef: transactionRef || undefined,
@@ -210,27 +465,30 @@ export const FeesView: React.FC<FeesViewProps> = ({
       'Class Level',
       'Stream Track',
       'Admission Fee (INR)',
-      'Monthly Tuition Fee (INR)',
-      'Per Subject Fee (INR)',
+      'Tuition Fee Per Subject (INR)',
+      'Monthly Tuition Full Combo (INR)',
       'Exam Fee Per Term (INR)',
-      'Study Materials Fee (INR)',
+      'Study Material and Lab Fees (INR)',
+      'Annual Development Fees and others (INR)',
       'Total Estimated Annual Fee (INR)',
     ];
 
     const rows = (Object.values(feeStructures) as FeeStructure[]).map((st: FeeStructure) => {
       const estAnnual =
         st.admissionFee +
-        st.monthlyTuitionFee * 12 +
+        (st.perSubjectMonthlyFee || 350) * 4 * 12 +
         st.examFeePerTerm * 2 +
-        st.materialsFee;
+        st.materialsFee +
+        (st.annualDevelopmentFee ?? 50);
       return [
         `"Class ${st.classLevel}"`,
         `"${st.stream}"`,
         st.admissionFee,
-        st.monthlyTuitionFee,
         st.perSubjectMonthlyFee || 0,
+        st.monthlyTuitionFee,
         st.examFeePerTerm,
         st.materialsFee,
+        st.annualDevelopmentFee ?? 50,
         estAnnual,
       ].join(',');
     });
@@ -261,9 +519,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
     setEditingKey(key);
     setEditAdmissionFee(st.admissionFee);
     setEditMonthlyFee(st.monthlyTuitionFee);
-    setEditPerSubjectFee(st.perSubjectMonthlyFee || 300);
+    setEditPerSubjectFee(st.perSubjectMonthlyFee || 350);
     setEditExamFee(st.examFeePerTerm);
     setEditMaterialsFee(st.materialsFee);
+    setEditAnnualDevFee(st.annualDevelopmentFee ?? 50);
   };
 
   const handleSaveStructureEdit = (e: React.FormEvent) => {
@@ -279,6 +538,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
       perSubjectMonthlyFee: Number(editPerSubjectFee),
       examFeePerTerm: Number(editExamFee),
       materialsFee: Number(editMaterialsFee),
+      annualDevelopmentFee: Number(editAnnualDevFee),
     };
 
     const updatedMap = {
@@ -951,27 +1211,29 @@ export const FeesView: React.FC<FeesViewProps> = ({
             {(() => {
               const structKey = `${calcClass}-${calcStream}`;
               const st = feeStructures[structKey] || feeStructures[`${calcClass}-General`] || Object.values(feeStructures)[0];
+              const perSubRate = st.perSubjectMonthlyFee || 350;
               const monthlyRate =
                 calcMode === 'full'
                   ? st.monthlyTuitionFee
-                  : (st.perSubjectMonthlyFee || 300) * calcSubjectCount;
+                  : perSubRate * calcSubjectCount;
               const annualTuition = monthlyRate * 12;
               const admissionFee = st.admissionFee;
               const examFees = st.examFeePerTerm * 2;
               const materialsFee = st.materialsFee;
-              const grossAnnual = admissionFee + annualTuition + examFees + materialsFee;
+              const annualDevFee = st.annualDevelopmentFee ?? 50;
+              const grossAnnual = admissionFee + annualTuition + examFees + materialsFee + annualDevFee;
               const scholarshipSavings = Math.round((grossAnnual * calcScholarship) / 100);
               const netAnnual = grossAnnual - scholarshipSavings;
 
               return (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 pt-2">
                   <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Monthly Tuition</span>
                     <p className="text-base font-extrabold text-emerald-700 mt-0.5">
                       {formatCurrency(monthlyRate)}
                       <span className="text-[10px] text-slate-400 font-normal">/mo</span>
                     </p>
-                    <span className="text-[9px] text-slate-400">12 installments</span>
+                    <span className="text-[9px] text-slate-400">{calcMode === 'perSubject' ? `${calcSubjectCount} sub × ₹${perSubRate}` : '12 installments'}</span>
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
@@ -991,15 +1253,23 @@ export const FeesView: React.FC<FeesViewProps> = ({
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Notes & Materials</span>
-                    <p className="text-base font-extrabold text-slate-800 mt-0.5">
-                      {formatCurrency(materialsFee)}
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Annual Dev. & Others</span>
+                    <p className="text-base font-extrabold text-amber-700 mt-0.5">
+                      {formatCurrency(annualDevFee)}
                     </p>
-                    <span className="text-[9px] text-slate-400">Annual Kit & Modules</span>
+                    <span className="text-[9px] text-slate-400">Campus & Dev Fund</span>
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Scholarship Concession</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Study Material & Lab</span>
+                    <p className="text-base font-extrabold text-slate-800 mt-0.5">
+                      {formatCurrency(materialsFee)}
+                    </p>
+                    <span className="text-[9px] text-slate-400">Kit, Notes & Lab</span>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Scholarship</span>
                     <p className="text-base font-extrabold text-rose-600 mt-0.5">
                       {scholarshipSavings > 0 ? `-${formatCurrency(scholarshipSavings)}` : '₹0'}
                     </p>
@@ -1015,10 +1285,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     </div>
                     {auth.canWrite && (
                       <button
-                        onClick={() => handleOpenDepositModal(undefined, monthlyRate)}
+                        onClick={() => handleOpenDepositModal(undefined, monthlyRate, 'Tuition Fee')}
                         className="mt-1 px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black rounded-lg transition-colors cursor-pointer text-center"
                       >
-                        Collect This Rate
+                        Collect Rate
                       </button>
                     )}
                   </div>
@@ -1037,7 +1307,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                   Standard Class Fee Matrix (Grades 1 to 12)
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Click 'Edit Rates' to modify amounts or 'Estimate / Deposit' to collect fees for that class.
+                  Click 'Edit Rates' to modify amounts or 'Estimate / Collect' to deposit fees for that class.
                 </p>
               </div>
 
@@ -1073,15 +1343,15 @@ export const FeesView: React.FC<FeesViewProps> = ({
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-900 text-white uppercase text-[10px] font-bold tracking-wider">
                   <tr>
-                    <th className="py-3 px-4">Class Level</th>
-                    <th className="py-3 px-4">Stream Track</th>
-                    <th className="py-3 px-4 text-right">Admission Fee</th>
-                    <th className="py-3 px-4 text-right">Monthly Tuition</th>
-                    <th className="py-3 px-4 text-right">Per-Subject Rate</th>
-                    <th className="py-3 px-4 text-right">Exam Fee / Term</th>
-                    <th className="py-3 px-4 text-right">Study Materials</th>
-                    <th className="py-3 px-4 text-right">Est. Annual Total</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-3">Class Level</th>
+                    <th className="py-3 px-3">Stream Track</th>
+                    <th className="py-3 px-3 text-right">Admission Fee</th>
+                    <th className="py-3 px-3 text-right">Tuition / Subj</th>
+                    <th className="py-3 px-3 text-right">Exam Fee / Term</th>
+                    <th className="py-3 px-3 text-right">Study Material & Lab</th>
+                    <th className="py-3 px-3 text-right">Annual Dev. & Others</th>
+                    <th className="py-3 px-3 text-right">Est. Annual (4 Subj)</th>
+                    <th className="py-3 px-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -1098,18 +1368,21 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       return true;
                     })
                     .map(([key, st]) => {
+                      const perSub = st.perSubjectMonthlyFee || 350;
+                      const annualDev = st.annualDevelopmentFee ?? 50;
                       const estAnnual =
                         st.admissionFee +
-                        st.monthlyTuitionFee * 12 +
+                        perSub * 4 * 12 +
                         st.examFeePerTerm * 2 +
-                        st.materialsFee;
+                        st.materialsFee +
+                        annualDev;
 
                       return (
                         <tr key={key} className="hover:bg-amber-50/40 transition-colors">
-                          <td className="py-3 px-4 font-black text-slate-900">
+                          <td className="py-3 px-3 font-black text-slate-900">
                             Class {st.classLevel}
                           </td>
-                          <td className="py-3 px-4 font-semibold text-slate-700">
+                          <td className="py-3 px-3 font-semibold text-slate-700">
                             <span
                               className={`px-2 py-0.5 rounded-md text-[11px] ${
                                 st.stream === 'Science'
@@ -1124,25 +1397,25 @@ export const FeesView: React.FC<FeesViewProps> = ({
                               {st.stream}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right text-slate-700 font-medium">
+                          <td className="py-3 px-3 text-right text-slate-700 font-medium">
                             {formatCurrency(st.admissionFee)}
                           </td>
-                          <td className="py-3 px-4 text-right font-bold text-emerald-700">
-                            {formatCurrency(st.monthlyTuitionFee)}/mo
+                          <td className="py-3 px-3 text-right font-bold text-emerald-700">
+                            {formatCurrency(perSub)}/sub
                           </td>
-                          <td className="py-3 px-4 text-right text-slate-600">
-                            {st.perSubjectMonthlyFee ? `${formatCurrency(st.perSubjectMonthlyFee)}/mo` : '—'}
-                          </td>
-                          <td className="py-3 px-4 text-right text-slate-700">
+                          <td className="py-3 px-3 text-right text-slate-700">
                             {formatCurrency(st.examFeePerTerm)}
                           </td>
-                          <td className="py-3 px-4 text-right text-slate-700">
+                          <td className="py-3 px-3 text-right text-slate-700">
                             {formatCurrency(st.materialsFee)}
                           </td>
-                          <td className="py-3 px-4 text-right font-black text-slate-950">
+                          <td className="py-3 px-3 text-right font-semibold text-amber-700">
+                            {formatCurrency(annualDev)}
+                          </td>
+                          <td className="py-3 px-3 text-right font-black text-slate-950">
                             {formatCurrency(estAnnual)}
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => {
@@ -1187,7 +1460,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
             <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-base">Record Student Fee Deposit</h3>
+                <div>
+                  <h3 className="font-bold text-base">Record Student Fee Deposit</h3>
+                  <p className="text-[11px] text-slate-300">
+                    Amounts auto-calculate based on selected fee particular & student class
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setIsDepositModalOpen(false)}
@@ -1201,26 +1479,17 @@ export const FeesView: React.FC<FeesViewProps> = ({
               
               {/* Student Selector */}
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Select Enrolled Student *</label>
+                <label className="block text-slate-700 font-bold mb-1">Select Enrolled Student *</label>
                 <select
                   value={selectedStudentId}
-                  onChange={(e) => {
-                    setSelectedStudentId(e.target.value);
-                    const target = students.find((s) => s.id === e.target.value);
-                    if (target) {
-                      const summary = computeStudentFeeSummary(target, deposits);
-                      if (summary.dueAmount > 0) {
-                        setAmountPaid(Math.min(summary.dueAmount, 5000));
-                      }
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-xs"
+                  onChange={(e) => handleStudentChangeInDeposit(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-xs font-medium"
                 >
                   {students.map((st) => {
                     const sum = computeStudentFeeSummary(st, deposits);
                     return (
                       <option key={st.id} value={st.id}>
-                        {st.name} (Class {st.classLevel} - {st.stream}) • Due: {formatCurrency(sum.dueAmount)}
+                        {st.name} (Class {st.classLevel} - {st.stream}) • Enrolled: {st.enrolledSubjectIds?.length || 4} Subj • Due: {formatCurrency(sum.dueAmount)}
                       </option>
                     );
                   })}
@@ -1232,6 +1501,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 const targetStudent = students.find((s) => s.id === selectedStudentId);
                 if (!targetStudent) return null;
                 const summary = computeStudentFeeSummary(targetStudent, deposits);
+                const structKey = `${targetStudent.classLevel}-${targetStudent.stream}`;
+                const st = feeStructures[structKey] || feeStructures[`${targetStudent.classLevel}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
 
                 return (
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-[11px]">
@@ -1240,8 +1511,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       <strong className="text-slate-800">Class {targetStudent.classLevel} ({targetStudent.stream})</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">Total Paid So Far:</span>
-                      <strong className="text-emerald-700">{formatCurrency(summary.totalPaid)}</strong>
+                      <span className="text-slate-400 block">Tuition Rate:</span>
+                      <strong className="text-emerald-700">{formatCurrency(st.perSubjectMonthlyFee || 350)}/subj/mo</strong>
                     </div>
                     <div>
                       <span className="text-slate-400 block">Current Outstanding Due:</span>
@@ -1251,37 +1522,310 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 );
               })()}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fee Particular / Head *</label>
-                  <select
-                    value={feeHead}
-                    onChange={(e) => setFeeHead(e.target.value as FeeHeadType)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-                  >
-                    <option value="Tuition Fee">Tuition Fee</option>
-                    <option value="Admission Fee">Admission Fee</option>
-                    <option value="Exam Fee">Exam Fee</option>
-                    <option value="Study Material & Lab Fee">Study Material & Lab Fee</option>
-                    <option value="Annual Development Fee">Annual Development Fee</option>
-                  </select>
+              {/* Fee Particulars / Heads Multi-Select Section */}
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <label className="block text-slate-700 font-bold text-xs">
+                    Select Fee Particulars / Heads (Select one or multiple) *
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-400 font-semibold mr-1">Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyHeadsPreset('tuition')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
+                    >
+                      Tuition Only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyHeadsPreset('admission_tuition')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
+                    >
+                      Admission + Tuition
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyHeadsPreset('all')}
+                      className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[10px] font-bold cursor-pointer"
+                    >
+                      All Heads (Full Session)
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Amount Deposited (₹) *</label>
-                  <input
-                    type="number"
-                    min="100"
-                    step="100"
-                    required
-                    value={amountPaid}
-                    onChange={(e) => setAmountPaid(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-bold text-slate-900"
-                  />
-                </div>
+                {(() => {
+                  const targetStudent = students.find((s) => s.id === selectedStudentId);
+                  const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
+                  const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+
+                  const headsList: { id: FeeHeadType; label: string; rateDisplay: string; subDesc: string }[] = [
+                    {
+                      id: 'Tuition Fee',
+                      label: 'Tuition Fee',
+                      rateDisplay: `₹${st.perSubjectMonthlyFee || 350}/subj/mo`,
+                      subDesc: `${tuitionSubjectCount} subj × ${tuitionMonthsCount} mo = ₹${(st.perSubjectMonthlyFee || 350) * tuitionSubjectCount * tuitionMonthsCount}`,
+                    },
+                    {
+                      id: 'Admission Fee',
+                      label: 'Admission Fee',
+                      rateDisplay: `₹${st.admissionFee} (One-time)`,
+                      subDesc: 'Registration & Enrollment',
+                    },
+                    {
+                      id: 'Exam Fee',
+                      label: 'Exam Fee',
+                      rateDisplay: `₹${st.examFeePerTerm}/term`,
+                      subDesc: `${examTermCount} Term(s) = ₹${st.examFeePerTerm * examTermCount}`,
+                    },
+                    {
+                      id: 'Study Material and Lab Fees',
+                      label: 'Study Material and Lab Fees',
+                      rateDisplay: `₹${st.materialsFee}`,
+                      subDesc: 'Annual Worksheets & Lab Kit',
+                    },
+                    {
+                      id: 'Annual Development Fees and others',
+                      label: 'Annual Development Fees and others',
+                      rateDisplay: `₹${st.annualDevelopmentFee ?? 50}/yr`,
+                      subDesc: 'Campus, Library & Amenities',
+                    },
+                  ];
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {headsList.map((h) => {
+                        const isSelected = selectedFeeHeads.includes(h.id);
+                        return (
+                          <button
+                            key={h.id}
+                            type="button"
+                            onClick={() => handleToggleFeeHeadInDeposit(h.id)}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                              isSelected
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-amber-400/40'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
+                              isSelected
+                                ? 'bg-amber-400 border-amber-400 text-slate-950 font-black'
+                                : 'bg-white border-slate-300'
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-bold text-xs block leading-tight">{h.label}</span>
+                              <div className="flex items-center justify-between gap-1 mt-1">
+                                <span className={`text-[10px] ${isSelected ? 'text-amber-300 font-semibold' : 'text-emerald-700 font-medium'}`}>
+                                  {h.rateDisplay}
+                                </span>
+                              </div>
+                              <span className={`text-[9px] block mt-0.5 ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                {h.subDesc}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Dynamic Sub-Controls when Tuition Fee is selected */}
+              {selectedFeeHeads.includes('Tuition Fee') && (
+                <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                      <Calculator className="w-3.5 h-3.5 text-amber-600" />
+                      Tuition Fee Parameters (Subject Count & Billing Duration)
+                    </span>
+                    <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                      Auto-Multiplying
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 font-bold text-[11px] mb-1">
+                        Number of Subjects:
+                      </label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5, 6].map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => handleTuitionParamsChange(num, tuitionMonthsCount)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              tuitionSubjectCount === num
+                                ? 'bg-amber-600 text-white shadow-xs'
+                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-amber-100/50'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 font-bold text-[11px] mb-1">
+                        Duration (Months):
+                      </label>
+                      <div className="flex gap-1">
+                        {[
+                          { m: 1, label: '1 Mo' },
+                          { m: 2, label: '2 Mo' },
+                          { m: 3, label: '3 Mo (Qtr)' },
+                          { m: 6, label: '6 Mo' },
+                          { m: 12, label: '1 Yr' },
+                        ].map((item) => (
+                          <button
+                            key={item.m}
+                            type="button"
+                            onClick={() => handleTuitionParamsChange(tuitionSubjectCount, item.m)}
+                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                              tuitionMonthsCount === item.m
+                                ? 'bg-slate-900 text-white shadow-xs'
+                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const targetStudent = students.find((s) => s.id === selectedStudentId);
+                    const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
+                    const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+                    const perSub = st.perSubjectMonthlyFee || 350;
+                    const calculated = perSub * tuitionSubjectCount * tuitionMonthsCount;
+
+                    return (
+                      <div className="p-2 bg-white rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-600">
+                          Calculation: <strong>{tuitionSubjectCount} subjects</strong> × <strong>₹{perSub}/subject</strong> × <strong>{tuitionMonthsCount} month(s)</strong>
+                        </span>
+                        <strong className="text-emerald-700 font-black text-xs">= {formatCurrency(calculated)}</strong>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Dynamic Sub-Controls when Exam Fee is selected */}
+              {selectedFeeHeads.includes('Exam Fee') && (
+                <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-950 text-xs flex items-center gap-1.5">
+                      <Calculator className="w-3.5 h-3.5 text-blue-600" />
+                      Exam Fee Assessment Cycles
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { terms: 1, label: '1 Term (Mid-Term or Final Assessment)' },
+                      { terms: 2, label: '2 Terms (Full Year - Both Terms)' },
+                    ].map((item) => (
+                      <button
+                        key={item.terms}
+                        type="button"
+                        onClick={() => handleExamTermsChange(item.terms)}
+                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer text-left ${
+                          examTermCount === item.terms
+                            ? 'bg-blue-900 text-white shadow-xs'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Itemized Calculation Summary of Selected Fee Heads */}
+              {(() => {
+                const { total: calculatedSum, breakdown } = calculateTotalForHeads(
+                  selectedFeeHeads,
+                  selectedStudentId,
+                  tuitionSubjectCount,
+                  tuitionMonthsCount,
+                  examTermCount
+                );
+
+                return (
+                  <div className="p-3 bg-slate-900 text-white rounded-xl space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        Selected Fee Heads Itemized Breakdown ({selectedFeeHeads.length} Selected)
+                      </span>
+                      <span className="text-xs font-bold text-slate-300">
+                        Total: <strong className="text-emerald-400 text-sm font-black">{formatCurrency(calculatedSum)}</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {breakdown.map((item, i) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] border border-slate-700">
+                          <span className="font-semibold text-slate-200">{item.head}:</span>
+                          <strong className="text-amber-300">{formatCurrency(item.amount)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Amount Deposited & Override Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-slate-700 font-bold">Amount to Deposit (₹) *</label>
+                    {isCustomAmount && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomAmount(false);
+                          const { total } = calculateTotalForHeads(
+                            selectedFeeHeads,
+                            selectedStudentId,
+                            tuitionSubjectCount,
+                            tuitionMonthsCount,
+                            examTermCount
+                          );
+                          setAmountPaid(total);
+                        }}
+                        className="text-[10px] text-amber-700 hover:underline font-bold cursor-pointer"
+                      >
+                        Reset to Calculated Sum
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    required
+                    value={amountPaid}
+                    onChange={(e) => {
+                      setAmountPaid(Number(e.target.value));
+                      setIsCustomAmount(true);
+                    }}
+                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-black text-slate-900 text-sm bg-amber-50/20"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    {isCustomAmount
+                      ? '⚠️ Custom amount override applied'
+                      : `✓ Auto-summed across all ${selectedFeeHeads.length} selected fee heads`}
+                  </span>
+                </div>
+
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Payment Mode *</label>
                   <select
@@ -1296,7 +1840,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     <option value="Cheque">Cheque</option>
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Transaction / Reference ID</label>
                   <input
@@ -1304,19 +1850,19 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     placeholder="e.g. UPI/260405118942"
                     value={transactionRef}
                     onChange={(e) => setTransactionRef(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono text-xs"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Accounts Officer / Collected By</label>
-                <input
-                  type="text"
-                  value={collectedBy}
-                  onChange={(e) => setCollectedBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Accounts Officer / Collected By</label>
+                  <input
+                    type="text"
+                    value={collectedBy}
+                    onChange={(e) => setCollectedBy(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1325,8 +1871,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
                   type="text"
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="e.g. Quarter 1 tuition fee received with verified receipt."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  placeholder="e.g. Tuition fee received with verified receipt."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
                 />
               </div>
 
@@ -1341,9 +1887,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 <button
                   type="submit"
                   id="submit-fee-deposit-btn"
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
                 >
-                  Generate Official Fee Receipt
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Generate Official Fee Receipt ({formatCurrency(amountPaid)})</span>
                 </button>
               </div>
 
@@ -1396,45 +1943,45 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Monthly Tuition (₹) *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Per-Subject Tuition (₹) *</label>
                   <input
                     type="number"
                     min="0"
                     step="50"
                     required
-                    value={editMonthlyFee}
-                    onChange={(e) => setEditMonthlyFee(Number(e.target.value))}
+                    value={editPerSubjectFee}
+                    onChange={(e) => setEditPerSubjectFee(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-emerald-700"
                   />
-                  <span className="text-[10px] text-slate-400">Full combo monthly rate</span>
+                  <span className="text-[10px] text-slate-400">Rate per subject / month</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Per-Subject Fee (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="50"
-                    value={editPerSubjectFee}
-                    onChange={(e) => setEditPerSubjectFee(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                  <span className="text-[10px] text-slate-400">Single subject rate</span>
-                </div>
-
-                <div>
                   <label className="block text-slate-700 font-bold mb-1">Exam Fee / Term (₹)</label>
                   <input
                     type="number"
                     min="0"
-                    step="50"
+                    step="25"
                     value={editExamFee}
                     onChange={(e) => setEditExamFee(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <span className="text-[10px] text-slate-400">Per term (2 terms/yr)</span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Annual Dev. Fee (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={editAnnualDevFee}
+                    onChange={(e) => setEditAnnualDevFee(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Annual infrastructure</span>
                 </div>
 
                 <div>
@@ -1454,13 +2001,13 @@ export const FeesView: React.FC<FeesViewProps> = ({
               {/* Calculated Annual Preview */}
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Computed Est. Annual Fee</span>
-                  <span className="text-xs text-slate-500">Admission + (12 × Tuition) + (2 × Exam) + Materials</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Computed Est. Annual Fee (4 Subjects)</span>
+                  <span className="text-xs text-slate-500">Admission + (12 × 4 × Tuition) + (2 × Exam) + Materials + Annual Dev</span>
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-black text-slate-900">
                     {formatCurrency(
-                      editAdmissionFee + (editMonthlyFee * 12) + (editExamFee * 2) + editMaterialsFee
+                      editAdmissionFee + (editPerSubjectFee * 4 * 12) + (editExamFee * 2) + editMaterialsFee + editAnnualDevFee
                     )}
                   </span>
                 </div>

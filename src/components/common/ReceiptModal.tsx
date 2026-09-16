@@ -256,26 +256,57 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
-              <tr>
-                <td className="py-3 px-4 text-slate-500 font-mono">01</td>
-                <td className="py-3 px-4 font-semibold text-slate-800">
-                  {deposit.feeHead}
-                  {deposit.remarks && (
-                    <span className="block text-[11px] font-normal text-slate-500 mt-0.5">{deposit.remarks}</span>
-                  )}
-                  {deposit.transactionRef && (
-                    <span className="block font-mono text-[10px] text-emerald-700 mt-0.5">Ref / Txn ID: {deposit.transactionRef}</span>
-                  )}
-                </td>
-                <td className="py-3 px-4 text-slate-600">
-                  {deposit.monthsCovered && deposit.monthsCovered.length > 0
-                    ? deposit.monthsCovered.join(', ')
-                    : 'Current Academic Session'}
-                </td>
-                <td className="py-3 px-4 text-right font-bold text-slate-900">
-                  {formatCurrency(deposit.amountPaid)}
-                </td>
-              </tr>
+              {deposit.headBreakdown && deposit.headBreakdown.length > 0 ? (
+                deposit.headBreakdown.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="py-2.5 px-4 text-slate-500 font-mono">
+                      {String(idx + 1).padStart(2, '0')}
+                    </td>
+                    <td className="py-2.5 px-4 font-semibold text-slate-800">
+                      {item.head}
+                      {item.details && (
+                        <span className="block text-[11px] font-normal text-slate-500 mt-0.5">
+                          {item.details}
+                        </span>
+                      )}
+                      {idx === 0 && deposit.transactionRef && (
+                        <span className="block font-mono text-[10px] text-emerald-700 mt-0.5">
+                          Ref / Txn ID: {deposit.transactionRef}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-4 text-slate-600">
+                      {deposit.monthsCovered && deposit.monthsCovered.length > 0
+                        ? deposit.monthsCovered.join(', ')
+                        : 'Current Academic Session'}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-bold text-slate-900">
+                      {formatCurrency(item.amount)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="py-3 px-4 text-slate-500 font-mono">01</td>
+                  <td className="py-3 px-4 font-semibold text-slate-800">
+                    {deposit.feeHead}
+                    {deposit.remarks && (
+                      <span className="block text-[11px] font-normal text-slate-500 mt-0.5">{deposit.remarks}</span>
+                    )}
+                    {deposit.transactionRef && (
+                      <span className="block font-mono text-[10px] text-emerald-700 mt-0.5">Ref / Txn ID: {deposit.transactionRef}</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-slate-600">
+                    {deposit.monthsCovered && deposit.monthsCovered.length > 0
+                      ? deposit.monthsCovered.join(', ')
+                      : 'Current Academic Session'}
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold text-slate-900">
+                    {formatCurrency(deposit.amountPaid)}
+                  </td>
+                </tr>
+              )}
               {deposit.discountApplied && deposit.discountApplied > 0 ? (
                 <tr className="bg-emerald-50/50">
                   <td className="py-2 px-4 text-emerald-700 font-mono">-</td>
