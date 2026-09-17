@@ -202,13 +202,23 @@ export const DisbursementVoucherModal: React.FC<DisbursementVoucherModalProps> =
           {/* Signatures & Seal Block */}
           <div className="pt-6 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-6 items-end text-center">
             {/* Accounts Officer */}
-            <div>
+            <div className="flex flex-col items-center">
               <div className="h-10 flex items-center justify-center">
-                <span className="font-serif italic text-sm text-slate-700 font-semibold border-b border-slate-400 px-4">
-                  {authConfig?.accountsSignatoryName || 'S. Dinda'}
-                </span>
+                {authConfig?.digitalSignatureUrl && authConfig?.showSignatureOnVouchers !== false ? (
+                  <img
+                    src={authConfig.digitalSignatureUrl}
+                    alt="Accounts Digital Signature"
+                    className="max-h-full max-w-32 object-contain filter contrast-125"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="font-serif italic text-sm text-slate-700 font-semibold border-b border-slate-400 px-4">
+                    {authConfig?.accountsSignatoryName || 'S. Dinda'}
+                  </span>
+                )}
               </div>
-              <p className="text-xs font-bold text-slate-900 mt-1">
+              <div className="w-28 border-b border-slate-400 mt-1 mb-1"></div>
+              <p className="text-xs font-bold text-slate-900">
                 {authConfig?.accountsSignatoryName || 'S. Dinda'}
               </p>
               <p className="text-[10px] text-slate-500">
@@ -229,13 +239,23 @@ export const DisbursementVoucherModal: React.FC<DisbursementVoucherModalProps> =
             </div>
 
             {/* Director Authorization */}
-            <div>
+            <div className="flex flex-col items-center">
               <div className="h-10 flex items-center justify-center">
-                <span className="font-serif italic text-sm text-purple-900 font-semibold border-b border-slate-400 px-4">
-                  {disbursement.authorizedBy || authConfig?.directorName || 'Mr. Sourav Dinda'}
-                </span>
+                {authConfig?.digitalSignatureUrl && authConfig?.showSignatureOnVouchers !== false ? (
+                  <img
+                    src={authConfig.digitalSignatureUrl}
+                    alt="Director Digital Signature"
+                    className="max-h-full max-w-32 object-contain filter contrast-125"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="font-serif italic text-sm text-purple-900 font-semibold border-b border-slate-400 px-4">
+                    {disbursement.authorizedBy || authConfig?.directorName || 'Mr. Sourav Dinda'}
+                  </span>
+                )}
               </div>
-              <p className="text-xs font-bold text-slate-900 mt-1">
+              <div className="w-28 border-b border-slate-400 mt-1 mb-1"></div>
+              <p className="text-xs font-bold text-slate-900">
                 {disbursement.authorizedBy || authConfig?.directorName || 'Mr. Sourav Dinda'}
               </p>
               <p className="text-[10px] text-slate-500">

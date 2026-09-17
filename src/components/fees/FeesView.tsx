@@ -14,11 +14,16 @@ import {
   generateReceiptNumber,
   DEFAULT_FEE_STRUCTURE,
   CLASS_LEVELS,
+  ACADEMIC_SESSION_MONTHS,
+  MONTH_SHORT_NAMES,
+  getStudentTuitionMonthsStatus,
+  getNextUnpaidTuitionMonth,
 } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
 import { RestrictionBanner } from '../common/RestrictionBanner';
 import { SessionRevenueGoalTracker } from './SessionRevenueGoalTracker';
+import { MonthlyTuitionTracker } from './MonthlyTuitionTracker';
 import confetti from 'canvas-confetti';
 import {
   CreditCard,
@@ -48,11 +53,13 @@ import {
   RefreshCw,
   Info,
   Check,
+  Calendar,
 } from 'lucide-react';
 
 interface FeesViewProps {
   students: Student[];
   deposits: FeeDeposit[];
+  subjects?: import('../../types').Subject[];
   authConfig?: import('../../types').InstitutionalAuthorizationConfig;
   onAddDeposit: (deposit: FeeDeposit) => void;
   onDeleteDeposit: (depositId: string) => void;
@@ -60,7 +67,8 @@ interface FeesViewProps {
   isDepositModalOpen: boolean;
   setIsDepositModalOpen: (open: boolean) => void;
   preselectedStudentId?: string;
-  initialActiveTab?: 'deposits' | 'dues' | 'structure';
+  preselectedMonth?: string;
+  initialActiveTab?: 'deposits' | 'dues' | 'monthly-tracker' | 'structure';
   currentAdmin?: AdminUser | null;
   onOpenAdminLogin?: () => void;
   onOpenPermissionsMatrix?: () => void;
@@ -71,6 +79,7 @@ interface FeesViewProps {
 export const FeesView: React.FC<FeesViewProps> = ({
   students,
   deposits,
+  subjects,
   authConfig,
   onAddDeposit,
   onDeleteDeposit,
@@ -78,6 +87,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   isDepositModalOpen,
   setIsDepositModalOpen,
   preselectedStudentId,
+  preselectedMonth,
   initialActiveTab,
   currentAdmin,
   onOpenAdminLogin,
@@ -90,7 +100,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const canCollectFees = auth.canWrite && hasPermission(currentAdmin, 'FEES_COLLECT_DEPOSIT') && !isFeeDepositLocked;
   const canManageStructures = auth.canWrite && hasPermission(currentAdmin, 'FEES_MANAGE_STRUCTURE');
   const handleOpenAuthSettings = onOpenAuthorizationSettings || onOpenAuthSettings;
-  const [activeTab, setActiveTab] = useState<'deposits' | 'dues' | 'structure'>(
+  const [activeTab, setActiveTab] = useState<'deposits' | 'dues' | 'monthly-tracker' | 'structure'>(
     initialActiveTab || 'deposits'
   );
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,10 +116,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
   // Fee Structures State with Local Persistence
   const [feeStructures, setFeeStructures] = useState<Record<string, FeeStructure>>(() => {
     try {
-      const saved = localStorage.getItem('biley_academy_custom_fee_structure_v1');
+      const saved = localStorage.getItem('biley_academy_custom_fee_structure_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure default rates are updated with latest scheme if not customized
         return { ...DEFAULT_FEE_STRUCTURE, ...parsed };
       }
     } catch (e) {
@@ -139,6 +148,15 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const [editMaterialsFee, setEditMaterialsFee] = useState<number>(50);
   const [editAnnualDevFee, setEditAnnualDevFee] = useState<number>(50);
   const [structureSuccessNotice, setStructureSuccessNotice] = useState<string | null>(null);
+
+  // Batch Bracket Update State
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState<boolean>(false);
+  const [batchTargetBracket, setBatchTargetBracket] = useState<'PRIMARY' | 'MIDDLE' | 'SECONDARY' | 'SENIOR' | 'ALL'>('PRIMARY');
+  const [batchAdmissionFee, setBatchAdmissionFee] = useState<number>(100);
+  const [batchTuitionFee, setBatchTuitionFee] = useState<number>(300);
+  const [batchExamFee, setBatchExamFee] = useState<number>(50);
+  const [batchMaterialsFee, setBatchMaterialsFee] = useState<number>(50);
+  const [batchAnnualDevFee, setBatchAnnualDevFee] = useState<number>(50);
 
   // Form State for Fee Deposit Modal - Supports Multiple Simultaneous Fee Heads
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
@@ -244,7 +262,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
     return { total, breakdown };
   };
 
-  const handleOpenDepositModal = (studentId?: string, customAmount?: number, defaultHead?: FeeHeadType) => {
+  const handleOpenDepositModal = (
+    studentId?: string,
+    customAmount?: number,
+    defaultHead?: FeeHeadType,
+    preselectedMonthsInput?: string | string[]
+  ) => {
     const sId = studentId || preselectedStudentId || students[0]?.id || '';
     setSelectedStudentId(sId);
     
@@ -258,14 +281,30 @@ export const FeesView: React.FC<FeesViewProps> = ({
         ? targetStudent.enrolledSubjectIds.length
         : 4;
     setTuitionSubjectCount(initialSubjCount);
-    setTuitionMonthsCount(1);
+
+    // Determine initial months for tuition
+    let initMonths: string[] = [];
+    if (preselectedMonthsInput) {
+      initMonths = Array.isArray(preselectedMonthsInput)
+        ? preselectedMonthsInput
+        : [preselectedMonthsInput];
+    } else if (preselectedMonth) {
+      initMonths = [preselectedMonth];
+    } else {
+      const nextUnpaid = getNextUnpaidTuitionMonth(sId, deposits);
+      initMonths = [nextUnpaid || ACADEMIC_SESSION_MONTHS[0]];
+    }
+
+    const initMonthsCount = Math.max(1, initMonths.length);
+    setTuitionMonthsCount(initMonthsCount);
+    setSelectedMonths(initMonths);
     setExamTermCount(1);
 
     if (customAmount !== undefined) {
       setAmountPaid(customAmount);
       setIsCustomAmount(true);
     } else {
-      const { total } = calculateTotalForHeads(initialHeads, sId, initialSubjCount, 1, 1);
+      const { total } = calculateTotalForHeads(initialHeads, sId, initialSubjCount, initMonthsCount, 1);
       setAmountPaid(total);
       setIsCustomAmount(false);
     }
@@ -273,7 +312,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
     if (initialHead === 'Admission Fee') {
       setRemarks('One-time institutional admission & registration fee.');
     } else if (initialHead === 'Tuition Fee') {
-      setRemarks(`Tuition fee for ${initialSubjCount} subject(s) (1 month).`);
+      setRemarks(`Tuition fee for ${initMonths.join(', ')} (${initialSubjCount} subjects).`);
     } else if (initialHead === 'Exam Fee') {
       setRemarks('Term examination assessment fee.');
     } else if (initialHead === 'Study Material and Lab Fees') {
@@ -282,7 +321,6 @@ export const FeesView: React.FC<FeesViewProps> = ({
       setRemarks('Annual development fees and others fund.');
     }
 
-    setSelectedMonths(['Current Month']);
     setTransactionRef(`UPI/${new Date().getFullYear()}${Math.floor(100000 + Math.random() * 900000)}`);
     setIsDepositModalOpen(true);
   };
@@ -355,22 +393,101 @@ export const FeesView: React.FC<FeesViewProps> = ({
         : tuitionSubjectCount;
     setTuitionSubjectCount(newSubjCount);
 
+    // Auto calculate next unpaid month for this student
+    const nextUnpaid = getNextUnpaidTuitionMonth(newStudentId, deposits);
+    const newMonths = [nextUnpaid || ACADEMIC_SESSION_MONTHS[0]];
+    setSelectedMonths(newMonths);
+    setTuitionMonthsCount(newMonths.length);
+
     if (!isCustomAmount) {
       const { total } = calculateTotalForHeads(
         selectedFeeHeads,
         newStudentId,
         newSubjCount,
-        tuitionMonthsCount,
+        newMonths.length,
         examTermCount
       );
       setAmountPaid(total);
     }
   };
 
+  const handleToggleTuitionMonth = (month: string) => {
+    let nextMonths: string[];
+    if (selectedMonths.includes(month)) {
+      if (selectedMonths.length === 1) {
+        // keep at least 1 month or allow deselecting
+        nextMonths = [];
+      } else {
+        nextMonths = selectedMonths.filter((m) => m !== month);
+      }
+    } else {
+      nextMonths = [...selectedMonths, month];
+    }
+
+    const monthsCount = Math.max(1, nextMonths.length);
+    setSelectedMonths(nextMonths);
+    setTuitionMonthsCount(monthsCount);
+    setIsCustomAmount(false);
+
+    const { total } = calculateTotalForHeads(
+      selectedFeeHeads,
+      selectedStudentId,
+      tuitionSubjectCount,
+      monthsCount,
+      examTermCount
+    );
+    setAmountPaid(total);
+    setRemarks(`Tuition fee for: ${nextMonths.length > 0 ? nextMonths.join(', ') : 'None selected'} (${tuitionSubjectCount} subjects).`);
+  };
+
+  const handleApplyMonthPreset = (preset: 'next_1' | 'quarter_3' | 'semester_6' | 'all_unpaid' | 'clear') => {
+    const studentStatuses = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
+    const unpaidMonths = studentStatuses.filter((s) => !s.isPaid).map((s) => s.month);
+
+    let nextMonths: string[] = [];
+    if (preset === 'next_1') {
+      nextMonths = unpaidMonths.slice(0, 1);
+      if (nextMonths.length === 0) nextMonths = [ACADEMIC_SESSION_MONTHS[0]];
+    } else if (preset === 'quarter_3') {
+      nextMonths = unpaidMonths.slice(0, 3);
+      if (nextMonths.length === 0) nextMonths = ACADEMIC_SESSION_MONTHS.slice(0, 3) as unknown as string[];
+    } else if (preset === 'semester_6') {
+      nextMonths = unpaidMonths.slice(0, 6);
+      if (nextMonths.length === 0) nextMonths = ACADEMIC_SESSION_MONTHS.slice(0, 6) as unknown as string[];
+    } else if (preset === 'all_unpaid') {
+      nextMonths = unpaidMonths.length > 0 ? unpaidMonths : (ACADEMIC_SESSION_MONTHS as unknown as string[]);
+    } else if (preset === 'clear') {
+      nextMonths = [];
+    }
+
+    const monthsCount = Math.max(1, nextMonths.length);
+    setSelectedMonths(nextMonths);
+    setTuitionMonthsCount(monthsCount);
+    setIsCustomAmount(false);
+
+    const { total } = calculateTotalForHeads(
+      selectedFeeHeads,
+      selectedStudentId,
+      tuitionSubjectCount,
+      monthsCount,
+      examTermCount
+    );
+    setAmountPaid(total);
+    setRemarks(`Tuition fee for: ${nextMonths.length > 0 ? nextMonths.join(', ') : 'None'} (${tuitionSubjectCount} subjects).`);
+  };
+
   const handleTuitionParamsChange = (newSubjCount: number, newMonthsCount: number) => {
     setTuitionSubjectCount(newSubjCount);
     setTuitionMonthsCount(newMonthsCount);
     setIsCustomAmount(false);
+
+    // Pick top N unpaid months
+    const studentStatuses = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
+    const unpaidMonths = studentStatuses.filter((s) => !s.isPaid).map((s) => s.month);
+    const pickedMonths = unpaidMonths.slice(0, newMonthsCount);
+    const finalMonths = pickedMonths.length > 0 ? pickedMonths : (ACADEMIC_SESSION_MONTHS.slice(0, newMonthsCount) as unknown as string[]);
+    setSelectedMonths(finalMonths);
+
     const { total } = calculateTotalForHeads(
       selectedFeeHeads,
       selectedStudentId,
@@ -379,7 +496,6 @@ export const FeesView: React.FC<FeesViewProps> = ({
       examTermCount
     );
     setAmountPaid(total);
-    setSelectedMonths(newMonthsCount === 1 ? ['Current Month'] : [`${newMonthsCount} Months Bundle`]);
   };
 
   const handleExamTermsChange = (newTerms: number) => {
@@ -510,7 +626,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
     if (window.confirm('Reset all class fee structures back to academy standard defaults?')) {
       setFeeStructures(DEFAULT_FEE_STRUCTURE);
       localStorage.removeItem('biley_academy_custom_fee_structure_v1');
-      setStructureSuccessNotice('Fee structures successfully reset to Academy standard rates.');
+      localStorage.removeItem('biley_academy_custom_fee_structure_v2');
+      setStructureSuccessNotice('Fee structures successfully reset to Academy standard active rates.');
       setTimeout(() => setStructureSuccessNotice(null), 4000);
     }
   };
@@ -523,6 +640,94 @@ export const FeesView: React.FC<FeesViewProps> = ({
     setEditExamFee(st.examFeePerTerm);
     setEditMaterialsFee(st.materialsFee);
     setEditAnnualDevFee(st.annualDevelopmentFee ?? 50);
+  };
+
+  const handleOpenBatchModal = (bracket: 'PRIMARY' | 'MIDDLE' | 'SECONDARY' | 'SENIOR' | 'ALL') => {
+    setBatchTargetBracket(bracket);
+    if (bracket === 'PRIMARY') {
+      setBatchAdmissionFee(100);
+      setBatchTuitionFee(300);
+      setBatchExamFee(50);
+      setBatchMaterialsFee(50);
+      setBatchAnnualDevFee(50);
+    } else if (bracket === 'MIDDLE') {
+      setBatchAdmissionFee(100);
+      setBatchTuitionFee(350);
+      setBatchExamFee(50);
+      setBatchMaterialsFee(50);
+      setBatchAnnualDevFee(50);
+    } else if (bracket === 'SECONDARY') {
+      setBatchAdmissionFee(100);
+      setBatchTuitionFee(400);
+      setBatchExamFee(100);
+      setBatchMaterialsFee(50);
+      setBatchAnnualDevFee(50);
+    } else if (bracket === 'SENIOR') {
+      setBatchAdmissionFee(100);
+      setBatchTuitionFee(450);
+      setBatchExamFee(100);
+      setBatchMaterialsFee(50);
+      setBatchAnnualDevFee(50);
+    } else {
+      setBatchAdmissionFee(100);
+      setBatchTuitionFee(350);
+      setBatchExamFee(75);
+      setBatchMaterialsFee(50);
+      setBatchAnnualDevFee(50);
+    }
+    setIsBatchModalOpen(true);
+  };
+
+  const handleSaveBatchStructureEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedMap = { ...feeStructures };
+
+    Object.keys(updatedMap).forEach((key) => {
+      const st = updatedMap[key];
+      const classNum = parseInt(st.classLevel, 10);
+      let matches = false;
+
+      if (batchTargetBracket === 'PRIMARY' && classNum >= 1 && classNum <= 4) matches = true;
+      if (batchTargetBracket === 'MIDDLE' && classNum >= 5 && classNum <= 8) matches = true;
+      if (batchTargetBracket === 'SECONDARY' && classNum >= 9 && classNum <= 10) matches = true;
+      if (batchTargetBracket === 'SENIOR' && classNum >= 11 && classNum <= 12) matches = true;
+      if (batchTargetBracket === 'ALL') matches = true;
+
+      if (matches) {
+        updatedMap[key] = {
+          ...st,
+          admissionFee: Number(batchAdmissionFee),
+          monthlyTuitionFee: Number(batchTuitionFee),
+          perSubjectMonthlyFee: Number(batchTuitionFee),
+          examFeePerTerm: Number(batchExamFee),
+          materialsFee: Number(batchMaterialsFee),
+          annualDevelopmentFee: Number(batchAnnualDevFee),
+        };
+      }
+    });
+
+    setFeeStructures(updatedMap);
+    try {
+      localStorage.setItem('biley_academy_custom_fee_structure_v2', JSON.stringify(updatedMap));
+    } catch (err) {
+      console.error('Failed to save custom fee structures:', err);
+    }
+
+    setIsBatchModalOpen(false);
+    setStructureSuccessNotice(
+      `Active fee rates for ${
+        batchTargetBracket === 'PRIMARY'
+          ? 'Classes 1 to 4'
+          : batchTargetBracket === 'MIDDLE'
+          ? 'Classes 5 to 8'
+          : batchTargetBracket === 'SECONDARY'
+          ? 'Classes 9 to 10'
+          : batchTargetBracket === 'SENIOR'
+          ? 'Classes 11 to 12'
+          : 'All Classes (1 to 12)'
+      } updated successfully!`
+    );
+    setTimeout(() => setStructureSuccessNotice(null), 4000);
   };
 
   const handleSaveStructureEdit = (e: React.FormEvent) => {
@@ -548,7 +753,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
     setFeeStructures(updatedMap);
     try {
-      localStorage.setItem('biley_academy_custom_fee_structure_v1', JSON.stringify(updatedMap));
+      localStorage.setItem('biley_academy_custom_fee_structure_v2', JSON.stringify(updatedMap));
     } catch (err) {
       console.error('Failed to save custom fee structures:', err);
     }
@@ -625,6 +830,23 @@ export const FeesView: React.FC<FeesViewProps> = ({
               }`}
             >
               Collection Ledger ({deposits.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('monthly-tracker')}
+              id="fee-monthly-tracker-tab-btn"
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'monthly-tracker'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Monthly Tuition Tracker</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                activeTab === 'monthly-tracker' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                12 Mo
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('dues')}
@@ -805,9 +1027,16 @@ export const FeesView: React.FC<FeesViewProps> = ({
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                            {dep.feeHead}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                              {dep.feeHead}
+                            </span>
+                            {dep.monthsCovered && dep.monthsCovered.length > 0 && (
+                              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-1.5 py-0.2 rounded text-[10px] font-bold">
+                                📅 {dep.monthsCovered.length === 1 ? dep.monthsCovered[0] : `${dep.monthsCovered.length} Mo: ${dep.monthsCovered.map(m => m.split(' ')[0]).join(', ')}`}
+                              </span>
+                            )}
+                          </div>
                           {dep.remarks && (
                             <span className="block text-[10px] text-slate-400 truncate max-w-[200px] mt-0.5">
                               {dep.remarks}
@@ -1004,6 +1233,19 @@ export const FeesView: React.FC<FeesViewProps> = ({
         </div>
       )}
 
+      {activeTab === 'monthly-tracker' && (
+        <MonthlyTuitionTracker
+          students={students}
+          deposits={deposits}
+          subjects={subjects}
+          currentAdmin={currentAdmin}
+          onOpenFeeDepositModal={(studentId, month) => {
+            handleOpenDepositModal(studentId, undefined, 'Tuition Fee', month ? [month] : undefined);
+          }}
+          onViewReceipt={onViewReceipt}
+        />
+      )}
+
       {activeTab === 'structure' && (
         <div className="space-y-6">
           
@@ -1034,6 +1276,16 @@ export const FeesView: React.FC<FeesViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
+                {canManageStructures && (
+                  <button
+                    onClick={() => handleOpenBatchModal('PRIMARY')}
+                    id="batch-update-bracket-btn"
+                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Update Class Fee Brackets</span>
+                  </button>
+                )}
                 <button
                   onClick={handleExportFeeScheduleCSV}
                   id="export-fee-structure-csv-btn"
@@ -1635,28 +1887,29 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
               {/* Dynamic Sub-Controls when Tuition Fee is selected */}
               {selectedFeeHeads.includes('Tuition Fee') && (
-                <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-3">
+                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5 text-amber-600" />
-                      Tuition Fee Parameters (Subject Count & Billing Duration)
+                      <Calendar className="w-4 h-4 text-amber-600" />
+                      Tuition Fee Months & Subject Tracking (Academic Session 2026: Jan – Dec)
                     </span>
-                    <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-2 py-0.5 rounded-full">
-                      Auto-Multiplying
+                    <span className="text-[10px] bg-amber-200/90 text-amber-950 font-extrabold px-2.5 py-0.5 rounded-full">
+                      {selectedMonths.length} Month(s) Selected
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Subject count and quick presets */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="block text-slate-700 font-bold text-[11px] mb-1">
-                        Number of Subjects:
+                        Enrolled Subjects Count:
                       </label>
                       <div className="flex gap-1">
                         {[1, 2, 3, 4, 5, 6].map((num) => (
                           <button
                             key={num}
                             type="button"
-                            onClick={() => handleTuitionParamsChange(num, tuitionMonthsCount)}
+                            onClick={() => handleTuitionParamsChange(num, Math.max(1, selectedMonths.length))}
                             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                               tuitionSubjectCount === num
                                 ? 'bg-amber-600 text-white shadow-xs'
@@ -1671,31 +1924,91 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
                     <div>
                       <label className="block text-slate-700 font-bold text-[11px] mb-1">
-                        Duration (Months):
+                        Quick Duration Presets:
                       </label>
-                      <div className="flex gap-1">
-                        {[
-                          { m: 1, label: '1 Mo' },
-                          { m: 2, label: '2 Mo' },
-                          { m: 3, label: '3 Mo (Qtr)' },
-                          { m: 6, label: '6 Mo' },
-                          { m: 12, label: '1 Yr' },
-                        ].map((item) => (
-                          <button
-                            key={item.m}
-                            type="button"
-                            onClick={() => handleTuitionParamsChange(tuitionSubjectCount, item.m)}
-                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                              tuitionMonthsCount === item.m
-                                ? 'bg-slate-900 text-white shadow-xs'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
+                      <div className="flex gap-1 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleApplyMonthPreset('next_1')}
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
+                        >
+                          Next Unpaid
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyMonthPreset('quarter_3')}
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
+                        >
+                          3 Mo (Qtr)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyMonthPreset('semester_6')}
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
+                        >
+                          6 Mo (Sem)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyMonthPreset('all_unpaid')}
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
+                        >
+                          All Unpaid
+                        </button>
                       </div>
                     </div>
+                  </div>
+
+                  {/* 12 Academic Months Grid */}
+                  <div>
+                    <label className="block text-slate-700 font-bold text-[11px] mb-1.5">
+                      Select Academic Months Covered by this Deposit:
+                    </label>
+                    {(() => {
+                      const studentStatus = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
+                      return (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5">
+                          {ACADEMIC_SESSION_MONTHS.map((m) => {
+                            const st = studentStatus.find((s) => s.month === m);
+                            const isPaidAlready = st?.isPaid;
+                            const isSelected = selectedMonths.includes(m);
+
+                            return (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => handleToggleTuitionMonth(m)}
+                                className={`p-2 rounded-xl text-left transition-all border cursor-pointer relative ${
+                                  isSelected
+                                    ? 'bg-amber-500 text-slate-950 border-amber-600 font-black shadow-xs ring-2 ring-amber-300'
+                                    : isPaidAlready
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold block leading-tight">
+                                    {m.split(' ')[0]}
+                                  </span>
+                                  {isSelected ? (
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  ) : isPaidAlready ? (
+                                    <span className="text-[9px] bg-emerald-200 text-emerald-950 font-extrabold px-1 rounded">
+                                      Paid
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <span className={`text-[9px] block mt-0.5 ${
+                                  isSelected ? 'text-slate-900 font-semibold' : 'text-slate-400'
+                                }`}>
+                                  {m.split(' ')[1]}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {(() => {
@@ -1703,14 +2016,19 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
                     const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
                     const perSub = st.perSubjectMonthlyFee || 350;
-                    const calculated = perSub * tuitionSubjectCount * tuitionMonthsCount;
+                    const calculated = perSub * tuitionSubjectCount * Math.max(1, selectedMonths.length);
 
                     return (
-                      <div className="p-2 bg-white rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
+                      <div className="p-2.5 bg-white rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
                         <span className="text-slate-600">
-                          Calculation: <strong>{tuitionSubjectCount} subjects</strong> × <strong>₹{perSub}/subject</strong> × <strong>{tuitionMonthsCount} month(s)</strong>
+                          Calculation: <strong>{tuitionSubjectCount} subjects</strong> × <strong>₹{perSub}/sub/mo</strong> × <strong>{selectedMonths.length} month(s)</strong>
+                          {selectedMonths.length > 0 && (
+                            <span className="text-amber-800 font-medium ml-1">
+                              ({selectedMonths.map(m => m.split(' ')[0]).join(', ')})
+                            </span>
+                          )}
                         </span>
-                        <strong className="text-emerald-700 font-black text-xs">= {formatCurrency(calculated)}</strong>
+                        <strong className="text-emerald-700 font-black text-xs shrink-0">= {formatCurrency(calculated)}</strong>
                       </div>
                     );
                   })()}
@@ -2028,6 +2346,173 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>Save Class Rates</span>
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* Batch Bracket Fee Update Modal */}
+      {isBatchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500 text-slate-950 rounded-xl font-bold">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base">Batch Update Class Fee Structure</h3>
+                  <p className="text-[11px] text-amber-300">
+                    Update all classes in selected bracket simultaneously
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBatchModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBatchStructureEdit} className="p-6 space-y-4 text-xs">
+              
+              {/* Bracket Selector Tabs */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">Select Target Class Bracket</label>
+                <div className="grid grid-cols-5 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                  {[
+                    { id: 'PRIMARY', label: 'Class 1–4', sub: 'Primary' },
+                    { id: 'MIDDLE', label: 'Class 5–8', sub: 'Middle' },
+                    { id: 'SECONDARY', label: 'Class 9–10', sub: 'Secondary' },
+                    { id: 'SENIOR', label: 'Class 11–12', sub: 'Sr. Sec' },
+                    { id: 'ALL', label: 'All Classes', sub: '1 to 12' },
+                  ].map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => handleOpenBatchModal(b.id as any)}
+                      className={`py-2 px-1 rounded-lg text-center transition-all cursor-pointer ${
+                        batchTargetBracket === b.id
+                          ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-200 font-semibold'
+                      }`}
+                    >
+                      <div className="text-[11px] leading-tight">{b.label}</div>
+                      <div className="text-[9px] opacity-75">{b.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Admission Fee (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={batchAdmissionFee}
+                    onChange={(e) => setBatchAdmissionFee(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                  />
+                  <span className="text-[10px] text-slate-400">One-time registration</span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Monthly Tuition / Subject (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={batchTuitionFee}
+                    onChange={(e) => setBatchTuitionFee(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-emerald-700"
+                  />
+                  <span className="text-[10px] text-slate-400">Monthly per subject</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Exam Fee / Term (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={batchExamFee}
+                    onChange={(e) => setBatchExamFee(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Per term (2 terms/yr)</span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Annual Dev. Fee (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={batchAnnualDevFee}
+                    onChange={(e) => setBatchAnnualDevFee(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Annual amenities</span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Study Materials (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={batchMaterialsFee}
+                    onChange={(e) => setBatchMaterialsFee(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Annual kit & notes</span>
+                </div>
+              </div>
+
+              {/* Calculated Annual Preview */}
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-amber-800 block">
+                    Calculated Est. Annual Fee (4 Subjects)
+                  </span>
+                  <span className="text-[11px] text-slate-600">
+                    {batchAdmissionFee} + (12 × 4 × {batchTuitionFee}) + (2 × {batchExamFee}) + {batchMaterialsFee} + {batchAnnualDevFee}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-base font-black text-slate-950">
+                    {formatCurrency(
+                      batchAdmissionFee + (batchTuitionFee * 4 * 12) + (batchExamFee * 2) + batchMaterialsFee + batchAnnualDevFee
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBatchModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  id="save-batch-fee-structure-btn"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Apply to {batchTargetBracket === 'ALL' ? 'All Classes' : `${batchTargetBracket} Classes`}</span>
                 </button>
               </div>
 

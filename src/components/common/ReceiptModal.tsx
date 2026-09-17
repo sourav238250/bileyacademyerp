@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FeeDeposit, Student, InstitutionalAuthorizationConfig } from '../../types';
 import { formatCurrency } from '../../utils/academicUtils';
 import { DEFAULT_AUTHORIZATION_CONFIG } from '../../utils/storage';
+import { generateFeeReceiptPDF } from '../../utils/receiptPdfGenerator';
 import { InstituteLogo } from './InstituteLogo';
 import {
   Printer,
@@ -17,6 +18,8 @@ import {
   Edit3,
   Check,
   RotateCcw,
+  Download,
+  Share2,
 } from 'lucide-react';
 
 interface ReceiptModalProps {
@@ -35,6 +38,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onUpdateAuthConfig,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [downloadSuccessNotice, setDownloadSuccessNotice] = useState<string | null>(null);
   const [isEditingAuth, setIsEditingAuth] = useState(false);
 
   // Editable authorization signatory fields
@@ -64,6 +69,33 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     }, 150);
   };
 
+  const handleDownloadPDF = () => {
+    try {
+      setIsDownloadingPdf(true);
+      const doc = generateFeeReceiptPDF(deposit, student, {
+        authConfig,
+        signatoryName,
+        signatoryDesignation,
+        authoritySubtext,
+        collectedByName,
+        sealText,
+      });
+
+      const sanitizedStudentName = student.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Fee_Receipt_${deposit.receiptNo}_${sanitizedStudentName}.pdf`;
+      doc.save(filename);
+
+      setDownloadSuccessNotice(`Downloaded ${filename} successfully!`);
+      setTimeout(() => setDownloadSuccessNotice(null), 4000);
+    } catch (err) {
+      console.error('Failed to generate fee receipt PDF:', err);
+      alert('Unable to generate PDF. Falling back to browser print window.');
+      window.print();
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const handleSaveAuth = () => {
     if (onUpdateAuthConfig) {
       onUpdateAuthConfig({
@@ -88,7 +120,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <CheckCircle className="w-5 h-5 text-emerald-400" />
             <span className="font-semibold text-sm">Official Payment Receipt</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             <button
               onClick={() => setIsEditingAuth(!isEditingAuth)}
               id="edit-receipt-auth-btn"
@@ -103,25 +135,48 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>{isEditingAuth ? 'Done Editing' : 'Edit Authorization'}</span>
             </button>
 
+            {/* Direct PDF Download Button */}
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isDownloadingPdf}
+              id="download-receipt-pdf-btn"
+              title="Download official PDF document directly"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-75"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Save PDF</span>
+                </>
+              )}
+            </button>
+
+            {/* Browser Print Button */}
             <button
               onClick={handlePrint}
               disabled={isPrinting}
               id="print-receipt-btn"
-              title="Click to print or select 'Save as PDF' in the destination dropdown"
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-75"
+              title="Open browser print dialogue (A4 format)"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-75"
             >
               {isPrinting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Preparing Print...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Preparing...</span>
                 </>
               ) : (
                 <>
-                  <Printer className="w-4 h-4 text-emerald-200" />
-                  <span>Print / Save PDF</span>
+                  <Printer className="w-3.5 h-3.5 text-slate-300" />
+                  <span>Print</span>
                 </>
               )}
             </button>
+
             <button
               onClick={onClose}
               id="close-receipt-btn"
@@ -131,6 +186,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Download Success Banner */}
+        {downloadSuccessNotice && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-2 text-xs font-semibold text-emerald-800 flex items-center justify-between print:hidden">
+            <span className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600" />
+              {downloadSuccessNotice}
+            </span>
+            <button
+              onClick={() => setDownloadSuccessNotice(null)}
+              className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Authorization Inline Edit Toolbar (Hidden in Print) */}
         {isEditingAuth && (
@@ -351,7 +422,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end">
+              {authConfig.digitalSignatureUrl && authConfig.showSignatureOnReceipts !== false ? (
+                <div className="h-12 w-36 flex items-center justify-end mb-1">
+                  <img
+                    src={authConfig.digitalSignatureUrl}
+                    alt="Authorized Signatory Signature"
+                    className="max-h-full max-w-full object-contain filter contrast-125"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              ) : (
+                <div className="h-4"></div>
+              )}
               <div className="w-40 border-b border-slate-400 mb-1 ml-auto"></div>
               <p className="text-xs font-bold text-slate-900">
                 {signatoryName}
@@ -367,6 +450,43 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
           <div className="text-center text-[10px] text-slate-400 mt-6 pt-3 border-t border-slate-100">
             * This is an official computer-generated fee acknowledgement receipt. Please preserve for academic records.
+          </div>
+        </div>
+
+        {/* Modal Bottom Action Footer (Hidden in Print) */}
+        <div className="flex items-center justify-between px-6 py-3.5 bg-slate-50 border-t border-slate-200 print:hidden">
+          <div className="text-[11px] text-slate-500">
+            <span>Verified System Receipt • </span>
+            <span className="font-mono text-slate-700 font-semibold">{deposit.receiptNo}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isDownloadingPdf}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-75"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-4 h-4 text-emerald-200" />
+                  <span>Download PDF Document</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handlePrint}
+              disabled={isPrinting}
+              className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-75"
+            >
+              <Printer className="w-4 h-4 text-slate-300" />
+              <span>Print Receipt</span>
+            </button>
           </div>
         </div>
 

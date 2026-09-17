@@ -242,6 +242,164 @@ export function computeStudentFeeSummary(
   };
 }
 
+export const ACADEMIC_SESSION_MONTHS = [
+  'January 2026',
+  'February 2026',
+  'March 2026',
+  'April 2026',
+  'May 2026',
+  'June 2026',
+  'July 2026',
+  'August 2026',
+  'September 2026',
+  'October 2026',
+  'November 2026',
+  'December 2026',
+] as const;
+
+export type AcademicSessionMonth = (typeof ACADEMIC_SESSION_MONTHS)[number];
+
+export const MONTH_SHORT_NAMES: Record<string, string> = {
+  'January 2026': 'Jan',
+  'February 2026': 'Feb',
+  'March 2026': 'Mar',
+  'April 2026': 'Apr',
+  'May 2026': 'May',
+  'June 2026': 'Jun',
+  'July 2026': 'Jul',
+  'August 2026': 'Aug',
+  'September 2026': 'Sep',
+  'October 2026': 'Oct',
+  'November 2026': 'Nov',
+  'December 2026': 'Dec',
+};
+
+export interface StudentMonthTuitionStatus {
+  month: string;
+  shortMonth: string;
+  isPaid: boolean;
+  depositId?: string;
+  receiptNo?: string;
+  depositDate?: string;
+  amountPaid?: number;
+  paymentMode?: string;
+  matchingDeposit?: FeeDeposit;
+}
+
+/**
+ * Normalizes string representations of months for accurate matching
+ * e.g., "April 2026", "April", "Apr 2026", "Apr"
+ */
+export function matchMonth(monthNameA: string, monthNameB: string): boolean {
+  const cleanA = monthNameA.trim().toLowerCase();
+  const cleanB = monthNameB.trim().toLowerCase();
+  if (cleanA === cleanB) return true;
+
+  const prefixA = cleanA.split(' ')[0].slice(0, 3);
+  const prefixB = cleanB.split(' ')[0].slice(0, 3);
+  return prefixA === prefixB && prefixA.length >= 3;
+}
+
+/**
+ * Retrieves the month-by-month tuition payment status for a specific student
+ */
+export function getStudentTuitionMonthsStatus(
+  studentId: string,
+  deposits: FeeDeposit[],
+  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+): StudentMonthTuitionStatus[] {
+  // Find all tuition deposits for this student
+  const studentTuitionDeposits = deposits.filter((d) => {
+    if (d.studentId !== studentId) return false;
+    const isTuition =
+      d.feeHead === 'Tuition Fee' ||
+      d.selectedFeeHeads?.includes('Tuition Fee') ||
+      (d.monthsCovered && d.monthsCovered.length > 0);
+    return isTuition;
+  });
+
+  return sessionMonths.map((sessionMonth) => {
+    const matchingDeposit = studentTuitionDeposits.find((d) =>
+      d.monthsCovered?.some((covMonth) => matchMonth(covMonth, sessionMonth))
+    );
+
+    return {
+      month: sessionMonth,
+      shortMonth: MONTH_SHORT_NAMES[sessionMonth] || sessionMonth.slice(0, 3),
+      isPaid: !!matchingDeposit,
+      depositId: matchingDeposit?.id,
+      receiptNo: matchingDeposit?.receiptNo,
+      depositDate: matchingDeposit?.depositDate,
+      amountPaid: matchingDeposit?.amountPaid,
+      paymentMode: matchingDeposit?.paymentMode,
+      matchingDeposit,
+    };
+  });
+}
+
+/**
+ * Returns the first unpaid month for a student in the academic session
+ */
+export function getNextUnpaidTuitionMonth(
+  studentId: string,
+  deposits: FeeDeposit[],
+  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+): string | null {
+  const statuses = getStudentTuitionMonthsStatus(studentId, deposits, sessionMonths);
+  const unpaid = statuses.find((s) => !s.isPaid);
+  return unpaid ? unpaid.month : null;
+}
+
+/**
+ * Computes tuition collection statistics for each month across all active students
+ */
+export function getTuitionMonthCollectionStats(
+  students: Student[],
+  deposits: FeeDeposit[],
+  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+): {
+  month: string;
+  shortMonth: string;
+  totalStudents: number;
+  paidStudentsCount: number;
+  unpaidStudentsCount: number;
+  collectionPercentage: number;
+  totalCollected: number;
+}[] {
+  const activeStudents = students.filter((s) => s.status === 'Active');
+  const totalActive = activeStudents.length || 1;
+
+  return sessionMonths.map((month) => {
+    let paidCount = 0;
+    let totalCollected = 0;
+
+    activeStudents.forEach((student) => {
+      const monthStatus = getStudentTuitionMonthsStatus(student.id, deposits, [month])[0];
+      if (monthStatus?.isPaid) {
+        paidCount++;
+        if (monthStatus.matchingDeposit) {
+          // If deposit covers multiple months, attribute proportional share
+          const monthsCount = monthStatus.matchingDeposit.monthsCovered?.length || 1;
+          totalCollected += Math.round(monthStatus.matchingDeposit.amountPaid / monthsCount);
+        }
+      }
+    });
+
+    const unpaidCount = Math.max(0, activeStudents.length - paidCount);
+    const collectionPercentage = Math.round((paidCount / totalActive) * 100);
+
+    return {
+      month,
+      shortMonth: MONTH_SHORT_NAMES[month] || month.slice(0, 3),
+      totalStudents: activeStudents.length,
+      paidStudentsCount: paidCount,
+      unpaidStudentsCount: unpaidCount,
+      collectionPercentage,
+      totalCollected,
+    };
+  });
+}
+
 export function generateStudentId(classLevel: ClassLevel, existingCount: number): string {
   const currentYear = new Date().getFullYear();
   const sequence = String(existingCount + 1).padStart(3, '0');

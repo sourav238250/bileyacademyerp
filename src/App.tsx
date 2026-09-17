@@ -110,11 +110,17 @@ export default function App() {
   const [isNewAdmissionModalOpen, setIsNewAdmissionModalOpen] = useState(false);
   const [isFeeDepositModalOpen, setIsFeeDepositModalOpen] = useState(false);
   const [targetStudentForFee, setTargetStudentForFee] = useState<string | undefined>(undefined);
+  const [targetFeeMonth, setTargetFeeMonth] = useState<string | undefined>(undefined);
   const [targetExamForResults, setTargetExamForResults] = useState<string | undefined>(undefined);
-  const [targetFeesTab, setTargetFeesTab] = useState<'deposits' | 'dues' | 'structure'>('deposits');
+  const [targetFeesTab, setTargetFeesTab] = useState<'deposits' | 'dues' | 'monthly-tracker' | 'structure'>('deposits');
 
   const handleNavigateToFeeStructure = () => {
     setTargetFeesTab('structure');
+    setActiveTab('fees');
+  };
+
+  const handleNavigateToMonthlyTracker = () => {
+    setTargetFeesTab('monthly-tracker');
     setActiveTab('fees');
   };
 
@@ -367,11 +373,12 @@ export default function App() {
     setIsNewAdmissionModalOpen(true);
   };
 
-  const handleQuickFeeDeposit = (studentId?: string) => {
+  const handleQuickFeeDeposit = (studentId?: string, month?: string) => {
     if (!currentAdmin) {
       setLoginModalSectionTitle('Fee Deposit & Financial Receipts');
       setPendingActionAfterLogin(() => () => {
         setTargetStudentForFee(studentId);
+        setTargetFeeMonth(month);
         setActiveTab('fees');
         setIsFeeDepositModalOpen(true);
       });
@@ -379,6 +386,7 @@ export default function App() {
       return;
     }
     setTargetStudentForFee(studentId);
+    setTargetFeeMonth(month);
     setActiveTab('fees');
     setIsFeeDepositModalOpen(true);
   };
@@ -779,6 +787,7 @@ export default function App() {
             <FeesView
               students={students}
               deposits={deposits}
+              subjects={subjects}
               authConfig={authConfig}
               onAddDeposit={handleAddDeposit}
               onDeleteDeposit={handleDeleteDeposit}
@@ -786,6 +795,7 @@ export default function App() {
               isDepositModalOpen={isFeeDepositModalOpen}
               setIsDepositModalOpen={setIsFeeDepositModalOpen}
               preselectedStudentId={targetStudentForFee}
+              preselectedMonth={targetFeeMonth}
               initialActiveTab={targetFeesTab}
               currentAdmin={currentAdmin}
               onOpenAdminLogin={() => {

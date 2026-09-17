@@ -338,7 +338,19 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <span className="text-[7px] text-slate-500 font-mono">{result.publishedDate}</span>
             </div>
 
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center">
+              {authConfig.digitalSignatureUrl && authConfig.showSignatureOnReportCards !== false ? (
+                <div className="h-12 w-36 flex items-center justify-center mb-1">
+                  <img
+                    src={authConfig.digitalSignatureUrl}
+                    alt="Director Digital Signature"
+                    className="max-h-full max-w-full object-contain filter contrast-125"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              ) : (
+                <div className="h-4"></div>
+              )}
               <div className="w-40 border-b border-slate-400 mb-1"></div>
               <p className="text-xs font-bold text-slate-800">{directorName}</p>
               <p className="text-[10px] font-semibold text-slate-700">{directorDesignation}</p>

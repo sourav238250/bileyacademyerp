@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { InstitutionalAuthorizationConfig, AdminUser } from '../../types';
 import { DEFAULT_AUTHORIZATION_CONFIG } from '../../utils/storage';
+import { DigitalSignaturePad } from './DigitalSignaturePad';
 import {
   ShieldCheck,
   X,
@@ -15,6 +16,8 @@ import {
   Stamp,
   Edit3,
   Key,
+  PenTool,
+  FileCheck,
 } from 'lucide-react';
 
 interface AuthorizationSettingsModalProps {
@@ -24,7 +27,7 @@ interface AuthorizationSettingsModalProps {
   onSaveAuthConfig: (config: InstitutionalAuthorizationConfig) => void;
   currentAdmin?: AdminUser | null;
   onUpdateCurrentAdmin?: (admin: AdminUser) => void;
-  defaultTab?: 'all' | 'restrictions' | 'treasury' | 'accounts' | 'academic' | 'exams' | 'profile';
+  defaultTab?: 'all' | 'restrictions' | 'signature' | 'treasury' | 'accounts' | 'academic' | 'exams' | 'profile';
   onOpenChangePassword?: () => void;
 }
 
@@ -38,7 +41,7 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
   defaultTab = 'all',
   onOpenChangePassword,
 }) => {
-  const [activeCategory, setActiveCategory] = useState<'all' | 'restrictions' | 'treasury' | 'accounts' | 'academic' | 'exams' | 'profile'>(defaultTab);
+  const [activeCategory, setActiveCategory] = useState<'all' | 'restrictions' | 'signature' | 'treasury' | 'accounts' | 'academic' | 'exams' | 'profile'>(defaultTab);
   const [formData, setFormData] = useState<InstitutionalAuthorizationConfig>(authConfig || DEFAULT_AUTHORIZATION_CONFIG);
   
   // Profile state for active staff
@@ -165,6 +168,19 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
           >
             <ShieldCheck className="w-3.5 h-3.5 text-rose-300" />
             <span>Admissions & Fee Restrictions</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveCategory('signature')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeCategory === 'signature'
+                ? 'bg-indigo-800 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <PenTool className="w-3.5 h-3.5 text-indigo-300" />
+            <span>Digital Signature</span>
           </button>
 
           <button
@@ -329,6 +345,105 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                 </div>
 
               </div>
+            </div>
+          )}
+
+          {/* SECTION: Official Digital Signature Upload & Drawing Pad */}
+          {(activeCategory === 'all' || activeCategory === 'signature') && (
+            <div className="bg-indigo-50/70 border-2 border-indigo-200 rounded-2xl p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PenTool className="w-5 h-5 text-indigo-700" />
+                  <div>
+                    <h3 className="font-black text-indigo-950 text-sm">
+                      Institutional Digital Signature Configuration
+                    </h3>
+                    <p className="text-[11px] text-indigo-700">
+                      Upload an official scanned signature or draw directly with the digital pen to render on receipts, report cards, and payment vouchers.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 bg-indigo-200 text-indigo-900 rounded-lg font-bold text-[10px] uppercase">
+                  Digital Authorization
+                </span>
+              </div>
+
+              {/* Digital Signature Pad Component */}
+              <DigitalSignaturePad
+                value={formData.digitalSignatureUrl}
+                signatureType={formData.digitalSignatureType || 'preset'}
+                signatoryName={formData.directorName || formData.accountsSignatoryName || 'Mr. Sourav Dinda'}
+                signatoryDesignation={formData.directorDesignation || 'Director & Authorized Signatory'}
+                onChange={(dataUrl, type) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    digitalSignatureUrl: dataUrl,
+                    digitalSignatureType: type,
+                    digitalSignatureTimestamp: new Date().toISOString().split('T')[0],
+                  }));
+                }}
+                onClear={() => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    digitalSignatureUrl: '',
+                    digitalSignatureType: 'none',
+                  }));
+                }}
+              />
+
+              {/* Document Rendering Inclusion Toggles */}
+              <div className="bg-white p-4 rounded-xl border border-indigo-200 space-y-3">
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
+                  Document Signature Application Scope
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  
+                  {/* Toggle 1: Fee Receipts */}
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.showSignatureOnReceipts !== false}
+                      onChange={(e) => handleChange('showSignatureOnReceipts', e.target.checked)}
+                      className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">Official Fee Receipts</span>
+                      <span className="text-[10px] text-slate-500">Render on printed & downloaded PDF fee receipts</span>
+                    </div>
+                  </label>
+
+                  {/* Toggle 2: Academic Report Cards */}
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.showSignatureOnReportCards !== false}
+                      onChange={(e) => handleChange('showSignatureOnReportCards', e.target.checked)}
+                      className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">Academic Report Cards</span>
+                      <span className="text-[10px] text-slate-500">Render above Director / Principal signature line</span>
+                    </div>
+                  </label>
+
+                  {/* Toggle 3: Payment Vouchers */}
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.showSignatureOnVouchers !== false}
+                      onChange={(e) => handleChange('showSignatureOnVouchers', e.target.checked)}
+                      className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">Disbursement Vouchers</span>
+                      <span className="text-[10px] text-slate-500">Render on official treasury payment vouchers</span>
+                    </div>
+                  </label>
+
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -756,7 +871,19 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                   </div>
 
                   {/* Accounts Signatory */}
-                  <div className="text-center sm:text-right">
+                  <div className="text-center sm:text-right flex flex-col items-center sm:items-end">
+                    {formData.digitalSignatureUrl && formData.showSignatureOnReceipts !== false ? (
+                      <div className="h-10 w-32 flex items-center justify-center sm:justify-end mb-1">
+                        <img
+                          src={formData.digitalSignatureUrl}
+                          alt="Accounts Digital Signature"
+                          className="max-h-full max-w-full object-contain filter contrast-125"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-6"></div>
+                    )}
                     <div className="w-36 border-b border-slate-400 mb-1 mx-auto sm:ml-auto sm:mr-0"></div>
                     <p className="text-xs font-bold text-slate-900">
                       {formData.accountsSignatoryName || 'Authorized Signatory'}
@@ -770,7 +897,19 @@ export const AuthorizationSettingsModal: React.FC<AuthorizationSettingsModalProp
                   </div>
 
                   {/* Director Signatory */}
-                  <div className="text-center sm:text-right">
+                  <div className="text-center sm:text-right flex flex-col items-center sm:items-end">
+                    {formData.digitalSignatureUrl && formData.showSignatureOnReportCards !== false ? (
+                      <div className="h-10 w-32 flex items-center justify-center sm:justify-end mb-1">
+                        <img
+                          src={formData.digitalSignatureUrl}
+                          alt="Director Digital Signature"
+                          className="max-h-full max-w-full object-contain filter contrast-125"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-6"></div>
+                    )}
                     <div className="w-36 border-b border-slate-400 mb-1 mx-auto sm:ml-auto sm:mr-0"></div>
                     <p className="text-xs font-bold text-slate-900">
                       {formData.directorName || 'Academic Director'}

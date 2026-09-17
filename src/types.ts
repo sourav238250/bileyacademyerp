@@ -144,6 +144,16 @@ export interface InstitutionalAuthorizationConfig {
   sealInstitutionName: string;
   sealVerificationText: string;
 
+  // Digital Signature Authorization
+  digitalSignatureUrl?: string; // Base64 Data URL or image path for official digital signature
+  digitalSignatureType?: 'drawn' | 'uploaded' | 'preset' | 'none';
+  digitalSignatureTimestamp?: string;
+  directorSignatureUrl?: string; // Optional director-specific signature (defaults to digitalSignatureUrl)
+  accountsSignatureUrl?: string; // Optional accounts-specific signature (defaults to digitalSignatureUrl)
+  showSignatureOnReceipts?: boolean;
+  showSignatureOnReportCards?: boolean;
+  showSignatureOnVouchers?: boolean;
+
   // Institutional Operational Restrictions & Counters
   isAdmissionLocked?: boolean;
   admissionLockReason?: string;

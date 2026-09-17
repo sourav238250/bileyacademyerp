@@ -30,6 +30,9 @@ import {
 } from '../data/initialQuestionBankData';
 import { INITIAL_DISBURSEMENTS } from '../data/initialDisbursementsData';
 
+export const DEFAULT_DIGITAL_SIGNATURE_DATA_URL =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" width="320" height="100"><path d="M 25,65 Q 45,20 60,35 Q 75,55 90,30 Q 105,10 115,45 Q 125,75 140,50 Q 155,25 175,40 Q 195,55 210,35 Q 225,18 240,48 Q 255,70 280,30 M 45,78 C 100,72 200,68 295,62" fill="none" stroke="%231e3a8a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 export const DEFAULT_AUTHORIZATION_CONFIG: InstitutionalAuthorizationConfig = {
   directorName: 'Mr. Sourav Dinda',
   directorDesignation: 'Director & Founder',
@@ -53,6 +56,13 @@ export const DEFAULT_AUTHORIZATION_CONFIG: InstitutionalAuthorizationConfig = {
 
   sealInstitutionName: 'BILEY ACADEMY',
   sealVerificationText: 'AUTHORIZED & VERIFIED',
+
+  digitalSignatureUrl: DEFAULT_DIGITAL_SIGNATURE_DATA_URL,
+  digitalSignatureType: 'preset',
+  digitalSignatureTimestamp: '2026-09-16',
+  showSignatureOnReceipts: true,
+  showSignatureOnReportCards: true,
+  showSignatureOnVouchers: true,
 
   isAdmissionLocked: false,
   admissionLockReason: '',

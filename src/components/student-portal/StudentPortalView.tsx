@@ -19,6 +19,8 @@ import {
   getStudentCoachingMode,
   getAttendanceStatusBadge,
   DEFAULT_FEE_STRUCTURE,
+  ACADEMIC_SESSION_MONTHS,
+  getStudentTuitionMonthsStatus,
 } from '../../utils/academicUtils';
 import { downloadAssignmentPDF } from '../../utils/pdfGenerator';
 import { PrintPreviewModal } from '../question-bank/PrintPreviewModal';
@@ -659,6 +661,76 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <p className="text-[10px] text-slate-500">Status: {feeSummary.feeStatus}</p>
             </div>
           </div>
+
+          {/* Academic Session Monthly Tuition Fee Tracker Card */}
+          {(() => {
+            const monthsStatus = getStudentTuitionMonthsStatus(student.id, deposits);
+            const paidCount = monthsStatus.filter((m) => m.isPaid).length;
+            const dueCount = 12 - paidCount;
+
+            return (
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
+                      Academic Session Monthly Tuition Track (Jan – Dec 2026)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      12 Months Academic Cycle: January 2026 to December 2026 • Rate: {formatCurrency(feeSummary.monthlyTuitionFee)}/month
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold">
+                      ✓ {paidCount} Cleared
+                    </span>
+                    {dueCount > 0 && (
+                      <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold">
+                        ⏳ {dueCount} Due
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                  {monthsStatus.map((m) => (
+                    <div
+                      key={m.month}
+                      className={`p-3 rounded-xl border transition-all ${
+                        m.isPaid
+                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950 shadow-2xs'
+                          : 'bg-slate-50/80 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">{m.shortMonth}</span>
+                        {m.isPaid ? (
+                          <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                            ✓
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-100/80 px-1.5 py-0.2 rounded">
+                            Due
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1 font-medium">{m.month.split(' ')[1]}</p>
+                      {m.isPaid ? (
+                        <div className="mt-2 pt-1.5 border-t border-emerald-200/60 text-[10px]">
+                          <p className="font-semibold text-emerald-800 truncate">{m.receiptNo || 'Cleared'}</p>
+                          <p className="text-emerald-700 font-bold">{formatCurrency(m.amountPaid || feeSummary.monthlyTuitionFee)}</p>
+                        </div>
+                      ) : (
+                        <div className="mt-2 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-400">
+                          <span>Payable: {formatCurrency(feeSummary.monthlyTuitionFee)}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Receipts Table */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
