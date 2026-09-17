@@ -1706,214 +1706,255 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
       {/* Record Fee Deposit Modal */}
       {isDepositModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden my-8 border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-200">
             
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-emerald-400" />
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <CreditCard className="w-5 h-5" />
+                </div>
                 <div>
-                  <h3 className="font-bold text-base">Record Student Fee Deposit</h3>
+                  <h3 className="font-bold text-sm sm:text-base text-white">Record Student Fee Deposit</h3>
                   <p className="text-[11px] text-slate-300">
-                    Amounts auto-calculate based on selected fee particular & student class
+                    Auto-calculates by enrolled subjects, selected heads & 2026 academic cycle
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsDepositModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleDepositSubmit} className="p-6 space-y-4 text-xs font-sans">
+            {/* Modal Form */}
+            <form onSubmit={handleDepositSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden text-xs font-sans">
               
-              {/* Student Selector */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Select Enrolled Student *</label>
-                <select
-                  value={selectedStudentId}
-                  onChange={(e) => handleStudentChangeInDeposit(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-xs font-medium"
-                >
-                  {students.map((st) => {
-                    const sum = computeStudentFeeSummary(st, deposits);
-                    return (
-                      <option key={st.id} value={st.id}>
-                        {st.name} (Class {st.classLevel} - {st.stream}) • Enrolled: {st.enrolledSubjectIds?.length || 4} Subj • Due: {formatCurrency(sum.dueAmount)}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              {/* Student Summary Preview Card */}
-              {(() => {
-                const targetStudent = students.find((s) => s.id === selectedStudentId);
-                if (!targetStudent) return null;
-                const summary = computeStudentFeeSummary(targetStudent, deposits);
-                const structKey = `${targetStudent.classLevel}-${targetStudent.stream}`;
-                const st = feeStructures[structKey] || feeStructures[`${targetStudent.classLevel}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
-
-                return (
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-slate-400 block">Class & Stream:</span>
-                      <strong className="text-slate-800">Class {targetStudent.classLevel} ({targetStudent.stream})</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Tuition Rate:</span>
-                      <strong className="text-emerald-700">{formatCurrency(st.perSubjectMonthlyFee || 350)}/subj/mo</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Current Outstanding Due:</span>
-                      <strong className="text-amber-700 font-bold">{formatCurrency(summary.dueAmount)}</strong>
-                    </div>
+              {/* Scrollable Form Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 custom-scrollbar">
+                
+                {/* Row 1: Student Selection + Live Student Fee Profile */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
+                  <div className="md:col-span-7 space-y-1">
+                    <label className="block text-slate-700 font-bold text-xs">Select Enrolled Student *</label>
+                    <select
+                      value={selectedStudentId}
+                      onChange={(e) => handleStudentChangeInDeposit(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-xs font-medium"
+                    >
+                      {students.map((st) => {
+                        const sum = computeStudentFeeSummary(st, deposits);
+                        return (
+                          <option key={st.id} value={st.id}>
+                            {st.name} (Class {st.classLevel} - {st.stream}) • Enrolled: {st.enrolledSubjectIds?.length || 4} Subj • Due: {formatCurrency(sum.dueAmount)}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
-                );
-              })()}
 
-              {/* Fee Particulars / Heads Multi-Select Section */}
-              <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <label className="block text-slate-700 font-bold text-xs">
-                    Select Fee Particulars / Heads (Select one or multiple) *
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-slate-400 font-semibold mr-1">Presets:</span>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyHeadsPreset('tuition')}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
-                    >
-                      Tuition Only
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyHeadsPreset('admission_tuition')}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
-                    >
-                      Admission + Tuition
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyHeadsPreset('all')}
-                      className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[10px] font-bold cursor-pointer"
-                    >
-                      All Heads (Full Session)
-                    </button>
+                  <div className="md:col-span-5">
+                    {(() => {
+                      const targetStudent = students.find((s) => s.id === selectedStudentId);
+                      if (!targetStudent) return null;
+                      const summary = computeStudentFeeSummary(targetStudent, deposits);
+                      const structKey = `${targetStudent.classLevel}-${targetStudent.stream}`;
+                      const st = feeStructures[structKey] || feeStructures[`${targetStudent.classLevel}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+
+                      return (
+                        <div className="h-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center gap-1 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Class & Stream:</span>
+                            <strong className="text-slate-800 font-semibold">Class {targetStudent.classLevel} ({targetStudent.stream})</strong>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Tuition Rate:</span>
+                            <strong className="text-emerald-700 font-bold">{formatCurrency(st.perSubjectMonthlyFee || 350)}/sub/mo</strong>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Pending Due:</span>
+                            <strong className="text-amber-700 font-bold">{formatCurrency(summary.dueAmount)}</strong>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
-                {(() => {
-                  const targetStudent = students.find((s) => s.id === selectedStudentId);
-                  const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
-                  const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
-
-                  const headsList: { id: FeeHeadType; label: string; rateDisplay: string; subDesc: string }[] = [
-                    {
-                      id: 'Tuition Fee',
-                      label: 'Tuition Fee',
-                      rateDisplay: `₹${st.perSubjectMonthlyFee || 350}/subj/mo`,
-                      subDesc: `${tuitionSubjectCount} subj × ${tuitionMonthsCount} mo = ₹${(st.perSubjectMonthlyFee || 350) * tuitionSubjectCount * tuitionMonthsCount}`,
-                    },
-                    {
-                      id: 'Admission Fee',
-                      label: 'Admission Fee',
-                      rateDisplay: `₹${st.admissionFee} (One-time)`,
-                      subDesc: 'Registration & Enrollment',
-                    },
-                    {
-                      id: 'Exam Fee',
-                      label: 'Exam Fee',
-                      rateDisplay: `₹${st.examFeePerTerm}/term`,
-                      subDesc: `${examTermCount} Term(s) = ₹${st.examFeePerTerm * examTermCount}`,
-                    },
-                    {
-                      id: 'Study Material and Lab Fees',
-                      label: 'Study Material and Lab Fees',
-                      rateDisplay: `₹${st.materialsFee}`,
-                      subDesc: 'Annual Worksheets & Lab Kit',
-                    },
-                    {
-                      id: 'Annual Development Fees and others',
-                      label: 'Annual Development Fees and others',
-                      rateDisplay: `₹${st.annualDevelopmentFee ?? 50}/yr`,
-                      subDesc: 'Campus, Library & Amenities',
-                    },
-                  ];
-
-                  return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {headsList.map((h) => {
-                        const isSelected = selectedFeeHeads.includes(h.id);
-                        return (
-                          <button
-                            key={h.id}
-                            type="button"
-                            onClick={() => handleToggleFeeHeadInDeposit(h.id)}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
-                              isSelected
-                                ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-amber-400/40'
-                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
-                              isSelected
-                                ? 'bg-amber-400 border-amber-400 text-slate-950 font-black'
-                                : 'bg-white border-slate-300'
-                            }`}>
-                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="font-bold text-xs block leading-tight">{h.label}</span>
-                              <div className="flex items-center justify-between gap-1 mt-1">
-                                <span className={`text-[10px] ${isSelected ? 'text-amber-300 font-semibold' : 'text-emerald-700 font-medium'}`}>
-                                  {h.rateDisplay}
-                                </span>
-                              </div>
-                              <span className={`text-[9px] block mt-0.5 ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
-                                {h.subDesc}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
+                {/* Fee Particulars / Heads Multi-Select Section */}
+                <div className="space-y-1.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-slate-700 font-bold text-xs">
+                      Select Fee Particulars / Heads *
+                    </label>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[10px] text-slate-400 font-semibold mr-0.5">Quick Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyHeadsPreset('tuition')}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        Tuition Only
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyHeadsPreset('admission_tuition')}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        Admission + Tuition
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyHeadsPreset('all')}
+                        className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        All Heads (Full Session)
+                      </button>
                     </div>
-                  );
-                })()}
-              </div>
-
-              {/* Dynamic Sub-Controls when Tuition Fee is selected */}
-              {selectedFeeHeads.includes('Tuition Fee') && (
-                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-amber-600" />
-                      Tuition Fee Months & Subject Tracking (Academic Session 2026: Jan – Dec)
-                    </span>
-                    <span className="text-[10px] bg-amber-200/90 text-amber-950 font-extrabold px-2.5 py-0.5 rounded-full">
-                      {selectedMonths.length} Month(s) Selected
-                    </span>
                   </div>
 
-                  {/* Subject count and quick presets */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-slate-700 font-bold text-[11px] mb-1">
+                  {(() => {
+                    const targetStudent = students.find((s) => s.id === selectedStudentId);
+                    const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
+                    const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+
+                    const headsList: { id: FeeHeadType; label: string; rateDisplay: string; subDesc: string }[] = [
+                      {
+                        id: 'Tuition Fee',
+                        label: 'Tuition Fee',
+                        rateDisplay: `₹${st.perSubjectMonthlyFee || 350}/sub/mo`,
+                        subDesc: `${tuitionSubjectCount} subj × ${selectedMonths.length} mo`,
+                      },
+                      {
+                        id: 'Admission Fee',
+                        label: 'Admission Fee',
+                        rateDisplay: `₹${st.admissionFee}`,
+                        subDesc: 'One-time registration',
+                      },
+                      {
+                        id: 'Exam Fee',
+                        label: 'Exam Fee',
+                        rateDisplay: `₹${st.examFeePerTerm}/term`,
+                        subDesc: `${examTermCount} Term(s)`,
+                      },
+                      {
+                        id: 'Study Material and Lab Fees',
+                        label: 'Study Material & Lab',
+                        rateDisplay: `₹${st.materialsFee}`,
+                        subDesc: 'Annual Worksheets & Kit',
+                      },
+                      {
+                        id: 'Annual Development Fees and others',
+                        label: 'Annual Development',
+                        rateDisplay: `₹${st.annualDevelopmentFee ?? 50}/yr`,
+                        subDesc: 'Campus & Amenities',
+                      },
+                    ];
+
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                        {headsList.map((h) => {
+                          const isSelected = selectedFeeHeads.includes(h.id);
+                          return (
+                            <button
+                              key={h.id}
+                              type="button"
+                              onClick={() => handleToggleFeeHeadInDeposit(h.id)}
+                              className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                isSelected
+                                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-amber-400/40'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-1 w-full">
+                                <span className="font-bold text-[11px] leading-tight truncate">{h.label}</span>
+                                <div className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border ${
+                                  isSelected
+                                    ? 'bg-amber-400 border-amber-400 text-slate-950 font-black'
+                                    : 'bg-white border-slate-300'
+                                }`}>
+                                  {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                </div>
+                              </div>
+                              <div className="mt-1.5 pt-1 border-t border-slate-100/10">
+                                <span className={`text-[10px] font-bold block ${isSelected ? 'text-amber-300' : 'text-emerald-700'}`}>
+                                  {h.rateDisplay}
+                                </span>
+                                <span className={`text-[9px] block truncate ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                  {h.subDesc}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Dynamic Sub-Controls when Tuition Fee is selected */}
+                {selectedFeeHeads.includes('Tuition Fee') && (
+                  <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                        Tuition Fee Academic Months (2026: Jan – Dec)
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-amber-200/90 text-amber-950 font-extrabold px-2 py-0.5 rounded-full">
+                          {selectedMonths.length} Mo Selected
+                        </span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleApplyMonthPreset('next_1')}
+                            className="px-2 py-0.5 bg-white border border-slate-200 hover:bg-amber-100 text-[10px] font-bold text-slate-700 rounded-md cursor-pointer"
+                          >
+                            Next Unpaid
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyMonthPreset('quarter_3')}
+                            className="px-2 py-0.5 bg-white border border-slate-200 hover:bg-amber-100 text-[10px] font-bold text-slate-700 rounded-md cursor-pointer"
+                          >
+                            3 Mo (Qtr)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyMonthPreset('semester_6')}
+                            className="px-2 py-0.5 bg-white border border-slate-200 hover:bg-amber-100 text-[10px] font-bold text-slate-700 rounded-md cursor-pointer"
+                          >
+                            6 Mo (Sem)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyMonthPreset('all_unpaid')}
+                            className="px-2 py-0.5 bg-white border border-slate-200 hover:bg-amber-100 text-[10px] font-bold text-slate-700 rounded-md cursor-pointer"
+                          >
+                            All Unpaid
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enrolled Subject Multiplier */}
+                    <div className="flex items-center gap-2">
+                      <label className="text-slate-700 font-bold text-[11px] shrink-0">
                         Enrolled Subjects Count:
                       </label>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 max-w-xs">
                         {[1, 2, 3, 4, 5, 6].map((num) => (
                           <button
                             key={num}
                             type="button"
                             onClick={() => handleTuitionParamsChange(num, Math.max(1, selectedMonths.length))}
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                               tuitionSubjectCount === num
                                 ? 'bg-amber-600 text-white shadow-xs'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-amber-100/50'
+                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                             }`}
                           >
                             {num}
@@ -1922,294 +1963,268 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       </div>
                     </div>
 
+                    {/* 12 Academic Months Grid (Compact 12-col or 6-col) */}
                     <div>
-                      <label className="block text-slate-700 font-bold text-[11px] mb-1">
-                        Quick Duration Presets:
-                      </label>
-                      <div className="flex gap-1 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => handleApplyMonthPreset('next_1')}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
-                        >
-                          Next Unpaid
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyMonthPreset('quarter_3')}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
-                        >
-                          3 Mo (Qtr)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyMonthPreset('semester_6')}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
-                        >
-                          6 Mo (Sem)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyMonthPreset('all_unpaid')}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-amber-100/70 text-[10px] font-bold text-slate-700 rounded-lg cursor-pointer"
-                        >
-                          All Unpaid
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                      {(() => {
+                        const studentStatus = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
+                        return (
+                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
+                            {ACADEMIC_SESSION_MONTHS.map((m) => {
+                              const st = studentStatus.find((s) => s.month === m);
+                              const isPaidAlready = st?.isPaid;
+                              const isSelected = selectedMonths.includes(m);
 
-                  {/* 12 Academic Months Grid */}
-                  <div>
-                    <label className="block text-slate-700 font-bold text-[11px] mb-1.5">
-                      Select Academic Months Covered by this Deposit:
-                    </label>
-                    {(() => {
-                      const studentStatus = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
-                      return (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5">
-                          {ACADEMIC_SESSION_MONTHS.map((m) => {
-                            const st = studentStatus.find((s) => s.month === m);
-                            const isPaidAlready = st?.isPaid;
-                            const isSelected = selectedMonths.includes(m);
-
-                            return (
-                              <button
-                                key={m}
-                                type="button"
-                                onClick={() => handleToggleTuitionMonth(m)}
-                                className={`p-2 rounded-xl text-left transition-all border cursor-pointer relative ${
-                                  isSelected
-                                    ? 'bg-amber-500 text-slate-950 border-amber-600 font-black shadow-xs ring-2 ring-amber-300'
-                                    : isPaidAlready
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[11px] font-bold block leading-tight">
-                                    {m.split(' ')[0]}
-                                  </span>
-                                  {isSelected ? (
-                                    <Check className="w-3 h-3 stroke-[3]" />
-                                  ) : isPaidAlready ? (
-                                    <span className="text-[9px] bg-emerald-200 text-emerald-950 font-extrabold px-1 rounded">
-                                      Paid
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => handleToggleTuitionMonth(m)}
+                                  className={`p-1.5 rounded-xl text-center transition-all border cursor-pointer relative ${
+                                    isSelected
+                                      ? 'bg-amber-500 text-slate-950 border-amber-600 font-black shadow-xs ring-2 ring-amber-300'
+                                      : isPaidAlready
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold block leading-none mx-auto">
+                                      {m.split(' ')[0].slice(0, 3)}
                                     </span>
-                                  ) : null}
-                                </div>
-                                <span className={`text-[9px] block mt-0.5 ${
-                                  isSelected ? 'text-slate-900 font-semibold' : 'text-slate-400'
-                                }`}>
-                                  {m.split(' ')[1]}
-                                </span>
-                              </button>
-                            );
-                          })}
+                                  </div>
+                                  <span className={`text-[8px] block mt-0.5 ${
+                                    isSelected
+                                      ? 'text-slate-900 font-bold'
+                                      : isPaidAlready
+                                      ? 'text-emerald-700 font-extrabold'
+                                      : 'text-slate-400'
+                                  }`}>
+                                    {isPaidAlready ? 'Paid' : isSelected ? '✓' : 'Due'}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {(() => {
+                      const targetStudent = students.find((s) => s.id === selectedStudentId);
+                      const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
+                      const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+                      const perSub = st.perSubjectMonthlyFee || 350;
+                      const calculated = perSub * tuitionSubjectCount * Math.max(1, selectedMonths.length);
+
+                      return (
+                        <div className="p-2 bg-white rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                          <span className="text-slate-600">
+                            Calculation: <strong>{tuitionSubjectCount} subj</strong> × <strong>₹{perSub}/sub/mo</strong> × <strong>{selectedMonths.length} month(s)</strong>
+                            {selectedMonths.length > 0 && (
+                              <span className="text-amber-800 font-medium ml-1">
+                                ({selectedMonths.map(m => m.split(' ')[0].slice(0, 3)).join(', ')})
+                              </span>
+                            )}
+                          </span>
+                          <strong className="text-emerald-700 font-black text-xs shrink-0">= {formatCurrency(calculated)}</strong>
                         </div>
                       );
                     })()}
                   </div>
+                )}
 
-                  {(() => {
-                    const targetStudent = students.find((s) => s.id === selectedStudentId);
-                    const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
-                    const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
-                    const perSub = st.perSubjectMonthlyFee || 350;
-                    const calculated = perSub * tuitionSubjectCount * Math.max(1, selectedMonths.length);
-
-                    return (
-                      <div className="p-2.5 bg-white rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
-                        <span className="text-slate-600">
-                          Calculation: <strong>{tuitionSubjectCount} subjects</strong> × <strong>₹{perSub}/sub/mo</strong> × <strong>{selectedMonths.length} month(s)</strong>
-                          {selectedMonths.length > 0 && (
-                            <span className="text-amber-800 font-medium ml-1">
-                              ({selectedMonths.map(m => m.split(' ')[0]).join(', ')})
-                            </span>
-                          )}
-                        </span>
-                        <strong className="text-emerald-700 font-black text-xs shrink-0">= {formatCurrency(calculated)}</strong>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Dynamic Sub-Controls when Exam Fee is selected */}
-              {selectedFeeHeads.includes('Exam Fee') && (
-                <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-950 text-xs flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5 text-blue-600" />
-                      Exam Fee Assessment Cycles
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    {[
-                      { terms: 1, label: '1 Term (Mid-Term or Final Assessment)' },
-                      { terms: 2, label: '2 Terms (Full Year - Both Terms)' },
-                    ].map((item) => (
-                      <button
-                        key={item.terms}
-                        type="button"
-                        onClick={() => handleExamTermsChange(item.terms)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer text-left ${
-                          examTermCount === item.terms
-                            ? 'bg-blue-900 text-white shadow-xs'
-                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Itemized Calculation Summary of Selected Fee Heads */}
-              {(() => {
-                const { total: calculatedSum, breakdown } = calculateTotalForHeads(
-                  selectedFeeHeads,
-                  selectedStudentId,
-                  tuitionSubjectCount,
-                  tuitionMonthsCount,
-                  examTermCount
-                );
-
-                return (
-                  <div className="p-3 bg-slate-900 text-white rounded-xl space-y-2">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        Selected Fee Heads Itemized Breakdown ({selectedFeeHeads.length} Selected)
-                      </span>
-                      <span className="text-xs font-bold text-slate-300">
-                        Total: <strong className="text-emerald-400 text-sm font-black">{formatCurrency(calculatedSum)}</strong>
+                {/* Dynamic Sub-Controls when Exam Fee is selected */}
+                {selectedFeeHeads.includes('Exam Fee') && (
+                  <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-blue-950 text-xs flex items-center gap-1.5">
+                        <Calculator className="w-3.5 h-3.5 text-blue-600" />
+                        Exam Fee Assessment Cycles
                       </span>
                     </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {breakdown.map((item, i) => (
-                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] border border-slate-700">
-                          <span className="font-semibold text-slate-200">{item.head}:</span>
-                          <strong className="text-amber-300">{formatCurrency(item.amount)}</strong>
-                        </div>
+                    <div className="flex gap-2">
+                      {[
+                        { terms: 1, label: '1 Term (Mid-Term or Final Assessment)' },
+                        { terms: 2, label: '2 Terms (Full Year - Both Terms)' },
+                      ].map((item) => (
+                        <button
+                          key={item.terms}
+                          type="button"
+                          onClick={() => handleExamTermsChange(item.terms)}
+                          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer text-left ${
+                            examTermCount === item.terms
+                              ? 'bg-blue-900 text-white shadow-xs'
+                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
                       ))}
                     </div>
                   </div>
-                );
-              })()}
+                )}
 
-              {/* Amount Deposited & Override Options */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-slate-700 font-bold">Amount to Deposit (₹) *</label>
-                    {isCustomAmount && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsCustomAmount(false);
-                          const { total } = calculateTotalForHeads(
-                            selectedFeeHeads,
-                            selectedStudentId,
-                            tuitionSubjectCount,
-                            tuitionMonthsCount,
-                            examTermCount
-                          );
-                          setAmountPaid(total);
-                        }}
-                        className="text-[10px] text-amber-700 hover:underline font-bold cursor-pointer"
-                      >
-                        Reset to Calculated Sum
-                      </button>
-                    )}
+                {/* Itemized Calculation Summary of Selected Fee Heads */}
+                {(() => {
+                  const { total: calculatedSum, breakdown } = calculateTotalForHeads(
+                    selectedFeeHeads,
+                    selectedStudentId,
+                    tuitionSubjectCount,
+                    tuitionMonthsCount,
+                    examTermCount
+                  );
+
+                  return (
+                    <div className="p-2.5 bg-slate-900 text-white rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          Selected Heads Breakdown ({selectedFeeHeads.length})
+                        </span>
+                        <span className="text-xs font-bold text-slate-300">
+                          Total: <strong className="text-emerald-400 text-xs sm:text-sm font-black">{formatCurrency(calculatedSum)}</strong>
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {breakdown.map((item, i) => (
+                          <div key={i} className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-800 rounded-lg text-[10px] border border-slate-700">
+                            <span className="font-semibold text-slate-200">{item.head}:</span>
+                            <strong className="text-amber-300">{formatCurrency(item.amount)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Amount Deposited, Payment Mode & Ledger Controls in a clean 3-col/2-col grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-700 font-bold text-xs">Amount to Deposit (₹) *</label>
+                      {isCustomAmount && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            const { total } = calculateTotalForHeads(
+                              selectedFeeHeads,
+                              selectedStudentId,
+                              tuitionSubjectCount,
+                              tuitionMonthsCount,
+                              examTermCount
+                            );
+                            setAmountPaid(total);
+                          }}
+                          className="text-[9px] text-amber-700 hover:underline font-bold cursor-pointer"
+                        >
+                          Reset Auto-Sum
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      required
+                      value={amountPaid}
+                      onChange={(e) => {
+                        setAmountPaid(Number(e.target.value));
+                        setIsCustomAmount(true);
+                      }}
+                      className="w-full px-3 py-1.5 border-2 border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-black text-slate-900 text-sm bg-amber-50/20"
+                    />
+                    <span className="text-[9px] text-slate-400 mt-0.5 block">
+                      {isCustomAmount
+                        ? '⚠️ Custom amount override applied'
+                        : `✓ Auto-summed across all ${selectedFeeHeads.length} heads`}
+                    </span>
                   </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step="10"
-                    required
-                    value={amountPaid}
-                    onChange={(e) => {
-                      setAmountPaid(Number(e.target.value));
-                      setIsCustomAmount(true);
-                    }}
-                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-black text-slate-900 text-sm bg-amber-50/20"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    {isCustomAmount
-                      ? '⚠️ Custom amount override applied'
-                      : `✓ Auto-summed across all ${selectedFeeHeads.length} selected fee heads`}
+
+                  <div>
+                    <label className="block text-slate-700 font-bold text-xs mb-1">Payment Mode *</label>
+                    <select
+                      value={paymentMode}
+                      onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-xs font-medium"
+                    >
+                      <option value="UPI / GPay / PhonePe">UPI / GPay / PhonePe</option>
+                      <option value="Cash">Cash Counter</option>
+                      <option value="Net Banking">Net Banking / IMPS</option>
+                      <option value="Debit/Credit Card">Debit/Credit Card (POS)</option>
+                      <option value="Cheque">Cheque</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold text-xs mb-1">Transaction / Ref ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. UPI/260405118942"
+                      value={transactionRef}
+                      onChange={(e) => setTransactionRef(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold text-xs mb-1">Collected By / Officer</label>
+                    <input
+                      type="text"
+                      value={collectedBy}
+                      onChange={(e) => setCollectedBy(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-slate-700 font-bold text-xs mb-1">Deposit Remarks / Ledger Note</label>
+                    <input
+                      type="text"
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="e.g. Tuition fee received with verified receipt."
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Fixed Modal Action Footer */}
+              <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-600">
+                    Grand Total:
                   </span>
+                  <span className="text-base font-black text-emerald-700">
+                    {formatCurrency(amountPaid)}
+                  </span>
+                  {selectedMonths.length > 0 && selectedFeeHeads.includes('Tuition Fee') && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md hidden sm:inline">
+                      {selectedMonths.length} Months Covered
+                    </span>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Payment Mode *</label>
-                  <select
-                    value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsDepositModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                   >
-                    <option value="UPI / GPay / PhonePe">UPI / GPay / PhonePe</option>
-                    <option value="Cash">Cash Counter</option>
-                    <option value="Net Banking">Net Banking / IMPS</option>
-                    <option value="Debit/Credit Card">Debit/Credit Card (POS)</option>
-                    <option value="Cheque">Cheque</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    id="submit-fee-deposit-btn"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-1.5 transition-all"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Generate Official Fee Receipt</span>
+                  </button>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Transaction / Reference ID</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. UPI/260405118942"
-                    value={transactionRef}
-                    onChange={(e) => setTransactionRef(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Accounts Officer / Collected By</label>
-                  <input
-                    type="text"
-                    value={collectedBy}
-                    onChange={(e) => setCollectedBy(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Deposit Remarks / Ledger Note</label>
-                <input
-                  type="text"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="e.g. Tuition fee received with verified receipt."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsDepositModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  id="submit-fee-deposit-btn"
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Generate Official Fee Receipt ({formatCurrency(amountPaid)})</span>
-                </button>
               </div>
 
             </form>
