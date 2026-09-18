@@ -575,6 +575,27 @@ export const FeesView: React.FC<FeesViewProps> = ({
     onViewReceipt(newDeposit);
   };
 
+  // Find the most recent deposit transaction of the currently selected student
+  const lastDepositOfSelectedStudent = React.useMemo(() => {
+    if (!selectedStudentId) return null;
+    const studentDeposits = deposits.filter((d) => d.studentId === selectedStudentId);
+    if (studentDeposits.length === 0) return null;
+    return [...studentDeposits].sort((a, b) => {
+      const timeA = new Date(a.depositDate).getTime();
+      const timeB = new Date(b.depositDate).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return (b.receiptNo || b.id).localeCompare(a.receiptNo || a.id);
+    })[0];
+  }, [deposits, selectedStudentId]);
+
+  const handlePrintLastReceipt = () => {
+    if (lastDepositOfSelectedStudent) {
+      onViewReceipt(lastDepositOfSelectedStudent);
+    }
+  };
+
   // Fee Structure Handlers
   const handleExportFeeScheduleCSV = () => {
     const headers = [
@@ -1722,12 +1743,39 @@ export const FeesView: React.FC<FeesViewProps> = ({
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsDepositModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="header-print-last-receipt-btn"
+                  onClick={handlePrintLastReceipt}
+                  disabled={!lastDepositOfSelectedStudent}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    lastDepositOfSelectedStudent
+                      ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 cursor-pointer shadow-xs'
+                      : 'bg-slate-800/40 text-slate-500 border border-slate-800 cursor-not-allowed opacity-60'
+                  }`}
+                  title={
+                    lastDepositOfSelectedStudent
+                      ? `Print Last Receipt (${lastDepositOfSelectedStudent.receiptNo || lastDepositOfSelectedStudent.id} • ${formatCurrency(lastDepositOfSelectedStudent.amountPaid)})`
+                      : 'No previous deposit receipt for this student'
+                  }
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Print Last Receipt</span>
+                  <span className="sm:hidden">Last Receipt</span>
+                  {lastDepositOfSelectedStudent && (
+                    <span className="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.2 rounded font-mono hidden md:inline">
+                      {lastDepositOfSelectedStudent.receiptNo || lastDepositOfSelectedStudent.id}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsDepositModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Form */}
@@ -1739,7 +1787,19 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 {/* Row 1: Student Selection + Live Student Fee Profile */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
                   <div className="md:col-span-7 space-y-1">
-                    <label className="block text-slate-700 font-bold text-xs">Select Enrolled Student *</label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-slate-700 font-bold text-xs">Select Enrolled Student *</label>
+                      {lastDepositOfSelectedStudent && (
+                        <button
+                          type="button"
+                          onClick={handlePrintLastReceipt}
+                          className="text-[10px] text-amber-700 hover:text-amber-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          <Printer className="w-3 h-3" />
+                          <span>Last: {lastDepositOfSelectedStudent.receiptNo || lastDepositOfSelectedStudent.id} ({formatCurrency(lastDepositOfSelectedStudent.amountPaid)})</span>
+                        </button>
+                      )}
+                    </div>
                     <select
                       value={selectedStudentId}
                       onChange={(e) => handleStudentChangeInDeposit(e.target.value)}
@@ -2209,6 +2269,30 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    id="modal-footer-print-last-receipt-btn"
+                    onClick={handlePrintLastReceipt}
+                    disabled={!lastDepositOfSelectedStudent}
+                    className={`px-3.5 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all ${
+                      lastDepositOfSelectedStudent
+                        ? 'bg-white hover:bg-amber-50 text-slate-800 border-slate-300 hover:border-amber-400 cursor-pointer shadow-xs active:scale-98'
+                        : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                    }`}
+                    title={
+                      lastDepositOfSelectedStudent
+                        ? `Print last receipt (${lastDepositOfSelectedStudent.receiptNo || lastDepositOfSelectedStudent.id} • ${formatCurrency(lastDepositOfSelectedStudent.amountPaid)})`
+                        : 'No prior deposit records found for this student'
+                    }
+                  >
+                    <Printer className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Print Last Receipt</span>
+                    {lastDepositOfSelectedStudent && (
+                      <span className="text-[10px] bg-amber-100 text-amber-900 font-mono px-1.5 py-0.5 rounded font-bold hidden sm:inline">
+                        {lastDepositOfSelectedStudent.receiptNo || lastDepositOfSelectedStudent.id}
+                      </span>
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsDepositModalOpen(false)}
