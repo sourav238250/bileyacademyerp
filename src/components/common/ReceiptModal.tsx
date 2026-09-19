@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { FeeDeposit, Student, InstitutionalAuthorizationConfig } from '../../types';
-import { formatCurrency } from '../../utils/academicUtils';
+import {
+  formatCurrency,
+  computeCandidateDuesTillCurrentMonth,
+  getCandidatePreviousTransactions,
+} from '../../utils/academicUtils';
 import { DEFAULT_AUTHORIZATION_CONFIG } from '../../utils/storage';
 import { generateFeeReceiptPDF } from '../../utils/receiptPdfGenerator';
 import { InstituteLogo } from './InstituteLogo';
@@ -20,11 +24,16 @@ import {
   RotateCcw,
   Download,
   Share2,
+  History,
+  CalendarCheck,
+  AlertTriangle,
+  Receipt,
 } from 'lucide-react';
 
 interface ReceiptModalProps {
   deposit: FeeDeposit | null;
   student: Student | null;
+  deposits?: FeeDeposit[];
   onClose: () => void;
   authConfig?: InstitutionalAuthorizationConfig;
   onUpdateAuthConfig?: (config: InstitutionalAuthorizationConfig) => void;
@@ -33,6 +42,7 @@ interface ReceiptModalProps {
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   deposit,
   student,
+  deposits = [],
   onClose,
   authConfig = DEFAULT_AUTHORIZATION_CONFIG,
   onUpdateAuthConfig,
@@ -61,6 +71,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   if (!deposit || !student) return null;
 
+  const allDeposits = deposits.length > 0 ? deposits : [deposit];
+  const previousTransactions = getCandidatePreviousTransactions(
+    student.id,
+    deposit.receiptNo || deposit.id,
+    allDeposits
+  );
+  const totalPreviouslyPaid = previousTransactions.reduce(
+    (sum, d) => sum + (Number(d.amountPaid) || 0),
+    0
+  );
+  const duesSummary = computeCandidateDuesTillCurrentMonth(student, allDeposits, 'September 2026');
+
   const handlePrint = () => {
     setIsPrinting(true);
     setTimeout(() => {
@@ -79,6 +101,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         authoritySubtext,
         collectedByName,
         sealText,
+        deposits: allDeposits,
       });
 
       const sanitizedStudentName = student.name.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -393,7 +416,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
               <tr>
                 <td colSpan={3} className="py-3 px-4 text-right uppercase text-[11px] text-slate-700">
-                  Net Amount Received:
+                  Net Amount Received (This Receipt):
                 </td>
                 <td className="py-3 px-4 text-right text-base text-emerald-700">
                   {formatCurrency(deposit.amountPaid)}
@@ -401,6 +424,142 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               </tr>
             </tfoot>
           </table>
+
+          {/* Section: Previous Deposit Transactions for Candidate */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between bg-slate-100 px-3.5 py-2 rounded-t-lg border border-slate-200 border-b-0">
+              <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-slate-600" />
+                Previous Transactions History (Candidate: {student.name})
+              </span>
+              <span className="text-[10px] font-medium text-slate-500">
+                {previousTransactions.length > 0
+                  ? `${previousTransactions.length} prior deposit record(s)`
+                  : 'First transaction'}
+              </span>
+            </div>
+
+            {previousTransactions.length > 0 ? (
+              <div className="border border-slate-200 rounded-b-lg overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-[10px] text-slate-600 uppercase font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-3">Receipt No</th>
+                      <th className="py-2 px-3">Date</th>
+                      <th className="py-2 px-3">Fee Particulars / Coverage</th>
+                      <th className="py-2 px-3">Mode</th>
+                      <th className="py-2 px-3 text-right">Amount Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {previousTransactions.map((prev, idx) => (
+                      <tr key={prev.id || idx} className="hover:bg-slate-50/60">
+                        <td className="py-2 px-3 font-mono font-semibold text-slate-800 text-[11px]">
+                          {prev.receiptNo}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 text-[11px]">
+                          {prev.depositDate}
+                        </td>
+                        <td className="py-2 px-3 text-slate-700 text-[11px]">
+                          {prev.monthsCovered && prev.monthsCovered.length > 0
+                            ? prev.monthsCovered.join(', ')
+                            : prev.feeHead}
+                        </td>
+                        <td className="py-2 px-3 text-slate-500 text-[10px]">
+                          {prev.paymentMode}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-slate-900 text-[11px]">
+                          {formatCurrency(prev.amountPaid)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-50/80 border-t border-slate-200 font-semibold text-[11px]">
+                    <tr>
+                      <td colSpan={4} className="py-2 px-3 text-right text-slate-600">
+                        Total Previously Deposited Amount:
+                      </td>
+                      <td className="py-2 px-3 text-right font-bold text-slate-900">
+                        {formatCurrency(totalPreviouslyPaid)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50/60 border border-slate-200 rounded-b-lg text-center text-xs text-slate-500 italic">
+                First deposit transaction of the academic session — no previous transactions recorded for this candidate.
+              </div>
+            )}
+          </div>
+
+          {/* Section: Candidate Remaining Dues & Account Statement Till Current Month */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-200">
+              <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <CalendarCheck className="w-3.5 h-3.5 text-emerald-700" />
+                Dues & Balance Statement (Till Current Month: {duesSummary.currentSessionMonth})
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500">
+                Session Progress: {duesSummary.elapsedMonthsCount} / 12 Months
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                <p className="text-[10px] uppercase font-bold text-slate-500">Total Net Payable till {duesSummary.currentSessionMonth}</p>
+                <p className="text-sm font-bold text-slate-900 mt-0.5">
+                  {formatCurrency(duesSummary.netPayableTillCurrentMonth)}
+                </p>
+                <p className="text-[9px] text-slate-400 mt-0.5">
+                  Includes {duesSummary.elapsedMonthsCount} mos tuition + session fees
+                </p>
+              </div>
+
+              <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                <p className="text-[10px] uppercase font-bold text-slate-500">Total Cumulative Deposited</p>
+                <p className="text-sm font-bold text-emerald-700 mt-0.5">
+                  {formatCurrency(duesSummary.totalPaidTillDate)}
+                </p>
+                <p className="text-[9px] text-slate-400 mt-0.5">
+                  Includes current receipt ({deposit.receiptNo})
+                </p>
+              </div>
+
+              <div className={`p-2.5 rounded-lg border ${
+                duesSummary.remainingDuesTillCurrentMonth === 0
+                  ? 'bg-emerald-50/70 border-emerald-200'
+                  : 'bg-amber-50/80 border-amber-300'
+              }`}>
+                <p className="text-[10px] uppercase font-bold text-slate-600">
+                  Remaining Dues till {duesSummary.currentSessionMonth}
+                </p>
+                <p className={`text-base font-black mt-0.5 ${
+                  duesSummary.remainingDuesTillCurrentMonth === 0 ? 'text-emerald-700' : 'text-amber-700'
+                }`}>
+                  {duesSummary.remainingDuesTillCurrentMonth === 0 ? (
+                    <span>₹0 (Nil - Cleared)</span>
+                  ) : (
+                    <span>{formatCurrency(duesSummary.remainingDuesTillCurrentMonth)}</span>
+                  )}
+                </p>
+                {duesSummary.advanceCreditTillCurrentMonth > 0 ? (
+                  <p className="text-[9px] text-emerald-700 font-semibold mt-0.5">
+                    Advance credit: {formatCurrency(duesSummary.advanceCreditTillCurrentMonth)}
+                  </p>
+                ) : (
+                  <p className="text-[9px] text-slate-500 mt-0.5">
+                    {duesSummary.remainingDuesTillCurrentMonth === 0 ? 'Up-to-date for session' : 'Payment pending'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between text-[10px] text-slate-500">
+              <span>Full Annual Academic Session Net Fee: <strong className="text-slate-700">{formatCurrency(duesSummary.totalAnnualNetPayable)}</strong></span>
+              <span>Total Annual Session Balance Remaining: <strong className="text-slate-800">{formatCurrency(duesSummary.totalAnnualDuesRemaining)}</strong></span>
+            </div>
+          </div>
 
           {/* Stamp & Authorized Signature Footer */}
           <div className="flex items-end justify-between pt-6 border-t border-slate-200 mt-8">

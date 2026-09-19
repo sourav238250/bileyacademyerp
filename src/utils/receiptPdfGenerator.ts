@@ -1,5 +1,9 @@
 import { jsPDF } from 'jspdf';
 import { FeeDeposit, Student, InstitutionalAuthorizationConfig } from '../types';
+import {
+  computeCandidateDuesTillCurrentMonth,
+  getCandidatePreviousTransactions,
+} from './academicUtils';
 
 export interface ReceiptPDFOptions {
   authConfig?: InstitutionalAuthorizationConfig;
@@ -9,6 +13,7 @@ export interface ReceiptPDFOptions {
   collectedByName?: string;
   sealText?: string;
   digitalSignatureUrl?: string;
+  deposits?: FeeDeposit[];
 }
 
 export function generateFeeReceiptPDF(
@@ -24,7 +29,12 @@ export function generateFeeReceiptPDF(
     collectedByName = deposit.collectedBy || authConfig?.defaultCollectedBy || 'Accounts Dept - S. Dinda',
     sealText = authConfig?.sealVerificationText || 'PAID',
     digitalSignatureUrl = authConfig?.digitalSignatureUrl,
+    deposits = [],
   } = options;
+
+  const allDeposits = deposits.length > 0 ? deposits : [deposit];
+  const previousTransactions = getCandidatePreviousTransactions(student.id, deposit.receiptNo || deposit.id, allDeposits);
+  const duesSummary = computeCandidateDuesTillCurrentMonth(student, allDeposits, 'September 2026');
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -279,23 +289,132 @@ export function generateFeeReceiptPDF(
   if (deposit.transactionRef || deposit.remarks) {
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 8, 1.5, 1.5, 'FD');
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(71, 85, 105);
     let noteText = '';
     if (deposit.transactionRef) noteText += `Txn / Reference ID: ${deposit.transactionRef}    `;
     if (deposit.remarks) noteText += `Notes: ${deposit.remarks}`;
-    doc.text(noteText, margin + 4, y + 7);
+    doc.text(noteText, margin + 4, y + 5);
 
-    y += 16;
+    y += 11;
   } else {
-    y += 4;
+    y += 2;
   }
 
+  // ----------------------------------------------------
+  // PREVIOUS TRANSACTIONS FOR THIS CANDIDATE
+  // ----------------------------------------------------
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.rect(margin, y, contentWidth, 6, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(30, 41, 59); // slate-800
+  doc.text(`PREVIOUS DEPOSIT TRANSACTIONS (CANDIDATE: ${student.name.toUpperCase()})`, margin + 4, y + 4.2);
+
+  y += 6;
+
+  if (previousTransactions.length > 0) {
+    const prevToShow = previousTransactions.slice(0, 3);
+    prevToShow.forEach((prevDep, pIdx) => {
+      const pRowH = 5.5;
+      if (pIdx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentWidth, pRowH, 'F');
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.line(margin, y + pRowH, margin + contentWidth, y + pRowH);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(51, 65, 85);
+      doc.text(prevDep.receiptNo, margin + 4, y + 3.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(prevDep.depositDate, margin + 45, y + 3.8);
+
+      const prevCoverage = prevDep.monthsCovered && prevDep.monthsCovered.length > 0
+        ? prevDep.monthsCovered.join(', ')
+        : prevDep.feeHead;
+      const truncatedCoverage = prevCoverage.length > 35 ? prevCoverage.slice(0, 32) + '...' : prevCoverage;
+      doc.text(truncatedCoverage, margin + 75, y + 3.8);
+
+      doc.text(prevDep.paymentMode, margin + 130, y + 3.8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(formatPdfAmount(prevDep.amountPaid), pageWidth - margin - 4, y + 3.8, { align: 'right' });
+
+      y += pRowH;
+    });
+
+    if (previousTransactions.length > 3) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(6.2);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`+ ${previousTransactions.length - 3} older previous transaction(s) recorded in student ledger`, margin + 4, y + 3.5);
+      y += 5;
+    }
+  } else {
+    doc.setFillColor(255, 255, 255);
+    doc.rect(margin, y, contentWidth, 5.5, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, y + 5.5, margin + contentWidth, y + 5.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(6.8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('First deposit transaction of academic session (No prior records).', margin + 4, y + 3.8);
+    y += 5.5;
+  }
+
+  y += 3;
+
+  // ----------------------------------------------------
+  // REMAINING DUES TILL CURRENT MONTH (SEPTEMBER 2026)
+  // ----------------------------------------------------
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.setDrawColor(203, 213, 225); // slate-300
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, y, contentWidth, 15, 1.5, 1.5, 'FD');
+
+  // Left col: Summary till current month
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`CANDIDATE DUES & BALANCE STATEMENT (TILL ${duesSummary.currentSessionMonth.toUpperCase()})`, margin + 4, y + 4.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Net Payable till ${duesSummary.currentSessionMonth}: ${formatPdfAmount(duesSummary.netPayableTillCurrentMonth)}`, margin + 4, y + 9);
+  doc.text(`Total Cumulative Deposited: ${formatPdfAmount(duesSummary.totalPaidTillDate)}`, margin + 4, y + 13);
+
+  // Right col: Remaining Dues status
+  const duesColX = margin + (contentWidth / 2) + 15;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  if (duesSummary.remainingDuesTillCurrentMonth === 0) {
+    doc.setTextColor(4, 120, 87); // emerald-700
+    doc.text(`Remaining Dues (${duesSummary.currentSessionMonth}): Rs. 0 (Nil - Account Cleared)`, duesColX, y + 6);
+  } else {
+    doc.setTextColor(180, 83, 9); // amber-700
+    doc.text(`Remaining Dues (${duesSummary.currentSessionMonth}): ${formatPdfAmount(duesSummary.remainingDuesTillCurrentMonth)} (Pending)`, duesColX, y + 6);
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Total Annual Session Balance Remaining: ${formatPdfAmount(duesSummary.totalAnnualDuesRemaining)}`, duesColX, y + 11.5);
+
+  y += 18;
+
   // Bottom Section: Stamp Seal & Signatures
-  const footerY = Math.max(y + 8, pageHeight - margin - 38);
+  const footerY = Math.max(y + 4, pageHeight - margin - 36);
 
   // Circular Paid Stamp Simulation
   doc.setDrawColor(4, 120, 87); // emerald-700

@@ -242,6 +242,288 @@ export function computeStudentFeeSummary(
   };
 }
 
+export interface NonTuitionFeeHeadStatus {
+  head: string;
+  category: 'Admission' | 'Exam' | 'MaterialLab' | 'AnnualDev';
+  requiredAmount: number;
+  paidAmount: number;
+  isSubmitted: boolean;
+  termsPaid?: number;
+  totalTerms?: number;
+  lastPaymentDate?: string;
+  receiptNo?: string;
+}
+
+export interface StudentFeeHeadsTracking {
+  admission: NonTuitionFeeHeadStatus;
+  exam: NonTuitionFeeHeadStatus;
+  materialsAndLab: NonTuitionFeeHeadStatus;
+  annualDevelopment: NonTuitionFeeHeadStatus;
+  allNonTuitionSubmitted: boolean;
+  totalNonTuitionRequired: number;
+  totalNonTuitionPaid: number;
+  totalNonTuitionDue: number;
+}
+
+/**
+ * Tracks whether Admission Fees, Exam Fees, Study Material & Lab Fees, and Annual Development Fees
+ * are submitted or pending for a candidate.
+ */
+export function getStudentFeeHeadsSubmissionStatus(
+  student: Student,
+  deposits: FeeDeposit[],
+  feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
+  subjects?: Subject[]
+): StudentFeeHeadsTracking {
+  const key = `${student.classLevel}-${student.stream}`;
+  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const studentDeposits = deposits.filter((d) => d.studentId === student.id);
+
+  let admissionPaid = 0;
+  let examPaid = 0;
+  let materialsPaid = 0;
+  let annualDevPaid = 0;
+
+  let admissionLastDate: string | undefined;
+  let admissionLastReceipt: string | undefined;
+  let examLastDate: string | undefined;
+  let examLastReceipt: string | undefined;
+  let materialsLastDate: string | undefined;
+  let materialsLastReceipt: string | undefined;
+  let annualDevLastDate: string | undefined;
+  let annualDevLastReceipt: string | undefined;
+
+  studentDeposits.forEach((dep) => {
+    if (dep.headBreakdown && dep.headBreakdown.length > 0) {
+      dep.headBreakdown.forEach((item) => {
+        const headLower = item.head.toLowerCase();
+        if (headLower.includes('admission')) {
+          admissionPaid += item.amount;
+          admissionLastDate = dep.depositDate;
+          admissionLastReceipt = dep.receiptNo || dep.id;
+        } else if (headLower.includes('exam')) {
+          examPaid += item.amount;
+          examLastDate = dep.depositDate;
+          examLastReceipt = dep.receiptNo || dep.id;
+        } else if (headLower.includes('material') || headLower.includes('lab')) {
+          materialsPaid += item.amount;
+          materialsLastDate = dep.depositDate;
+          materialsLastReceipt = dep.receiptNo || dep.id;
+        } else if (headLower.includes('annual') || headLower.includes('development')) {
+          annualDevPaid += item.amount;
+          annualDevLastDate = dep.depositDate;
+          annualDevLastReceipt = dep.receiptNo || dep.id;
+        }
+      });
+    } else {
+      const headLower = (dep.feeHead || '').toLowerCase();
+      const headsList = (dep.selectedFeeHeads || []).map((h) => h.toLowerCase());
+      const hasHead = (keyword: string) => headLower.includes(keyword) || headsList.some((h) => h.includes(keyword));
+
+      if (hasHead('admission')) {
+        admissionPaid += dep.amountPaid;
+        admissionLastDate = dep.depositDate;
+        admissionLastReceipt = dep.receiptNo || dep.id;
+      } else if (hasHead('exam')) {
+        examPaid += dep.amountPaid;
+        examLastDate = dep.depositDate;
+        examLastReceipt = dep.receiptNo || dep.id;
+      } else if (hasHead('material') || hasHead('lab')) {
+        materialsPaid += dep.amountPaid;
+        materialsLastDate = dep.depositDate;
+        materialsLastReceipt = dep.receiptNo || dep.id;
+      } else if (hasHead('annual') || hasHead('development')) {
+        annualDevPaid += dep.amountPaid;
+        annualDevLastDate = dep.depositDate;
+        annualDevLastReceipt = dep.receiptNo || dep.id;
+      }
+    }
+  });
+
+  const coachingMode = getStudentCoachingMode(student, subjects);
+  const enrolledCount = student.enrolledSubjectIds?.length || 4;
+  const availableCount = subjects ? getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects).length : 6;
+  const effectiveMaterialsFee = coachingMode === 'All Subjects Combo'
+    ? (structure.materialsFee ?? 50)
+    : Math.round((structure.materialsFee ?? 50) * (enrolledCount / (availableCount || 1)));
+
+  const admissionRequired = structure.admissionFee || 100;
+  const examRequired = (structure.examFeePerTerm || 100) * 2;
+  const materialsRequired = effectiveMaterialsFee;
+  const annualDevRequired = structure.annualDevelopmentFee ?? 50;
+
+  const examTermsPaid = Math.min(2, Math.floor(examPaid / Math.max(1, structure.examFeePerTerm || 50)));
+
+  const admissionStatus: NonTuitionFeeHeadStatus = {
+    head: 'Admission Fee',
+    category: 'Admission',
+    requiredAmount: admissionRequired,
+    paidAmount: admissionPaid,
+    isSubmitted: admissionPaid >= admissionRequired,
+    lastPaymentDate: admissionLastDate,
+    receiptNo: admissionLastReceipt,
+  };
+
+  const examStatus: NonTuitionFeeHeadStatus = {
+    head: 'Exam Assessment Fee',
+    category: 'Exam',
+    requiredAmount: examRequired,
+    paidAmount: examPaid,
+    termsPaid: examTermsPaid,
+    totalTerms: 2,
+    isSubmitted: examPaid >= examRequired || examTermsPaid >= 2,
+    lastPaymentDate: examLastDate,
+    receiptNo: examLastReceipt,
+  };
+
+  const materialsStatus: NonTuitionFeeHeadStatus = {
+    head: 'Study Material & Lab Fee',
+    category: 'MaterialLab',
+    requiredAmount: materialsRequired,
+    paidAmount: materialsPaid,
+    isSubmitted: materialsPaid >= materialsRequired,
+    lastPaymentDate: materialsLastDate,
+    receiptNo: materialsLastReceipt,
+  };
+
+  const annualDevStatus: NonTuitionFeeHeadStatus = {
+    head: 'Annual Development Fee',
+    category: 'AnnualDev',
+    requiredAmount: annualDevRequired,
+    paidAmount: annualDevPaid,
+    isSubmitted: annualDevPaid >= annualDevRequired,
+    lastPaymentDate: annualDevLastDate,
+    receiptNo: annualDevLastReceipt,
+  };
+
+  const totalNonTuitionRequired = admissionRequired + examRequired + materialsRequired + annualDevRequired;
+  const totalNonTuitionPaid = admissionPaid + examPaid + materialsPaid + annualDevPaid;
+  const totalNonTuitionDue = Math.max(0, totalNonTuitionRequired - totalNonTuitionPaid);
+  const allNonTuitionSubmitted = admissionStatus.isSubmitted && examStatus.isSubmitted && materialsStatus.isSubmitted && annualDevStatus.isSubmitted;
+
+  return {
+    admission: admissionStatus,
+    exam: examStatus,
+    materialsAndLab: materialsStatus,
+    annualDevelopment: annualDevStatus,
+    allNonTuitionSubmitted,
+    totalNonTuitionRequired,
+    totalNonTuitionPaid,
+    totalNonTuitionDue,
+  };
+}
+
+export interface CandidateCurrentMonthDuesSummary {
+  studentId: string;
+  currentSessionMonth: string; // e.g. "September 2026"
+  elapsedMonthsCount: number; // e.g. 9
+  totalMonthsInSession: number; // 12
+  monthlyTuitionFee: number;
+  totalTuitionDueTillCurrentMonth: number;
+  nonTuitionDueTillCurrentMonth: number;
+  grossPayableTillCurrentMonth: number;
+  scholarshipDiscountTillCurrentMonth: number;
+  netPayableTillCurrentMonth: number;
+  totalPaidTillDate: number;
+  remainingDuesTillCurrentMonth: number;
+  advanceCreditTillCurrentMonth: number;
+  isCurrentMonthCleared: boolean;
+  totalAnnualNetPayable: number;
+  totalAnnualDuesRemaining: number;
+  unpaidElapsedMonths: string[];
+  paidElapsedMonthsCount: number;
+}
+
+/**
+ * Calculates a candidate's remaining dues and payment balance up to the current session month.
+ */
+export function computeCandidateDuesTillCurrentMonth(
+  student: Student,
+  deposits: FeeDeposit[],
+  currentSessionMonth: string = 'September 2026',
+  feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
+  subjects?: Subject[]
+): CandidateCurrentMonthDuesSummary {
+  const currentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, currentSessionMonth));
+  const effectiveIdx = currentMonthIdx >= 0 ? currentMonthIdx : 8; // default to September 2026 (index 8)
+  const elapsedMonthsCount = effectiveIdx + 1; // 9 months
+  const elapsedSessionMonths = ACADEMIC_SESSION_MONTHS.slice(0, elapsedMonthsCount);
+
+  const annualSummary = computeStudentFeeSummary(student, deposits, feeStructures, subjects);
+  const monthlyTuition = annualSummary.monthlyTuitionFee;
+  const totalTuitionDueTillCurrentMonth = monthlyTuition * elapsedMonthsCount;
+
+  const key = `${student.classLevel}-${student.stream}`;
+  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const tracking = getStudentFeeHeadsSubmissionStatus(student, deposits, feeStructures, subjects);
+
+  // Till September (mid/Q3 of session), 1 term exam fee + admission + materials + annual dev are applicable
+  const examFeeApplicable = structure.examFeePerTerm || 100;
+  const nonTuitionDueTillCurrentMonth =
+    structure.admissionFee +
+    tracking.materialsAndLab.requiredAmount +
+    tracking.annualDevelopment.requiredAmount +
+    examFeeApplicable;
+
+  const grossPayableTillCurrentMonth = totalTuitionDueTillCurrentMonth + nonTuitionDueTillCurrentMonth;
+  const scholarshipDiscountTillCurrentMonth = Math.round(
+    (grossPayableTillCurrentMonth * (student.scholarshipPercent || 0)) / 100
+  );
+  const netPayableTillCurrentMonth = grossPayableTillCurrentMonth - scholarshipDiscountTillCurrentMonth;
+
+  const studentDeposits = deposits.filter((d) => d.studentId === student.id);
+  const totalPaidTillDate = studentDeposits.reduce((sum, d) => sum + (Number(d.amountPaid) || 0), 0);
+
+  const remainingDuesTillCurrentMonth = Math.max(0, netPayableTillCurrentMonth - totalPaidTillDate);
+  const advanceCreditTillCurrentMonth = Math.max(0, totalPaidTillDate - netPayableTillCurrentMonth);
+
+  // Calculate unpaid elapsed tuition months
+  const monthStatuses = getStudentTuitionMonthsStatus(student.id, deposits, elapsedSessionMonths);
+  const unpaidElapsed = monthStatuses.filter((s) => !s.isPaid).map((s) => s.month);
+  const paidElapsedCount = monthStatuses.filter((s) => s.isPaid).length;
+
+  return {
+    studentId: student.id,
+    currentSessionMonth: ACADEMIC_SESSION_MONTHS[effectiveIdx] || currentSessionMonth,
+    elapsedMonthsCount,
+    totalMonthsInSession: 12,
+    monthlyTuitionFee: monthlyTuition,
+    totalTuitionDueTillCurrentMonth,
+    nonTuitionDueTillCurrentMonth,
+    grossPayableTillCurrentMonth,
+    scholarshipDiscountTillCurrentMonth,
+    netPayableTillCurrentMonth,
+    totalPaidTillDate,
+    remainingDuesTillCurrentMonth,
+    advanceCreditTillCurrentMonth,
+    isCurrentMonthCleared: remainingDuesTillCurrentMonth === 0,
+    totalAnnualNetPayable: annualSummary.netPayable,
+    totalAnnualDuesRemaining: annualSummary.dueAmount,
+    unpaidElapsedMonths: unpaidElapsed,
+    paidElapsedMonthsCount: paidElapsedCount,
+  };
+}
+
+/**
+ * Returns previous transactions recorded for a candidate (excluding the currently viewed receipt)
+ */
+export function getCandidatePreviousTransactions(
+  candidateId: string,
+  currentReceiptNoOrId: string,
+  deposits: FeeDeposit[]
+): FeeDeposit[] {
+  return deposits
+    .filter((d) => d.studentId === candidateId && d.id !== currentReceiptNoOrId && d.receiptNo !== currentReceiptNoOrId)
+    .sort((a, b) => {
+      const timeA = new Date(a.depositDate).getTime();
+      const timeB = new Date(b.depositDate).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return (b.receiptNo || b.id).localeCompare(a.receiptNo || a.id);
+    });
+}
+
 export const ACADEMIC_SESSION_MONTHS = [
   'January 2026',
   'February 2026',

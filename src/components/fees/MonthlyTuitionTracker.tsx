@@ -13,6 +13,7 @@ import {
   getStudentTuitionMonthsStatus,
   getTuitionMonthCollectionStats,
   getNextUnpaidTuitionMonth,
+  getStudentFeeHeadsSubmissionStatus,
   formatCurrency,
   CLASS_LEVELS,
 } from '../../utils/academicUtils';
@@ -33,6 +34,10 @@ import {
   ChevronRight,
   Eye,
   RefreshCw,
+  Award,
+  Layers,
+  FlaskConical,
+  GraduationCap,
 } from 'lucide-react';
 
 interface MonthlyTuitionTrackerProps {
@@ -71,9 +76,20 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
     let totalMonthsPaid = 0;
     let totalMonthsPossible = active.length * 12;
 
+    let admissionSubmittedCount = 0;
+    let examFeeSubmittedCount = 0;
+    let studyMaterialLabSubmittedCount = 0;
+    let annualDevSubmittedCount = 0;
+
     active.forEach((student) => {
       const monthStatuses = getStudentTuitionMonthsStatus(student.id, deposits, ACADEMIC_SESSION_MONTHS);
       totalMonthsPaid += monthStatuses.filter((m) => m.isPaid).length;
+
+      const heads = getStudentFeeHeadsSubmissionStatus(student, deposits);
+      if (heads.admission.isSubmitted) admissionSubmittedCount++;
+      if (heads.exam.isSubmitted) examFeeSubmittedCount++;
+      if (heads.materialsAndLab.isSubmitted) studyMaterialLabSubmittedCount++;
+      if (heads.annualDevelopment.isSubmitted) annualDevSubmittedCount++;
     });
 
     const overallPace = totalMonthsPossible > 0 ? Math.round((totalMonthsPaid / totalMonthsPossible) * 100) : 0;
@@ -87,6 +103,10 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       totalMonthsPossible,
       overallPace,
       totalCollectedAmount,
+      admissionSubmittedCount,
+      examFeeSubmittedCount,
+      studyMaterialLabSubmittedCount,
+      annualDevSubmittedCount,
     };
   }, [students, deposits]);
 
@@ -99,6 +119,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
         const paidCount = monthStatuses.filter((m) => m.isPaid).length;
         const unpaidCount = 12 - paidCount;
         const nextUnpaid = monthStatuses.find((m) => !m.isPaid)?.month || null;
+        const feeHeadsStatus = getStudentFeeHeadsSubmissionStatus(student, deposits);
         
         // Check if student has enrolled subjects
         const enrolledCount = student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0
@@ -112,6 +133,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
           unpaidCount,
           nextUnpaid,
           enrolledCount,
+          feeHeadsStatus,
         };
       });
   }, [students, deposits]);
@@ -249,6 +271,107 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
             <div className="text-center px-2 col-span-2 sm:col-span-1">
               <div className="text-[10px] text-emerald-400 font-bold uppercase">Session Pacing</div>
               <div className="text-lg font-black text-emerald-300">{sessionSummary.overallPace}%</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Non-Tuition Fee Heads Tracking Strip (Admission, Exam, Materials & Lab, Annual Dev) */}
+        <div className="mt-4 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              Session Fee Heads Tracking Status (Institutional Heads)
+            </span>
+            <span className="text-[10px] text-slate-400">Tracked independently from monthly tuition</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* Admission Fee */}
+            <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-2.5 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                  <GraduationCap className="w-3 h-3 text-emerald-400" />
+                  Admission Fee
+                </span>
+                <p className="text-sm font-black text-white mt-0.5">
+                  {sessionSummary.admissionSubmittedCount} / {sessionSummary.totalActiveStudents}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                sessionSummary.admissionSubmittedCount === sessionSummary.totalActiveStudents
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}>
+                {sessionSummary.totalActiveStudents > 0
+                  ? Math.round((sessionSummary.admissionSubmittedCount / sessionSummary.totalActiveStudents) * 100)
+                  : 0}%
+              </span>
+            </div>
+
+            {/* Exam Fee */}
+            <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-2.5 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                  <Award className="w-3 h-3 text-blue-400" />
+                  Exam Fees
+                </span>
+                <p className="text-sm font-black text-white mt-0.5">
+                  {sessionSummary.examFeeSubmittedCount} / {sessionSummary.totalActiveStudents}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                sessionSummary.examFeeSubmittedCount === sessionSummary.totalActiveStudents
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              }`}>
+                {sessionSummary.totalActiveStudents > 0
+                  ? Math.round((sessionSummary.examFeeSubmittedCount / sessionSummary.totalActiveStudents) * 100)
+                  : 0}%
+              </span>
+            </div>
+
+            {/* Study Material & Lab Fees */}
+            <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-2.5 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                  <FlaskConical className="w-3 h-3 text-purple-400" />
+                  Study Material & Lab
+                </span>
+                <p className="text-sm font-black text-white mt-0.5">
+                  {sessionSummary.studyMaterialLabSubmittedCount} / {sessionSummary.totalActiveStudents}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                sessionSummary.studyMaterialLabSubmittedCount === sessionSummary.totalActiveStudents
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+              }`}>
+                {sessionSummary.totalActiveStudents > 0
+                  ? Math.round((sessionSummary.studyMaterialLabSubmittedCount / sessionSummary.totalActiveStudents) * 100)
+                  : 0}%
+              </span>
+            </div>
+
+            {/* Annual Development Fees */}
+            <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-2.5 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  Annual Dev Fees
+                </span>
+                <p className="text-sm font-black text-white mt-0.5">
+                  {sessionSummary.annualDevSubmittedCount} / {sessionSummary.totalActiveStudents}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                sessionSummary.annualDevSubmittedCount === sessionSummary.totalActiveStudents
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}>
+                {sessionSummary.totalActiveStudents > 0
+                  ? Math.round((sessionSummary.annualDevSubmittedCount / sessionSummary.totalActiveStudents) * 100)
+                  : 0}%
+              </span>
             </div>
           </div>
         </div>
@@ -453,7 +576,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                 <th className="py-3.5 px-2 text-center min-w-[70px]">Class</th>
                 <th className="py-3.5 px-2 text-center min-w-[85px]">
                   <div className="flex items-center justify-center gap-1">
-                    <span>Progress</span>
+                    <span>Tuition</span>
                     <button
                       onClick={() => {
                         if (sortBy === 'paidCount') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -464,6 +587,9 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                       <ArrowUpDown className="w-3 h-3" />
                     </button>
                   </div>
+                </th>
+                <th className="py-3.5 px-2 text-center min-w-[150px]">
+                  <span>Fee Heads (Adm/Exam/Lab/Dev)</span>
                 </th>
 
                 {/* 12 Month Column Headers */}
@@ -497,7 +623,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredRows.map(({ student, monthStatuses, paidCount, unpaidCount, nextUnpaid }) => {
+                filteredRows.map(({ student, monthStatuses, paidCount, unpaidCount, nextUnpaid, feeHeadsStatus }) => {
                   const isAllPaid = unpaidCount === 0;
 
                   return (
@@ -547,6 +673,99 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                           <span className="text-[8px] text-slate-400 mt-0.5 font-medium">
                             {isAllPaid ? 'Completed' : `${unpaidCount} Due`}
                           </span>
+                        </div>
+                      </td>
+
+                      {/* Non-Tuition Fee Heads Status (Admission, Exam, Lab, Dev) */}
+                      <td className="py-2.5 px-2 text-center border-r border-slate-100">
+                        <div className="flex items-center justify-center gap-1 flex-wrap max-w-[150px] mx-auto">
+                          {/* Admission */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (feeHeadsStatus.admission.receiptNo) {
+                                const match = deposits.find((d) => d.receiptNo === feeHeadsStatus.admission.receiptNo);
+                                if (match) onViewReceipt(match);
+                                else onOpenFeeDepositModal(student.id, undefined);
+                              } else {
+                                onOpenFeeDepositModal(student.id, undefined);
+                              }
+                            }}
+                            title={`Admission Fee: ${feeHeadsStatus.admission.isSubmitted ? `Submitted on ${feeHeadsStatus.admission.lastPaymentDate || 'Recorded'}` : 'Pending Due'}`}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
+                              feeHeadsStatus.admission.isSubmitted
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            }`}
+                          >
+                            Adm: {feeHeadsStatus.admission.isSubmitted ? '✓' : 'Due'}
+                          </button>
+
+                          {/* Exam */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (feeHeadsStatus.exam.receiptNo) {
+                                const match = deposits.find((d) => d.receiptNo === feeHeadsStatus.exam.receiptNo);
+                                if (match) onViewReceipt(match);
+                                else onOpenFeeDepositModal(student.id, undefined);
+                              } else {
+                                onOpenFeeDepositModal(student.id, undefined);
+                              }
+                            }}
+                            title={`Exam Fee: ${feeHeadsStatus.exam.isSubmitted ? `Submitted (${feeHeadsStatus.exam.termsPaid || 2}/${feeHeadsStatus.exam.totalTerms || 2} terms)` : 'Pending Due'}`}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
+                              feeHeadsStatus.exam.isSubmitted
+                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            }`}
+                          >
+                            Exam: {feeHeadsStatus.exam.isSubmitted ? '✓' : 'Due'}
+                          </button>
+
+                          {/* Lab & Materials */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (feeHeadsStatus.materialsAndLab.receiptNo) {
+                                const match = deposits.find((d) => d.receiptNo === feeHeadsStatus.materialsAndLab.receiptNo);
+                                if (match) onViewReceipt(match);
+                                else onOpenFeeDepositModal(student.id, undefined);
+                              } else {
+                                onOpenFeeDepositModal(student.id, undefined);
+                              }
+                            }}
+                            title={`Study Material & Lab: ${feeHeadsStatus.materialsAndLab.isSubmitted ? 'Submitted' : 'Pending Due'}`}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
+                              feeHeadsStatus.materialsAndLab.isSubmitted
+                                ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            }`}
+                          >
+                            Lab: {feeHeadsStatus.materialsAndLab.isSubmitted ? '✓' : 'Due'}
+                          </button>
+
+                          {/* Annual Dev */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (feeHeadsStatus.annualDevelopment.receiptNo) {
+                                const match = deposits.find((d) => d.receiptNo === feeHeadsStatus.annualDevelopment.receiptNo);
+                                if (match) onViewReceipt(match);
+                                else onOpenFeeDepositModal(student.id, undefined);
+                              } else {
+                                onOpenFeeDepositModal(student.id, undefined);
+                              }
+                            }}
+                            title={`Annual Dev Fee: ${feeHeadsStatus.annualDevelopment.isSubmitted ? 'Submitted' : 'Pending Due'}`}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
+                              feeHeadsStatus.annualDevelopment.isSubmitted
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            }`}
+                          >
+                            Dev: {feeHeadsStatus.annualDevelopment.isSubmitted ? '✓' : 'Due'}
+                          </button>
                         </div>
                       </td>
 

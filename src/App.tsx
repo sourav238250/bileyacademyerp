@@ -869,6 +869,7 @@ export default function App() {
         <ReceiptModal
           deposit={selectedReceiptDeposit}
           student={receiptStudent}
+          deposits={deposits}
           authConfig={authConfig}
           onUpdateAuthConfig={handleSaveAuthConfig}
           onClose={() => setSelectedReceiptDeposit(null)}
