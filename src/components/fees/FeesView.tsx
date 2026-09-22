@@ -18,6 +18,9 @@ import {
   MONTH_SHORT_NAMES,
   getStudentTuitionMonthsStatus,
   getNextUnpaidTuitionMonth,
+  getStudentFeeHeadsSubmissionStatus,
+  getStudentEnrollmentMonth,
+  getApplicableSessionMonthsForStudent,
 } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
@@ -441,21 +444,23 @@ export const FeesView: React.FC<FeesViewProps> = ({
   };
 
   const handleApplyMonthPreset = (preset: 'next_1' | 'quarter_3' | 'semester_6' | 'all_unpaid' | 'clear') => {
-    const studentStatuses = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
-    const unpaidMonths = studentStatuses.filter((s) => !s.isPaid).map((s) => s.month);
+    const targetStudent = students.find((s) => s.id === selectedStudentId);
+    const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits);
+    const unpaidMonths = studentStatuses.filter((s) => !s.isPreEnrollment && !s.isPaid).map((s) => s.month);
+    const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, ACADEMIC_SESSION_MONTHS) : ACADEMIC_SESSION_MONTHS;
 
     let nextMonths: string[] = [];
     if (preset === 'next_1') {
       nextMonths = unpaidMonths.slice(0, 1);
-      if (nextMonths.length === 0) nextMonths = [ACADEMIC_SESSION_MONTHS[0]];
+      if (nextMonths.length === 0) nextMonths = [applicableMonths[0] || ACADEMIC_SESSION_MONTHS[0]];
     } else if (preset === 'quarter_3') {
       nextMonths = unpaidMonths.slice(0, 3);
-      if (nextMonths.length === 0) nextMonths = ACADEMIC_SESSION_MONTHS.slice(0, 3) as unknown as string[];
+      if (nextMonths.length === 0) nextMonths = applicableMonths.slice(0, 3) as unknown as string[];
     } else if (preset === 'semester_6') {
       nextMonths = unpaidMonths.slice(0, 6);
-      if (nextMonths.length === 0) nextMonths = ACADEMIC_SESSION_MONTHS.slice(0, 6) as unknown as string[];
+      if (nextMonths.length === 0) nextMonths = applicableMonths.slice(0, 6) as unknown as string[];
     } else if (preset === 'all_unpaid') {
-      nextMonths = unpaidMonths.length > 0 ? unpaidMonths : (ACADEMIC_SESSION_MONTHS as unknown as string[]);
+      nextMonths = unpaidMonths.length > 0 ? unpaidMonths : (applicableMonths as unknown as string[]);
     } else if (preset === 'clear') {
       nextMonths = [];
     }
@@ -482,10 +487,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
     setIsCustomAmount(false);
 
     // Pick top N unpaid months
-    const studentStatuses = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
-    const unpaidMonths = studentStatuses.filter((s) => !s.isPaid).map((s) => s.month);
+    const targetStudent = students.find((s) => s.id === selectedStudentId);
+    const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits);
+    const unpaidMonths = studentStatuses.filter((s) => !s.isPreEnrollment && !s.isPaid).map((s) => s.month);
+    const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, ACADEMIC_SESSION_MONTHS) : ACADEMIC_SESSION_MONTHS;
     const pickedMonths = unpaidMonths.slice(0, newMonthsCount);
-    const finalMonths = pickedMonths.length > 0 ? pickedMonths : (ACADEMIC_SESSION_MONTHS.slice(0, newMonthsCount) as unknown as string[]);
+    const finalMonths = pickedMonths.length > 0 ? pickedMonths : (applicableMonths.slice(0, newMonthsCount) as unknown as string[]);
     setSelectedMonths(finalMonths);
 
     const { total } = calculateTotalForHeads(
@@ -1880,8 +1887,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     const targetStudent = students.find((s) => s.id === selectedStudentId);
                     const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
                     const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+                    const feeHeadsStatus = targetStudent ? getStudentFeeHeadsSubmissionStatus(targetStudent, deposits) : null;
 
-                    const headsList: { id: FeeHeadType; label: string; rateDisplay: string; subDesc: string }[] = [
+                    const headsList: { id: FeeHeadType; label: string; rateDisplay: string; subDesc: string; isSubmittedOnce?: boolean }[] = [
                       {
                         id: 'Tuition Fee',
                         label: 'Tuition Fee',
@@ -1892,25 +1900,28 @@ export const FeesView: React.FC<FeesViewProps> = ({
                         id: 'Admission Fee',
                         label: 'Admission Fee',
                         rateDisplay: `₹${st.admissionFee}`,
-                        subDesc: 'One-time registration',
+                        subDesc: feeHeadsStatus?.admission.isSubmitted ? '✓ Submitted (1-time)' : 'One-time registration',
+                        isSubmittedOnce: feeHeadsStatus?.admission.isSubmitted,
                       },
                       {
                         id: 'Exam Fee',
                         label: 'Exam Fee',
                         rateDisplay: `₹${st.examFeePerTerm}/term`,
-                        subDesc: `${examTermCount} Term(s)`,
+                        subDesc: `${examTermCount} Term(s) ${feeHeadsStatus?.exam.isSubmitted ? '(Cleared)' : ''}`,
                       },
                       {
                         id: 'Study Material and Lab Fees',
                         label: 'Study Material & Lab',
                         rateDisplay: `₹${st.materialsFee}`,
-                        subDesc: 'Annual Worksheets & Kit',
+                        subDesc: feeHeadsStatus?.materialsAndLab.isSubmitted ? '✓ Submitted (1-time)' : 'Annual Worksheets & Kit',
+                        isSubmittedOnce: feeHeadsStatus?.materialsAndLab.isSubmitted,
                       },
                       {
                         id: 'Annual Development Fees and others',
                         label: 'Annual Development',
                         rateDisplay: `₹${st.annualDevelopmentFee ?? 50}/yr`,
-                        subDesc: 'Campus & Amenities',
+                        subDesc: feeHeadsStatus?.annualDevelopment.isSubmitted ? '✓ Submitted (1-time)' : 'Campus & Amenities',
+                        isSubmittedOnce: feeHeadsStatus?.annualDevelopment.isSubmitted,
                       },
                     ];
 
@@ -1926,6 +1937,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
                               className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                                 isSelected
                                   ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-amber-400/40'
+                                  : h.isSubmittedOnce
+                                  ? 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
                                   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                               }`}
                             >
@@ -1943,7 +1956,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                                 <span className={`text-[10px] font-bold block ${isSelected ? 'text-amber-300' : 'text-emerald-700'}`}>
                                   {h.rateDisplay}
                                 </span>
-                                <span className={`text-[9px] block truncate ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                <span className={`text-[9px] block truncate ${isSelected ? 'text-slate-300' : h.isSubmittedOnce ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
                                   {h.subDesc}
                                 </span>
                               </div>
@@ -1959,10 +1972,21 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 {selectedFeeHeads.includes('Tuition Fee') && (
                   <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2.5">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
-                        Tuition Fee Academic Months (2026: Jan – Dec)
-                      </span>
+                      <div>
+                        <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                          Tuition Fee Academic Months (2026: Jan – Dec)
+                        </span>
+                        {(() => {
+                          const targetStudent = students.find((s) => s.id === selectedStudentId);
+                          const enrMonth = targetStudent ? getStudentEnrollmentMonth(targetStudent) : 'January 2026';
+                          return (
+                            <span className="text-[10px] text-amber-800 font-medium block mt-0.5">
+                              Prorated from enrollment month ({enrMonth}) to session end (Dec 2026)
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] bg-amber-200/90 text-amber-950 font-extrabold px-2 py-0.5 rounded-full">
                           {selectedMonths.length} Mo Selected
@@ -2026,13 +2050,32 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     {/* 12 Academic Months Grid (Compact 12-col or 6-col) */}
                     <div>
                       {(() => {
-                        const studentStatus = getStudentTuitionMonthsStatus(selectedStudentId, deposits);
+                        const targetStudent = students.find((s) => s.id === selectedStudentId);
+                        const studentStatus = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits, ACADEMIC_SESSION_MONTHS);
                         return (
                           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
                             {ACADEMIC_SESSION_MONTHS.map((m) => {
                               const st = studentStatus.find((s) => s.month === m);
                               const isPaidAlready = st?.isPaid;
+                              const isPreEnrollment = st?.isPreEnrollment;
                               const isSelected = selectedMonths.includes(m);
+
+                              if (isPreEnrollment) {
+                                return (
+                                  <div
+                                    key={m}
+                                    title={`Pre-enrollment month for this candidate (Enrolled in ${targetStudent ? getStudentEnrollmentMonth(targetStudent) : 'later month'}). Not payable.`}
+                                    className="p-1.5 rounded-xl text-center border bg-slate-100/90 text-slate-400 border-slate-200 select-none opacity-80"
+                                  >
+                                    <span className="text-[11px] font-bold block leading-none mx-auto text-slate-400">
+                                      {m.split(' ')[0].slice(0, 3)}
+                                    </span>
+                                    <span className="text-[7.5px] block mt-0.5 uppercase font-medium text-slate-400">
+                                      N/A
+                                    </span>
+                                  </div>
+                                );
+                              }
 
                               return (
                                 <button

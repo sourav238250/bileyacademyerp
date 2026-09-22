@@ -973,6 +973,11 @@ export const INITIAL_STUDENTS: Student[] = [
     emergencyContact: '+91 98305 99999',
     notes: 'Aiming for Top 100 in Board and JEE Advanced.',
     enrolledSubjectIds: ['SUB-12-PHY', 'SUB-12-CHEM', 'SUB-12-MATH'],
+    subjectEnrollments: [
+      { subjectId: 'SUB-12-PHY', enrollmentMonth: 'January 2026' },
+      { subjectId: 'SUB-12-CHEM', enrollmentMonth: 'April 2026' },
+      { subjectId: 'SUB-12-MATH', enrollmentMonth: 'July 2026' },
+    ],
     enrollmentType: 'Multiple Subjects',
   },
   {
@@ -998,6 +1003,10 @@ export const INITIAL_STUDENTS: Student[] = [
     emergencyContact: '+91 98211 98765',
     notes: 'NEET aspirant with exceptional Biology & Chemistry aptitude.',
     enrolledSubjectIds: ['SUB-12-BIO', 'SUB-12-CHEM'],
+    subjectEnrollments: [
+      { subjectId: 'SUB-12-BIO', enrollmentMonth: 'January 2026' },
+      { subjectId: 'SUB-12-CHEM', enrollmentMonth: 'April 2026' },
+    ],
     enrollmentType: 'Multiple Subjects',
   },
   // Class 12 Commerce
@@ -1023,6 +1032,10 @@ export const INITIAL_STUDENTS: Student[] = [
     bloodGroup: 'A+',
     notes: 'Focusing on CUET & CA Foundation.',
     enrolledSubjectIds: ['SUB-12-CA', 'SUB-12-MATH'],
+    subjectEnrollments: [
+      { subjectId: 'SUB-12-CA', enrollmentMonth: 'January 2026' },
+      { subjectId: 'SUB-12-MATH', enrollmentMonth: 'April 2026' },
+    ],
     enrollmentType: 'Multiple Subjects',
   },
   // Class 11 Science
@@ -1047,6 +1060,7 @@ export const INITIAL_STUDENTS: Student[] = [
     status: 'Active',
     bloodGroup: 'AB+',
     enrolledSubjectIds: ['SUB-11-MATH'],
+    subjectEnrollments: [{ subjectId: 'SUB-11-MATH', enrollmentMonth: 'April 2026' }],
     enrollmentType: 'Single Subject',
   },
   {
@@ -1070,6 +1084,7 @@ export const INITIAL_STUDENTS: Student[] = [
     status: 'Active',
     bloodGroup: 'O-',
     enrolledSubjectIds: ['SUB-11-PHY'],
+    subjectEnrollments: [{ subjectId: 'SUB-11-PHY', enrollmentMonth: 'April 2026' }],
     enrollmentType: 'Single Subject',
   },
   // Class 10

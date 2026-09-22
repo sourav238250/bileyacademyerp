@@ -10,6 +10,7 @@ import {
   Student,
   StudentAttendanceSummary,
   StudentFeeSummary,
+  StudentSubjectEnrollment,
   Subject,
   SubjectAttendanceStat,
 } from '../types';
@@ -130,11 +131,249 @@ export function getAvailableSubjectsForStudent(
  */
 export function getEnrolledSubjectsForStudent(student: Student, subjects: Subject[]): Subject[] {
   const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
-  if (student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0) {
-    const enrolled = available.filter((s) => student.enrolledSubjectIds!.includes(s.id));
+  const enrolledIds =
+    student.subjectEnrollments && student.subjectEnrollments.length > 0
+      ? student.subjectEnrollments.map((e) => e.subjectId)
+      : student.enrolledSubjectIds;
+
+  if (enrolledIds && enrolledIds.length > 0) {
+    const enrolled = available.filter((s) => enrolledIds.includes(s.id));
     return enrolled.length > 0 ? enrolled : available;
   }
   return available;
+}
+
+export const ACADEMIC_SESSION_MONTHS = [
+  'January 2026',
+  'February 2026',
+  'March 2026',
+  'April 2026',
+  'May 2026',
+  'June 2026',
+  'July 2026',
+  'August 2026',
+  'September 2026',
+  'October 2026',
+  'November 2026',
+  'December 2026',
+] as const;
+
+export type AcademicSessionMonth = (typeof ACADEMIC_SESSION_MONTHS)[number];
+
+export const MONTH_SHORT_NAMES: Record<string, string> = {
+  'January 2026': 'Jan',
+  'February 2026': 'Feb',
+  'March 2026': 'Mar',
+  'April 2026': 'Apr',
+  'May 2026': 'May',
+  'June 2026': 'Jun',
+  'July 2026': 'Jul',
+  'August 2026': 'Aug',
+  'September 2026': 'Sep',
+  'October 2026': 'Oct',
+  'November 2026': 'Nov',
+  'December 2026': 'Dec',
+};
+
+/**
+ * Normalizes string representations of months for accurate matching
+ * e.g., "April 2026", "April", "Apr 2026", "Apr"
+ */
+export function matchMonth(monthNameA: string, monthNameB: string): boolean {
+  if (!monthNameA || !monthNameB) return false;
+  const cleanA = monthNameA.trim().toLowerCase();
+  const cleanB = monthNameB.trim().toLowerCase();
+  if (cleanA === cleanB) return true;
+
+  const prefixA = cleanA.split(' ')[0].slice(0, 3);
+  const prefixB = cleanB.split(' ')[0].slice(0, 3);
+  return prefixA === prefixB && prefixA.length >= 3;
+}
+
+/**
+ * Resolves normalized subject enrollments for a candidate.
+ * If student has individual subject enrollment months, returns them.
+ * Otherwise defaults all enrolled subjects to the student's admission/enrollment month.
+ */
+export function getStudentSubjectEnrollments(
+  student?: Student | null,
+  availableSubjects?: Subject[]
+): StudentSubjectEnrollment[] {
+  if (!student) return [];
+
+  const defaultMonth = getStudentEnrollmentMonth(student);
+
+  // If explicit subjectEnrollments exists and has items
+  if (student.subjectEnrollments && student.subjectEnrollments.length > 0) {
+    return student.subjectEnrollments.map((enr) => {
+      let matchedMonth = enr.enrollmentMonth;
+      if (!matchedMonth || !ACADEMIC_SESSION_MONTHS.some((m) => matchMonth(m, matchedMonth))) {
+        matchedMonth = defaultMonth;
+      }
+      return {
+        ...enr,
+        enrollmentMonth: matchedMonth,
+        status: enr.status || 'Active',
+      };
+    });
+  }
+
+  // Fallback to enrolledSubjectIds
+  if (student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0) {
+    return student.enrolledSubjectIds.map((subId) => ({
+      subjectId: subId,
+      enrollmentMonth: defaultMonth,
+      status: 'Active',
+    }));
+  }
+
+  // Fallback to all available subjects if combo
+  if (availableSubjects && availableSubjects.length > 0) {
+    const classAvailable = getAvailableSubjectsForStudent(student.classLevel, student.stream, availableSubjects);
+    return classAvailable.map((sub) => ({
+      subjectId: sub.id,
+      enrollmentMonth: defaultMonth,
+      status: 'Active',
+    }));
+  }
+
+  return [];
+}
+
+/**
+ * Resolves the earliest subject enrollment month for a candidate.
+ * If individual subject enrollments exist, finds the earliest start month.
+ * If explicitly specified on student (e.g. 'April 2026'), uses that.
+ * Otherwise parses student admissionDate (e.g. 2026-04-12 -> 'April 2026').
+ * If student joined in a prior session (e.g. 2025), default to session start ('January 2026').
+ */
+export function getStudentEnrollmentMonth(student?: Student | null): string {
+  if (!student) return 'January 2026';
+
+  // Check if subjectEnrollments exist and pick the earliest valid enrollment month
+  if (student.subjectEnrollments && student.subjectEnrollments.length > 0) {
+    let earliestIdx = 999;
+    student.subjectEnrollments.forEach((enr) => {
+      const idx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enr.enrollmentMonth));
+      if (idx >= 0 && idx < earliestIdx) {
+        earliestIdx = idx;
+      }
+    });
+    if (earliestIdx >= 0 && earliestIdx < ACADEMIC_SESSION_MONTHS.length) {
+      return ACADEMIC_SESSION_MONTHS[earliestIdx];
+    }
+  }
+
+  if (student.enrollmentMonth && typeof student.enrollmentMonth === 'string' && student.enrollmentMonth.trim()) {
+    const matched = ACADEMIC_SESSION_MONTHS.find((m) => matchMonth(m, student.enrollmentMonth!));
+    if (matched) return matched;
+  }
+
+  if (student.admissionDate) {
+    const parts = student.admissionDate.split('-');
+    if (parts.length >= 2) {
+      const year = parseInt(parts[0], 10);
+      const monthNum = parseInt(parts[1], 10);
+      if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+        if (year === 2026) {
+          return ACADEMIC_SESSION_MONTHS[monthNum - 1] || 'January 2026';
+        } else if (year < 2026) {
+          return 'January 2026';
+        }
+      }
+    }
+  }
+
+  return 'January 2026';
+}
+
+/**
+ * Returns the list of academic session months applicable to this candidate
+ * calculated strictly from their earliest subject enrollment month to the session end (December 2026).
+ */
+export function getApplicableSessionMonthsForStudent(
+  student?: Student | null,
+  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+): string[] {
+  const enrollmentMonth = getStudentEnrollmentMonth(student);
+  const startIdx = sessionMonths.findIndex((m) => matchMonth(m, enrollmentMonth));
+  const effectiveStart = startIdx >= 0 ? startIdx : 0;
+  return sessionMonths.slice(effectiveStart) as string[];
+}
+
+/**
+ * Returns the subjects that are active (enrolled on or before the given session month)
+ * for a student in a specific academic session month.
+ */
+export function getStudentActiveSubjectsForMonth(
+  student: Student,
+  sessionMonth: string,
+  subjects?: Subject[]
+): { enrollment: StudentSubjectEnrollment; subject?: Subject }[] {
+  const targetIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, sessionMonth));
+  if (targetIdx < 0) return [];
+
+  const enrollments = getStudentSubjectEnrollments(student, subjects);
+  const activeList: { enrollment: StudentSubjectEnrollment; subject?: Subject }[] = [];
+
+  enrollments.forEach((enr) => {
+    if (enr.status === 'Dropped') return;
+    const enrIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enr.enrollmentMonth));
+    if (enrIdx >= 0 && enrIdx <= targetIdx) {
+      const matchedSub = subjects?.find((s) => s.id === enr.subjectId);
+      activeList.push({
+        enrollment: enr,
+        subject: matchedSub,
+      });
+    }
+  });
+
+  return activeList;
+}
+
+/**
+ * Calculates the exact tuition rate for a specific student in a given academic session month,
+ * taking into account how many subjects are currently active in that month.
+ */
+export function getStudentMonthTuitionRate(
+  student: Student,
+  sessionMonth: string,
+  feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
+  subjects?: Subject[]
+): {
+  month: string;
+  activeSubjectCount: number;
+  activeSubjectNames: string[];
+  requiredTuition: number;
+  isPreEnrollment: boolean;
+} {
+  const activeSubs = getStudentActiveSubjectsForMonth(student, sessionMonth, subjects);
+  const activeCount = activeSubs.length;
+
+  if (activeCount === 0) {
+    return {
+      month: sessionMonth,
+      activeSubjectCount: 0,
+      activeSubjectNames: [],
+      requiredTuition: 0,
+      isPreEnrollment: true,
+    };
+  }
+
+  const key = `${student.classLevel}-${student.stream}`;
+  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const perSubRate = structure.perSubjectMonthlyFee || 350;
+  const tuition = activeCount * perSubRate;
+
+  const names = activeSubs.map((item) => item.subject?.name || item.enrollment.subjectId);
+
+  return {
+    month: sessionMonth,
+    activeSubjectCount: activeCount,
+    activeSubjectNames: names,
+    requiredTuition: tuition,
+    isPreEnrollment: false,
+  };
 }
 
 /**
@@ -152,12 +391,21 @@ export function getStudentCoachingMode(
     return 'All Subjects Combo';
   }
 
-  const count = student.enrolledSubjectIds ? student.enrolledSubjectIds.length : 0;
+  const count = student.subjectEnrollments && student.subjectEnrollments.length > 0
+    ? student.subjectEnrollments.length
+    : student.enrolledSubjectIds ? student.enrolledSubjectIds.length : 0;
+
   if (count === 1) return 'Single Subject';
   if (count > 1 && count <= 4) return 'Multiple Subjects';
   return 'All Subjects Combo';
 }
 
+/**
+ * Computes the annual fee summary for a student adhering to the institutional policy:
+ * 1. Fees are calculated from subject enrollment month to session end (December 2026).
+ *    Different subjects can be enrolled in different months, prorating tuition accurately!
+ * 2. One-time fees (Admission Fee, Study Material & Lab Fee, Annual Development Fee) are submitted only once.
+ */
 export function computeStudentFeeSummary(
   student: Student,
   deposits: FeeDeposit[],
@@ -168,50 +416,65 @@ export function computeStudentFeeSummary(
   const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
 
   // Determine enrolled subject count & coaching mode
-  let enrolledCount = 6;
-  let totalAvailableCount = 6;
-  let coachingMode: 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo' = 'All Subjects Combo';
+  const allEnrollments = getStudentSubjectEnrollments(student, subjects);
+  const enrolledCount = Math.max(allEnrollments.length, 1);
+  const coachingMode = getStudentCoachingMode(student, subjects);
 
+  // Available subjects for proportional material fees
+  let totalAvailableCount = 6;
   if (subjects && subjects.length > 0) {
     const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
     totalAvailableCount = Math.max(available.length, 1);
-    const enrolled = getEnrolledSubjectsForStudent(student, subjects);
-    enrolledCount = enrolled.length;
-    coachingMode = getStudentCoachingMode(student, subjects);
-  } else if (student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0) {
-    enrolledCount = student.enrolledSubjectIds.length;
-    if (enrolledCount === 1) {
-      coachingMode = 'Single Subject';
-    } else if (enrolledCount < 6) {
-      coachingMode = 'Multiple Subjects';
-    } else {
-      coachingMode = 'All Subjects Combo';
-    }
   }
 
-  // Monthly Tuition calculation based on coaching enrollment
-  const perSubRate = structure.perSubjectMonthlyFee || 350;
-  const effectiveMonthlyTuition = Math.max(1, enrolledCount) * perSubRate;
+  // Calculate month-by-month tuition across the 12 session months
+  let totalTuitionForSession = 0;
+  const monthWiseTuitionBreakdown = ACADEMIC_SESSION_MONTHS.map((m) => {
+    const rate = getStudentMonthTuitionRate(student, m, feeStructures, subjects);
+    totalTuitionForSession += rate.requiredTuition;
+    return {
+      month: m,
+      activeCount: rate.activeSubjectCount,
+      activeSubjectNames: rate.activeSubjectNames,
+      monthlyTuition: rate.requiredTuition,
+      isPreEnrollment: rate.isPreEnrollment,
+    };
+  });
 
-  // Materials & Lab fee: full package or proportional for single/multi subjects
-  const effectiveMaterialsFee = coachingMode === 'All Subjects Combo'
-    ? (structure.materialsFee ?? 0)
-    : Math.round((structure.materialsFee ?? 0) * (enrolledCount / (totalAvailableCount || 1)));
+  // Calculate applicable months from earliest subject enrollment month to session end (December 2026)
+  const enrollmentMonth = getStudentEnrollmentMonth(student);
+  const applicableMonths = getApplicableSessionMonthsForStudent(student, ACADEMIC_SESSION_MONTHS);
+  const applicableMonthsCount = applicableMonths.length;
 
-  // Base calculation for 1 Academic Year (12 months tuition + admission + 2 exam terms + materials + annual development fee)
+  // Active monthly tuition for current (September 2026) or latest active rate
+  const activeNowBreakdown =
+    monthWiseTuitionBreakdown.find((b) => matchMonth(b.month, 'September 2026')) ||
+    monthWiseTuitionBreakdown.filter((b) => !b.isPreEnrollment).slice(-1)[0] ||
+    monthWiseTuitionBreakdown[0];
+  const effectiveMonthlyTuition = activeNowBreakdown?.monthlyTuition || enrolledCount * (structure.perSubjectMonthlyFee || 350);
+
+  // One-time non-tuition fees (submitted only once per candidate)
+  const admissionFee = structure.admissionFee;
   const annualDevFee = structure.annualDevelopmentFee ?? 50;
-  const grossAnnual =
-    structure.admissionFee +
-    effectiveMonthlyTuition * 12 +
-    structure.examFeePerTerm * 2 +
-    effectiveMaterialsFee +
-    annualDevFee;
+
+  // Materials & Lab fee: full package or proportional for single/multi subjects (One-time)
+  const effectiveMaterialsFee = coachingMode === 'All Subjects Combo'
+    ? (structure.materialsFee ?? 50)
+    : Math.round((structure.materialsFee ?? 50) * (enrolledCount / (totalAvailableCount || 1)));
+
+  // Exam fee terms: 2 terms for students enrolled in H1 (Jan-Jun), 1 term for students enrolled in H2 (Jul-Dec)
+  const enrollmentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enrollmentMonth));
+  const applicableExamTerms = enrollmentMonthIdx <= 6 ? 2 : 1;
+  const totalExamFee = structure.examFeePerTerm * applicableExamTerms;
+
+  // Total calculated fee for the session: (Sum of Tuition for all 12 Months) + One-Time Fees + Exam Terms
+  const grossAnnual = admissionFee + totalTuitionForSession + totalExamFee + effectiveMaterialsFee + annualDevFee;
 
   const scholarshipDiscount = Math.round((grossAnnual * (student.scholarshipPercent || 0)) / 100);
   const netPayable = grossAnnual - scholarshipDiscount;
 
   const studentDeposits = deposits.filter((d) => d.studentId === student.id);
-  const totalPaid = studentDeposits.reduce((acc, curr) => acc + curr.amountPaid, 0);
+  const totalPaid = studentDeposits.reduce((acc, curr) => acc + (Number(curr.amountPaid) || 0), 0);
   const dueAmount = Math.max(0, netPayable - totalPaid);
 
   let feeStatus: 'Paid' | 'Partial' | 'Overdue' | 'Due Soon' = 'Paid';
@@ -239,12 +502,19 @@ export function computeStudentFeeSummary(
     monthlyTuitionFee: effectiveMonthlyTuition,
     enrolledSubjectCount: enrolledCount,
     coachingMode,
+    enrollmentMonth,
+    applicableMonthsCount,
+    sessionEndMonth: 'December 2026',
+    applicableMonths,
+    subjectEnrollments: allEnrollments,
+    monthWiseTuitionBreakdown,
   };
 }
 
 export interface NonTuitionFeeHeadStatus {
   head: string;
   category: 'Admission' | 'Exam' | 'MaterialLab' | 'AnnualDev';
+  isOneTime: boolean;
   requiredAmount: number;
   paidAmount: number;
   isSubmitted: boolean;
@@ -267,7 +537,7 @@ export interface StudentFeeHeadsTracking {
 
 /**
  * Tracks whether Admission Fees, Exam Fees, Study Material & Lab Fees, and Annual Development Fees
- * are submitted or pending for a candidate.
+ * are submitted or pending for a candidate. One-time fees are verified as submitted once.
  */
 export function getStudentFeeHeadsSubmissionStatus(
   student: Student,
@@ -348,18 +618,23 @@ export function getStudentFeeHeadsSubmissionStatus(
     : Math.round((structure.materialsFee ?? 50) * (enrolledCount / (availableCount || 1)));
 
   const admissionRequired = structure.admissionFee || 100;
-  const examRequired = (structure.examFeePerTerm || 100) * 2;
-  const materialsRequired = effectiveMaterialsFee;
   const annualDevRequired = structure.annualDevelopmentFee ?? 50;
+  const materialsRequired = effectiveMaterialsFee;
 
-  const examTermsPaid = Math.min(2, Math.floor(examPaid / Math.max(1, structure.examFeePerTerm || 50)));
+  const enrollmentMonth = getStudentEnrollmentMonth(student);
+  const enrollmentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enrollmentMonth));
+  const totalExamTerms = enrollmentMonthIdx <= 6 ? 2 : 1;
+  const examRequired = (structure.examFeePerTerm || 100) * totalExamTerms;
+
+  const examTermsPaid = Math.min(totalExamTerms, Math.floor(examPaid / Math.max(1, structure.examFeePerTerm || 50)));
 
   const admissionStatus: NonTuitionFeeHeadStatus = {
     head: 'Admission Fee',
     category: 'Admission',
+    isOneTime: true,
     requiredAmount: admissionRequired,
     paidAmount: admissionPaid,
-    isSubmitted: admissionPaid >= admissionRequired,
+    isSubmitted: admissionPaid >= admissionRequired || admissionPaid > 0,
     lastPaymentDate: admissionLastDate,
     receiptNo: admissionLastReceipt,
   };
@@ -367,11 +642,12 @@ export function getStudentFeeHeadsSubmissionStatus(
   const examStatus: NonTuitionFeeHeadStatus = {
     head: 'Exam Assessment Fee',
     category: 'Exam',
+    isOneTime: false,
     requiredAmount: examRequired,
     paidAmount: examPaid,
     termsPaid: examTermsPaid,
-    totalTerms: 2,
-    isSubmitted: examPaid >= examRequired || examTermsPaid >= 2,
+    totalTerms: totalExamTerms,
+    isSubmitted: examPaid >= examRequired || examTermsPaid >= totalExamTerms,
     lastPaymentDate: examLastDate,
     receiptNo: examLastReceipt,
   };
@@ -379,9 +655,10 @@ export function getStudentFeeHeadsSubmissionStatus(
   const materialsStatus: NonTuitionFeeHeadStatus = {
     head: 'Study Material & Lab Fee',
     category: 'MaterialLab',
+    isOneTime: true,
     requiredAmount: materialsRequired,
     paidAmount: materialsPaid,
-    isSubmitted: materialsPaid >= materialsRequired,
+    isSubmitted: materialsPaid >= materialsRequired || materialsPaid > 0,
     lastPaymentDate: materialsLastDate,
     receiptNo: materialsLastReceipt,
   };
@@ -389,9 +666,10 @@ export function getStudentFeeHeadsSubmissionStatus(
   const annualDevStatus: NonTuitionFeeHeadStatus = {
     head: 'Annual Development Fee',
     category: 'AnnualDev',
+    isOneTime: true,
     requiredAmount: annualDevRequired,
     paidAmount: annualDevPaid,
-    isSubmitted: annualDevPaid >= annualDevRequired,
+    isSubmitted: annualDevPaid >= annualDevRequired || annualDevPaid > 0,
     lastPaymentDate: annualDevLastDate,
     receiptNo: annualDevLastReceipt,
   };
@@ -416,7 +694,10 @@ export function getStudentFeeHeadsSubmissionStatus(
 export interface CandidateCurrentMonthDuesSummary {
   studentId: string;
   currentSessionMonth: string; // e.g. "September 2026"
+  enrollmentMonth: string; // e.g. "April 2026"
   elapsedMonthsCount: number; // e.g. 9
+  applicableElapsedMonthsCount: number; // e.g. 6 (April to September)
+  applicableMonthsInSessionCount: number; // e.g. 9 (April to December)
   totalMonthsInSession: number; // 12
   monthlyTuitionFee: number;
   totalTuitionDueTillCurrentMonth: number;
@@ -436,6 +717,9 @@ export interface CandidateCurrentMonthDuesSummary {
 
 /**
  * Calculates a candidate's remaining dues and payment balance up to the current session month.
+ * Strictly adheres to:
+ * - Tuition calculated from subject enrollment month to current month.
+ * - One-time fees (Admission, Material & Lab, Annual Dev) submitted once.
  */
 export function computeCandidateDuesTillCurrentMonth(
   student: Student,
@@ -445,19 +729,33 @@ export function computeCandidateDuesTillCurrentMonth(
   subjects?: Subject[]
 ): CandidateCurrentMonthDuesSummary {
   const currentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, currentSessionMonth));
-  const effectiveIdx = currentMonthIdx >= 0 ? currentMonthIdx : 8; // default to September 2026 (index 8)
-  const elapsedMonthsCount = effectiveIdx + 1; // 9 months
-  const elapsedSessionMonths = ACADEMIC_SESSION_MONTHS.slice(0, elapsedMonthsCount);
+  const effectiveCurrentIdx = currentMonthIdx >= 0 ? currentMonthIdx : 8; // default to September 2026 (index 8)
+  const elapsedMonthsCount = effectiveCurrentIdx + 1; // 9 months overall in session
 
+  const enrollmentMonth = getStudentEnrollmentMonth(student);
+
+  // Calculate tuition sum across elapsed months (0 to effectiveCurrentIdx) based on active subjects in each month
+  let totalTuitionDueTillCurrentMonth = 0;
+  const applicableElapsedMonths: string[] = [];
+
+  for (let i = 0; i <= effectiveCurrentIdx; i++) {
+    const monthName = ACADEMIC_SESSION_MONTHS[i];
+    const rate = getStudentMonthTuitionRate(student, monthName, feeStructures, subjects);
+    totalTuitionDueTillCurrentMonth += rate.requiredTuition;
+    if (!rate.isPreEnrollment) {
+      applicableElapsedMonths.push(monthName);
+    }
+  }
+
+  const applicableElapsedMonthsCount = applicableElapsedMonths.length;
   const annualSummary = computeStudentFeeSummary(student, deposits, feeStructures, subjects);
   const monthlyTuition = annualSummary.monthlyTuitionFee;
-  const totalTuitionDueTillCurrentMonth = monthlyTuition * elapsedMonthsCount;
 
   const key = `${student.classLevel}-${student.stream}`;
   const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
   const tracking = getStudentFeeHeadsSubmissionStatus(student, deposits, feeStructures, subjects);
 
-  // Till September (mid/Q3 of session), 1 term exam fee + admission + materials + annual dev are applicable
+  // One-time fees + applicable exam terms till current month
   const examFeeApplicable = structure.examFeePerTerm || 100;
   const nonTuitionDueTillCurrentMonth =
     structure.admissionFee +
@@ -478,14 +776,23 @@ export function computeCandidateDuesTillCurrentMonth(
   const advanceCreditTillCurrentMonth = Math.max(0, totalPaidTillDate - netPayableTillCurrentMonth);
 
   // Calculate unpaid elapsed tuition months
-  const monthStatuses = getStudentTuitionMonthsStatus(student.id, deposits, elapsedSessionMonths);
-  const unpaidElapsed = monthStatuses.filter((s) => !s.isPaid).map((s) => s.month);
-  const paidElapsedCount = monthStatuses.filter((s) => s.isPaid).length;
+  const monthStatuses = getStudentTuitionMonthsStatus(
+    student,
+    deposits,
+    ACADEMIC_SESSION_MONTHS.slice(0, effectiveCurrentIdx + 1)
+  );
+  const unpaidElapsed = monthStatuses
+    .filter((s) => !s.isPreEnrollment && !s.isPaid)
+    .map((s) => s.month);
+  const paidElapsedCount = monthStatuses.filter((s) => !s.isPreEnrollment && s.isPaid).length;
 
   return {
     studentId: student.id,
-    currentSessionMonth: ACADEMIC_SESSION_MONTHS[effectiveIdx] || currentSessionMonth,
+    currentSessionMonth: ACADEMIC_SESSION_MONTHS[effectiveCurrentIdx] || currentSessionMonth,
+    enrollmentMonth,
     elapsedMonthsCount,
+    applicableElapsedMonthsCount,
+    applicableMonthsInSessionCount: annualSummary.applicableMonthsCount || 12,
     totalMonthsInSession: 12,
     monthlyTuitionFee: monthlyTuition,
     totalTuitionDueTillCurrentMonth,
@@ -524,42 +831,14 @@ export function getCandidatePreviousTransactions(
     });
 }
 
-export const ACADEMIC_SESSION_MONTHS = [
-  'January 2026',
-  'February 2026',
-  'March 2026',
-  'April 2026',
-  'May 2026',
-  'June 2026',
-  'July 2026',
-  'August 2026',
-  'September 2026',
-  'October 2026',
-  'November 2026',
-  'December 2026',
-] as const;
-
-export type AcademicSessionMonth = (typeof ACADEMIC_SESSION_MONTHS)[number];
-
-export const MONTH_SHORT_NAMES: Record<string, string> = {
-  'January 2026': 'Jan',
-  'February 2026': 'Feb',
-  'March 2026': 'Mar',
-  'April 2026': 'Apr',
-  'May 2026': 'May',
-  'June 2026': 'Jun',
-  'July 2026': 'Jul',
-  'August 2026': 'Aug',
-  'September 2026': 'Sep',
-  'October 2026': 'Oct',
-  'November 2026': 'Nov',
-  'December 2026': 'Dec',
-};
-
 export interface StudentMonthTuitionStatus {
   month: string;
   shortMonth: string;
   isPaid: boolean;
+  isPreEnrollment?: boolean; // True if this month has 0 active subjects enrolled
+  activeSubjectCount?: number;
+  activeSubjectNames?: string[];
+  requiredTuition?: number;
   depositId?: string;
   receiptNo?: string;
   depositDate?: string;
@@ -569,27 +848,17 @@ export interface StudentMonthTuitionStatus {
 }
 
 /**
- * Normalizes string representations of months for accurate matching
- * e.g., "April 2026", "April", "Apr 2026", "Apr"
- */
-export function matchMonth(monthNameA: string, monthNameB: string): boolean {
-  const cleanA = monthNameA.trim().toLowerCase();
-  const cleanB = monthNameB.trim().toLowerCase();
-  if (cleanA === cleanB) return true;
-
-  const prefixA = cleanA.split(' ')[0].slice(0, 3);
-  const prefixB = cleanB.split(' ')[0].slice(0, 3);
-  return prefixA === prefixB && prefixA.length >= 3;
-}
-
-/**
- * Retrieves the month-by-month tuition payment status for a specific student
+ * Retrieves the month-by-month tuition payment status for a specific student,
+ * respecting pre-enrollment months where tuition was not applicable and active subject counts.
  */
 export function getStudentTuitionMonthsStatus(
-  studentId: string,
+  studentOrId: Student | string,
   deposits: FeeDeposit[],
   sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
 ): StudentMonthTuitionStatus[] {
+  const studentId = typeof studentOrId === 'string' ? studentOrId : studentOrId.id;
+  const student = typeof studentOrId === 'object' ? studentOrId : null;
+
   // Find all tuition deposits for this student
   const studentTuitionDeposits = deposits.filter((d) => {
     if (d.studentId !== studentId) return false;
@@ -601,6 +870,24 @@ export function getStudentTuitionMonthsStatus(
   });
 
   return sessionMonths.map((sessionMonth) => {
+    let isPreEnrollment = false;
+    let activeSubjectCount: number | undefined = undefined;
+    let activeSubjectNames: string[] | undefined = undefined;
+    let requiredTuition: number | undefined = undefined;
+
+    if (student) {
+      const rate = getStudentMonthTuitionRate(student, sessionMonth);
+      isPreEnrollment = rate.isPreEnrollment;
+      activeSubjectCount = rate.activeSubjectCount;
+      activeSubjectNames = rate.activeSubjectNames;
+      requiredTuition = rate.requiredTuition;
+    } else {
+      const enrollmentMonth = 'January 2026';
+      const enrollmentIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enrollmentMonth));
+      const sessionIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, sessionMonth));
+      isPreEnrollment = sessionIdx >= 0 && sessionIdx < (enrollmentIdx >= 0 ? enrollmentIdx : 0);
+    }
+
     const matchingDeposit = studentTuitionDeposits.find((d) =>
       d.monthsCovered?.some((covMonth) => matchMonth(covMonth, sessionMonth))
     );
@@ -609,6 +896,10 @@ export function getStudentTuitionMonthsStatus(
       month: sessionMonth,
       shortMonth: MONTH_SHORT_NAMES[sessionMonth] || sessionMonth.slice(0, 3),
       isPaid: !!matchingDeposit,
+      isPreEnrollment,
+      activeSubjectCount,
+      activeSubjectNames,
+      requiredTuition,
       depositId: matchingDeposit?.id,
       receiptNo: matchingDeposit?.receiptNo,
       depositDate: matchingDeposit?.depositDate,
@@ -620,15 +911,15 @@ export function getStudentTuitionMonthsStatus(
 }
 
 /**
- * Returns the first unpaid month for a student in the academic session
+ * Returns the first unpaid month for a student on or after their earliest subject enrollment month.
  */
 export function getNextUnpaidTuitionMonth(
-  studentId: string,
+  studentOrId: Student | string,
   deposits: FeeDeposit[],
   sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
 ): string | null {
-  const statuses = getStudentTuitionMonthsStatus(studentId, deposits, sessionMonths);
-  const unpaid = statuses.find((s) => !s.isPaid);
+  const statuses = getStudentTuitionMonthsStatus(studentOrId, deposits, sessionMonths);
+  const unpaid = statuses.find((s) => !s.isPreEnrollment && !s.isPaid);
   return unpaid ? unpaid.month : null;
 }
 
@@ -656,27 +947,25 @@ export function getTuitionMonthCollectionStats(
     let totalCollected = 0;
 
     activeStudents.forEach((student) => {
-      const monthStatus = getStudentTuitionMonthsStatus(student.id, deposits, [month])[0];
+      const monthStatus = getStudentTuitionMonthsStatus(student, deposits, [month])[0];
       if (monthStatus?.isPaid) {
         paidCount++;
         if (monthStatus.matchingDeposit) {
-          // If deposit covers multiple months, attribute proportional share
-          const monthsCount = monthStatus.matchingDeposit.monthsCovered?.length || 1;
-          totalCollected += Math.round(monthStatus.matchingDeposit.amountPaid / monthsCount);
+          totalCollected += Number(monthStatus.matchingDeposit.amountPaid) || 0;
         }
       }
     });
 
-    const unpaidCount = Math.max(0, activeStudents.length - paidCount);
-    const collectionPercentage = Math.round((paidCount / totalActive) * 100);
+    const unpaidCount = Math.max(0, totalActive - paidCount);
+    const percentage = Math.round((paidCount / totalActive) * 100);
 
     return {
       month,
       shortMonth: MONTH_SHORT_NAMES[month] || month.slice(0, 3),
-      totalStudents: activeStudents.length,
+      totalStudents: totalActive,
       paidStudentsCount: paidCount,
       unpaidStudentsCount: unpaidCount,
-      collectionPercentage,
+      collectionPercentage: percentage,
       totalCollected,
     };
   });

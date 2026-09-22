@@ -24,6 +24,9 @@ import {
   getAttendanceStatusBadge,
   formatCurrency,
   generateStudentId,
+  ACADEMIC_SESSION_MONTHS,
+  getSessionMonthFromDate,
+  getSubjectEffectiveMonth,
 } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
@@ -357,10 +360,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       derivedMode = 'All Subjects Combo';
     }
 
+    const defaultEffectiveMonth = getSessionMonthFromDate(formData.admissionDate);
+    const existingDetails = formData.enrolledSubjectsDetails ? [...formData.enrolledSubjectsDetails] : [];
+    const updatedDetails = updated.map((id) => {
+      const match = existingDetails.find((d) => d.subjectId === id);
+      return match || { subjectId: id, effectiveMonth: defaultEffectiveMonth };
+    });
+
     setFormData({
       ...formData,
       enrolledSubjectIds: updated,
       enrollmentType: derivedMode,
+      enrolledSubjectsDetails: updatedDetails,
     });
   };
 
@@ -1336,6 +1347,51 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             )}
                           </div>
 
+                          {/* Effective Enrollment Month Configuration */}
+                          {isSelected && (
+                            <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-1 text-[10px]">
+                              <span className="font-semibold text-slate-600 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-indigo-600" />
+                                Enrolled from:
+                              </span>
+                              <select
+                                value={
+                                  (formData.enrolledSubjectsDetails || []).find((d) => d.subjectId === sub.id)?.effectiveMonth ||
+                                  getSessionMonthFromDate(formData.admissionDate)
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  const chosenMonth = e.target.value;
+                                  const currentDetails = formData.enrolledSubjectsDetails ? [...formData.enrolledSubjectsDetails] : [];
+                                  const existingIdx = currentDetails.findIndex((d) => d.subjectId === sub.id);
+                                  if (existingIdx >= 0) {
+                                    currentDetails[existingIdx] = {
+                                      ...currentDetails[existingIdx],
+                                      effectiveMonth: chosenMonth,
+                                    };
+                                  } else {
+                                    currentDetails.push({
+                                      subjectId: sub.id,
+                                      effectiveMonth: chosenMonth,
+                                    });
+                                  }
+                                  setFormData({
+                                    ...formData,
+                                    enrolledSubjectsDetails: currentDetails,
+                                  });
+                                }}
+                                className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                              >
+                                {ACADEMIC_SESSION_MONTHS.map((m) => (
+                                  <option key={m} value={m}>
+                                    {m}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
                           {/* Syllabus Quick Dropdown / Details Button */}
                           <div className="pt-2 border-t border-slate-200/60">
                             <button
@@ -1779,23 +1835,29 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {getEnrolledSubjectsForStudent(viewingStudent, subjects).map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between shadow-xs"
-                    >
-                      <div>
-                        <p className="font-bold text-slate-900 text-xs">{sub.name}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">{sub.code} • {sub.weeklyHours} hrs/week</p>
-                        {sub.textbook && (
-                          <p className="text-[9px] text-slate-400 mt-0.5 truncate max-w-[200px]">{sub.textbook}</p>
-                        )}
+                  {getEnrolledSubjectsForStudent(viewingStudent, subjects).map((sub) => {
+                    const effectiveMonth = getSubjectEffectiveMonth(viewingStudent, sub.id);
+                    return (
+                      <div
+                        key={sub.id}
+                        className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between shadow-xs"
+                      >
+                        <div>
+                          <p className="font-bold text-slate-900 text-xs">{sub.name}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{sub.code} • {sub.weeklyHours} hrs/week</p>
+                          <p className="text-[9px] text-indigo-700 font-semibold mt-1 flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5" /> Enrolled: {effectiveMonth}
+                          </p>
+                          {sub.textbook && (
+                            <p className="text-[9px] text-slate-400 mt-0.5 truncate max-w-[200px]">{sub.textbook}</p>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[10px]">
+                          Active
+                        </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[10px]">
-                        Active
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

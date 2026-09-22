@@ -201,7 +201,17 @@ export interface Student {
   emergencyContact?: string;
   notes?: string;
   enrolledSubjectIds?: string[]; // Coaching subjects enrolled (Single subject e.g. Math, or multiple subjects)
+  subjectEnrollments?: StudentSubjectEnrollment[]; // Individual subject enrollment months and details
   enrollmentType?: 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo';
+  enrollmentMonth?: string; // Earliest subject enrollment month fallback (e.g. "April 2026")
+  subjectEnrollmentDate?: string;
+}
+
+export interface StudentSubjectEnrollment {
+  subjectId: string;
+  enrollmentMonth: string; // e.g. "January 2026", "April 2026", "July 2026"
+  enrollmentDate?: string; // e.g. "2026-04-10"
+  status?: 'Active' | 'Dropped' | 'Completed';
 }
 
 export interface Subject {
@@ -322,6 +332,18 @@ export interface StudentFeeSummary {
   monthlyTuitionFee: number;
   enrolledSubjectCount: number;
   coachingMode: 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo';
+  enrollmentMonth?: string;
+  applicableMonthsCount?: number;
+  sessionEndMonth?: string;
+  applicableMonths?: string[];
+  subjectEnrollments?: StudentSubjectEnrollment[];
+  monthWiseTuitionBreakdown?: {
+    month: string;
+    activeCount: number;
+    activeSubjectNames: string[];
+    monthlyTuition: number;
+    isPreEnrollment: boolean;
+  }[];
 }
 
 export interface TimetableSlot {

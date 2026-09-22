@@ -14,6 +14,8 @@ import {
   getTuitionMonthCollectionStats,
   getNextUnpaidTuitionMonth,
   getStudentFeeHeadsSubmissionStatus,
+  getStudentEnrollmentMonth,
+  getApplicableSessionMonthsForStudent,
   formatCurrency,
   CLASS_LEVELS,
 } from '../../utils/academicUtils';
@@ -115,10 +117,13 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
     return students
       .filter((s) => s.status === 'Active')
       .map((student) => {
-        const monthStatuses = getStudentTuitionMonthsStatus(student.id, deposits, ACADEMIC_SESSION_MONTHS);
-        const paidCount = monthStatuses.filter((m) => m.isPaid).length;
-        const unpaidCount = 12 - paidCount;
-        const nextUnpaid = monthStatuses.find((m) => !m.isPaid)?.month || null;
+        const enrollmentMonth = getStudentEnrollmentMonth(student);
+        const applicableMonths = getApplicableSessionMonthsForStudent(student, ACADEMIC_SESSION_MONTHS);
+        const applicableCount = applicableMonths.length;
+        const monthStatuses = getStudentTuitionMonthsStatus(student, deposits, ACADEMIC_SESSION_MONTHS);
+        const paidCount = monthStatuses.filter((m) => !m.isPreEnrollment && m.isPaid).length;
+        const unpaidCount = Math.max(0, applicableCount - paidCount);
+        const nextUnpaid = getNextUnpaidTuitionMonth(student, deposits);
         const feeHeadsStatus = getStudentFeeHeadsSubmissionStatus(student, deposits);
         
         // Check if student has enrolled subjects
@@ -128,6 +133,8 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
 
         return {
           student,
+          enrollmentMonth,
+          applicableCount,
           monthStatuses,
           paidCount,
           unpaidCount,
@@ -623,7 +630,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredRows.map(({ student, monthStatuses, paidCount, unpaidCount, nextUnpaid, feeHeadsStatus }) => {
+                filteredRows.map(({ student, enrollmentMonth, applicableCount, monthStatuses, paidCount, unpaidCount, nextUnpaid, feeHeadsStatus }) => {
                   const isAllPaid = unpaidCount === 0;
 
                   return (
@@ -658,21 +665,26 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                         </span>
                       </td>
 
-                      {/* Progress Score (e.g. 5/12) */}
+                      {/* Progress Score (e.g. 5/9 mo) */}
                       <td className="py-2.5 px-2 text-center border-r border-slate-100">
                         <div className="inline-flex flex-col items-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                             isAllPaid
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : paidCount >= 6
+                              : paidCount >= Math.ceil(applicableCount / 2)
                               ? 'bg-blue-100 text-blue-800 border border-blue-200'
                               : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}>
-                            {paidCount} / 12
+                            {paidCount} / {applicableCount} mo
                           </span>
                           <span className="text-[8px] text-slate-400 mt-0.5 font-medium">
                             {isAllPaid ? 'Completed' : `${unpaidCount} Due`}
                           </span>
+                          {applicableCount < 12 && (
+                            <span className="text-[7.5px] text-amber-700 font-semibold">
+                              From {MONTH_SHORT_NAMES[enrollmentMonth] || enrollmentMonth}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -691,7 +703,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                                 onOpenFeeDepositModal(student.id, undefined);
                               }
                             }}
-                            title={`Admission Fee: ${feeHeadsStatus.admission.isSubmitted ? `Submitted on ${feeHeadsStatus.admission.lastPaymentDate || 'Recorded'}` : 'Pending Due'}`}
+                            title={`Admission Fee (One-Time): ${feeHeadsStatus.admission.isSubmitted ? `Submitted on ${feeHeadsStatus.admission.lastPaymentDate || 'Recorded'}` : 'Pending Due'}`}
                             className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
                               feeHeadsStatus.admission.isSubmitted
                                 ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
@@ -713,7 +725,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                                 onOpenFeeDepositModal(student.id, undefined);
                               }
                             }}
-                            title={`Exam Fee: ${feeHeadsStatus.exam.isSubmitted ? `Submitted (${feeHeadsStatus.exam.termsPaid || 2}/${feeHeadsStatus.exam.totalTerms || 2} terms)` : 'Pending Due'}`}
+                            title={`Exam Fee: ${feeHeadsStatus.exam.isSubmitted ? `Submitted (${feeHeadsStatus.exam.termsPaid || 1}/${feeHeadsStatus.exam.totalTerms || 1} terms)` : 'Pending Due'}`}
                             className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
                               feeHeadsStatus.exam.isSubmitted
                                 ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
@@ -735,7 +747,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                                 onOpenFeeDepositModal(student.id, undefined);
                               }
                             }}
-                            title={`Study Material & Lab: ${feeHeadsStatus.materialsAndLab.isSubmitted ? 'Submitted' : 'Pending Due'}`}
+                            title={`Study Material & Lab (One-Time): ${feeHeadsStatus.materialsAndLab.isSubmitted ? 'Submitted' : 'Pending Due'}`}
                             className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
                               feeHeadsStatus.materialsAndLab.isSubmitted
                                 ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
@@ -757,7 +769,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                                 onOpenFeeDepositModal(student.id, undefined);
                               }
                             }}
-                            title={`Annual Dev Fee: ${feeHeadsStatus.annualDevelopment.isSubmitted ? 'Submitted' : 'Pending Due'}`}
+                            title={`Annual Dev Fee (One-Time): ${feeHeadsStatus.annualDevelopment.isSubmitted ? 'Submitted' : 'Pending Due'}`}
                             className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
                               feeHeadsStatus.annualDevelopment.isSubmitted
                                 ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
@@ -778,7 +790,15 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                               selectedFocusMonth === st.month ? 'bg-amber-50/80' : ''
                             }`}
                           >
-                            {st.isPaid ? (
+                            {st.isPreEnrollment ? (
+                              <div
+                                title={`Candidate enrolled in ${enrollmentMonth}.\nPre-enrollment month not payable.`}
+                                className="w-full py-1.5 px-1 bg-slate-100 border border-slate-200/80 rounded-lg text-slate-400 font-bold text-[8px] flex flex-col items-center justify-center gap-0.5 select-none"
+                              >
+                                <span className="w-1.5 h-0.5 bg-slate-300 rounded-full"></span>
+                                <span className="text-[7.5px] uppercase tracking-tighter">N/A</span>
+                              </div>
+                            ) : st.isPaid ? (
                               <button
                                 type="button"
                                 onClick={() => {
