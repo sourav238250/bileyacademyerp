@@ -22,6 +22,8 @@ import {
   getStudentEnrollmentMonth,
   getApplicableSessionMonthsForStudent,
   getStudentMonthTuitionRate,
+  getEnrolledSubjectsForStudent,
+  getAvailableSubjectsForStudent,
 } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
@@ -178,6 +180,32 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const [collectedBy, setCollectedBy] = useState<string>('Accounts Dept - S. Dinda');
   const [remarks, setRemarks] = useState<string>('Tuition installment received with receipt issued.');
 
+  // Helper to determine exact max enrolled subjects for any student
+  const getStudentMaxEnrolledSubjects = (
+    student?: Student | null
+  ): { count: number; enrolledSubjects: import('../../types').Subject[]; names: string[] } => {
+    if (!student) return { count: 1, enrolledSubjects: [], names: [] };
+
+    const enrolled = subjects ? getEnrolledSubjectsForStudent(student, subjects) : [];
+    const enrolledIds =
+      student.subjectEnrollments && student.subjectEnrollments.length > 0
+        ? student.subjectEnrollments.map((e) => e.subjectId)
+        : student.enrolledSubjectIds;
+
+    let count = 1;
+    if (enrolledIds && enrolledIds.length > 0) {
+      count = Math.max(1, enrolledIds.length);
+    } else if (enrolled.length > 0) {
+      count = enrolled.length;
+    } else if (subjects && subjects.length > 0) {
+      const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
+      count = Math.max(1, available.length);
+    }
+
+    const names = enrolled.map((s) => s.name);
+    return { count, enrolledSubjects: enrolled, names };
+  };
+
   // Helper to compute individual head rate & amount
   const getHeadRateAndAmount = (
     head: FeeHeadType,
@@ -290,10 +318,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
     const initialHeads: FeeHeadType[] = [initialHead];
     setSelectedFeeHeads(initialHeads);
 
-    const initialSubjCount =
-      targetStudent?.enrolledSubjectIds?.length && targetStudent.enrolledSubjectIds.length > 0
-        ? targetStudent.enrolledSubjectIds.length
-        : 4;
+    const { count: maxEnrolledCount } = getStudentMaxEnrolledSubjects(targetStudent);
+    const initialSubjCount = maxEnrolledCount;
     setTuitionSubjectCount(initialSubjCount);
 
     // Determine initial months for tuition
@@ -403,10 +429,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const handleStudentChangeInDeposit = (newStudentId: string) => {
     setSelectedStudentId(newStudentId);
     const targetStudent = students.find((s) => s.id === newStudentId);
-    const newSubjCount =
-      targetStudent?.enrolledSubjectIds?.length && targetStudent.enrolledSubjectIds.length > 0
-        ? targetStudent.enrolledSubjectIds.length
-        : tuitionSubjectCount;
+    const { count: maxEnrolledCount } = getStudentMaxEnrolledSubjects(targetStudent);
+    // Restrict selected subject count: must never be greater than student's enrolled subjects count
+    const newSubjCount = Math.max(1, Math.min(tuitionSubjectCount, maxEnrolledCount));
     setTuitionSubjectCount(newSubjCount);
 
     // Auto calculate next unpaid month for this student
@@ -498,12 +523,16 @@ export const FeesView: React.FC<FeesViewProps> = ({
   };
 
   const handleTuitionParamsChange = (newSubjCount: number, newMonthsCount: number) => {
-    setTuitionSubjectCount(newSubjCount);
+    const targetStudent = students.find((s) => s.id === selectedStudentId);
+    const { count: maxEnrolledCount } = getStudentMaxEnrolledSubjects(targetStudent);
+    // Restrict subjects count to not exceed student's enrolled subjects
+    const validSubjCount = Math.max(1, Math.min(newSubjCount, maxEnrolledCount));
+
+    setTuitionSubjectCount(validSubjCount);
     setTuitionMonthsCount(newMonthsCount);
     setIsCustomAmount(false);
 
     // Pick top N unpaid months
-    const targetStudent = students.find((s) => s.id === selectedStudentId);
     const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits);
     const unpaidMonths = studentStatuses.filter((s) => !s.isPreEnrollment && !s.isPaid).map((s) => s.month);
     const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, ACADEMIC_SESSION_MONTHS) : ACADEMIC_SESSION_MONTHS;
@@ -514,7 +543,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
     const { total } = calculateTotalForHeads(
       selectedFeeHeads,
       selectedStudentId,
-      newSubjCount,
+      validSubjCount,
       newMonthsCount,
       examTermCount
     );
@@ -543,6 +572,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
     }
 
     const student = students.find((s) => s.id === selectedStudentId);
+    const { count: maxEnrolledCount } = getStudentMaxEnrolledSubjects(student);
+    if (selectedFeeHeads.includes('Tuition Fee') && tuitionSubjectCount > maxEnrolledCount) {
+      alert(`Enrolled subjects count selection (${tuitionSubjectCount}) cannot be greater than the candidate's enrolled subjects count (${maxEnrolledCount}).`);
+      return;
+    }
+
     const receiptNo = generateReceiptNumber(deposits.length);
 
     const { total: standardCalculatedTotal, breakdown } = calculateTotalForHeads(
@@ -1468,21 +1503,27 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 {calcMode === 'perSubject' && (
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <span className="text-[11px] text-slate-500">Subjects:</span>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5, 6].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          onClick={() => setCalcSubjectCount(num)}
-                          className={`w-6 h-6 rounded-md text-[10px] font-bold cursor-pointer ${
-                            calcSubjectCount === num
-                              ? 'bg-amber-500 text-slate-950'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                    <div className="flex gap-1 flex-wrap">
+                      {(() => {
+                        const available = subjects
+                          ? getAvailableSubjectsForStudent(calcClass, calcStream, subjects)
+                          : [];
+                        const maxAvail = ['11', '12'].includes(calcClass) ? 7 : (available.length > 0 ? available.length : 4);
+                        return Array.from({ length: maxAvail }, (_, i) => i + 1).map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setCalcSubjectCount(num)}
+                            className={`w-6 h-6 rounded-md text-[10px] font-bold cursor-pointer ${
+                              calcSubjectCount === num
+                                ? 'bg-amber-500 text-slate-950 font-black'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
@@ -1832,9 +1873,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     >
                       {students.map((st) => {
                         const sum = computeStudentFeeSummary(st, deposits, feeStructures, subjects);
+                        const { count: enrCount } = getStudentMaxEnrolledSubjects(st);
                         return (
                           <option key={st.id} value={st.id}>
-                            {st.name} (Class {st.classLevel} - {st.stream}) • Enrolled: {st.enrolledSubjectIds?.length || 4} Subj • Due: {formatCurrency(sum.dueAmount)}
+                            {st.name} (Class {st.classLevel} - {st.stream}) • Enrolled: {enrCount} Subj • Due: {formatCurrency(sum.dueAmount)}
                           </option>
                         );
                       })}
@@ -2042,28 +2084,52 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Enrolled Subject Multiplier */}
-                    <div className="flex items-center gap-2">
-                      <label className="text-slate-700 font-bold text-[11px] shrink-0">
-                        Enrolled Subjects Count:
-                      </label>
-                      <div className="flex gap-1 max-w-xs">
-                        {[1, 2, 3, 4, 5, 6].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleTuitionParamsChange(num, Math.max(1, selectedMonths.length))}
-                            className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              tuitionSubjectCount === num
-                                ? 'bg-amber-600 text-white shadow-xs'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Enrolled Subject Multiplier - Restricted strictly to student's enrolled subjects */}
+                    {(() => {
+                      const targetStudent = students.find((s) => s.id === selectedStudentId);
+                      const { count: maxAllowedSubjects, names: subjectNames } = getStudentMaxEnrolledSubjects(targetStudent);
+                      const availableNumbers = Array.from({ length: maxAllowedSubjects }, (_, i) => i + 1);
+
+                      return (
+                        <div className="space-y-1.5 p-2.5 bg-amber-100/60 rounded-xl border border-amber-200/80">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <div className="flex items-center gap-2">
+                              <label className="text-slate-800 font-bold text-[11px] shrink-0">
+                                Enrolled Subjects Multiplier:
+                              </label>
+                              <span className="text-[10px] bg-amber-600 text-white font-black px-2 py-0.5 rounded-md shadow-xs">
+                                {tuitionSubjectCount} of {maxAllowedSubjects} Max
+                              </span>
+                            </div>
+                            {subjectNames.length > 0 && (
+                              <span className="text-[10px] text-amber-900 font-medium truncate max-w-sm" title={subjectNames.join(', ')}>
+                                Enrolled Subjects: <strong className="text-amber-950 font-bold">{subjectNames.join(', ')}</strong>
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {availableNumbers.map((num) => (
+                              <button
+                                key={num}
+                                type="button"
+                                onClick={() => handleTuitionParamsChange(num, Math.max(1, selectedMonths.length))}
+                                className={`py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  tuitionSubjectCount === num
+                                    ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-400'
+                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-amber-50'
+                                }`}
+                              >
+                                {num} {num === 1 ? 'Subject' : 'Subjects'}
+                              </button>
+                            ))}
+                            <span className="text-[10px] text-amber-800 italic font-medium ml-1">
+                              (Selection strictly restricted to candidate's {maxAllowedSubjects} enrolled subject{maxAllowedSubjects > 1 ? 's' : ''})
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* 12 Academic Months Grid (Compact 12-col or 6-col) */}
                     <div>
