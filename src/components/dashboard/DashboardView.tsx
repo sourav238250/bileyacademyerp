@@ -16,7 +16,7 @@ import {
   AssignmentSet,
   InstitutionalAuthorizationConfig,
 } from '../../types';
-import { formatCurrency, computeStudentFeeSummary, CLASS_LEVELS } from '../../utils/academicUtils';
+import { formatCurrency, computeStudentFeeSummary, CLASS_LEVELS, DEFAULT_FEE_STRUCTURE } from '../../utils/academicUtils';
 import {
   exportDatabaseBackup,
   parseDatabaseBackup,
@@ -198,7 +198,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalCollected = deposits.reduce((sum, d) => sum + d.amountPaid, 0);
 
   // Calculate total pending dues
-  const feeSummaries = students.map((s) => computeStudentFeeSummary(s, deposits));
+  const feeSummaries = students.map((s) => computeStudentFeeSummary(s, deposits, DEFAULT_FEE_STRUCTURE, subjects));
   const totalDues = feeSummaries.reduce((sum, f) => sum + f.dueAmount, 0);
   const studentsWithDues = feeSummaries.filter((f) => f.dueAmount > 0);
 

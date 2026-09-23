@@ -664,9 +664,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
           {/* Academic Session Monthly Tuition Fee Tracker Card */}
           {(() => {
-            const monthsStatus = getStudentTuitionMonthsStatus(student.id, deposits);
-            const paidCount = monthsStatus.filter((m) => m.isPaid).length;
-            const dueCount = 12 - paidCount;
+            const monthsStatus = getStudentTuitionMonthsStatus(student, deposits);
+            const applicableStatus = monthsStatus.filter((m) => !m.isPreEnrollment);
+            const paidCount = applicableStatus.filter((m) => m.isPaid).length;
+            const dueCount = applicableStatus.length - paidCount;
 
             return (
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
@@ -677,12 +678,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       Academic Session Monthly Tuition Track (Jan – Dec 2026)
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      12 Months Academic Cycle: January 2026 to December 2026 • Rate: {formatCurrency(feeSummary.monthlyTuitionFee)}/month
+                      Fees calculated from subject enrollment months to session end (Dec 2026) • Current Active Rate: {formatCurrency(feeSummary.monthlyTuitionFee)}/month
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold">
-                      ✓ {paidCount} Cleared
+                      ✓ {paidCount} / {applicableStatus.length} Cleared
                     </span>
                     {dueCount > 0 && (
                       <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold">
@@ -697,14 +698,20 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     <div
                       key={m.month}
                       className={`p-3 rounded-xl border transition-all ${
-                        m.isPaid
+                        m.isPreEnrollment
+                          ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-75'
+                          : m.isPaid
                           ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950 shadow-2xs'
-                          : 'bg-slate-50/80 border-slate-200 text-slate-700'
+                          : 'bg-amber-50/50 border-amber-200/80 text-slate-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold">{m.shortMonth}</span>
-                        {m.isPaid ? (
+                        {m.isPreEnrollment ? (
+                          <span className="text-[9px] text-slate-400 font-bold bg-slate-200/70 px-1.5 py-0.2 rounded">
+                            N/A
+                          </span>
+                        ) : m.isPaid ? (
                           <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
                             ✓
                           </span>
@@ -715,14 +722,21 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         )}
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1 font-medium">{m.month.split(' ')[1]}</p>
-                      {m.isPaid ? (
+                      {m.isPreEnrollment ? (
+                        <div className="mt-2 pt-1.5 border-t border-slate-200/60 text-[9px] text-slate-400">
+                          <span>Pre-enrollment</span>
+                        </div>
+                      ) : m.isPaid ? (
                         <div className="mt-2 pt-1.5 border-t border-emerald-200/60 text-[10px]">
                           <p className="font-semibold text-emerald-800 truncate">{m.receiptNo || 'Cleared'}</p>
-                          <p className="text-emerald-700 font-bold">{formatCurrency(m.amountPaid || feeSummary.monthlyTuitionFee)}</p>
+                          <p className="text-emerald-700 font-bold">{formatCurrency(m.amountPaid || m.requiredTuition || feeSummary.monthlyTuitionFee)}</p>
                         </div>
                       ) : (
-                        <div className="mt-2 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-400">
-                          <span>Payable: {formatCurrency(feeSummary.monthlyTuitionFee)}</span>
+                        <div className="mt-2 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-600">
+                          <span>Payable: <strong className="text-slate-900 font-bold">{formatCurrency(m.requiredTuition || feeSummary.monthlyTuitionFee)}</strong></span>
+                          {m.activeSubjectCount !== undefined && (
+                            <span className="block text-[8.5px] text-slate-400 mt-0.5 font-medium">({m.activeSubjectCount} subjects)</span>
+                          )}
                         </div>
                       )}
                     </div>

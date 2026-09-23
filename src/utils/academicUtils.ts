@@ -241,6 +241,43 @@ export function getStudentSubjectEnrollments(
 }
 
 /**
+ * Resolves the academic session month name from a date string (e.g., '2026-04-12' -> 'April 2026')
+ */
+export function getSessionMonthFromDate(dateStr?: string): string {
+  if (!dateStr) return 'January 2026';
+  const parts = dateStr.split('-');
+  if (parts.length >= 2) {
+    const year = parseInt(parts[0], 10);
+    const monthNum = parseInt(parts[1], 10);
+    if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+      if (year === 2026) {
+        return ACADEMIC_SESSION_MONTHS[monthNum - 1] || 'January 2026';
+      } else if (year < 2026) {
+        return 'January 2026';
+      } else if (year > 2026) {
+        return 'December 2026';
+      }
+    }
+  }
+  return 'January 2026';
+}
+
+/**
+ * Returns the effective enrollment month for a specific subject of a student.
+ */
+export function getSubjectEffectiveMonth(student?: Student | null, subjectId?: string): string {
+  if (!student) return 'January 2026';
+  if (student.subjectEnrollments && student.subjectEnrollments.length > 0 && subjectId) {
+    const enr = student.subjectEnrollments.find((e) => e.subjectId === subjectId);
+    if (enr && enr.enrollmentMonth) {
+      const matched = ACADEMIC_SESSION_MONTHS.find((m) => matchMonth(m, enr.enrollmentMonth));
+      if (matched) return matched;
+    }
+  }
+  return getStudentEnrollmentMonth(student);
+}
+
+/**
  * Resolves the earliest subject enrollment month for a candidate.
  * If individual subject enrollments exist, finds the earliest start month.
  * If explicitly specified on student (e.g. 'April 2026'), uses that.
@@ -270,18 +307,7 @@ export function getStudentEnrollmentMonth(student?: Student | null): string {
   }
 
   if (student.admissionDate) {
-    const parts = student.admissionDate.split('-');
-    if (parts.length >= 2) {
-      const year = parseInt(parts[0], 10);
-      const monthNum = parseInt(parts[1], 10);
-      if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
-        if (year === 2026) {
-          return ACADEMIC_SESSION_MONTHS[monthNum - 1] || 'January 2026';
-        } else if (year < 2026) {
-          return 'January 2026';
-        }
-      }
-    }
+    return getSessionMonthFromDate(student.admissionDate);
   }
 
   return 'January 2026';
@@ -361,7 +387,12 @@ export function getStudentMonthTuitionRate(
   }
 
   const key = `${student.classLevel}-${student.stream}`;
-  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const structure =
+    feeStructures[key] ||
+    feeStructures[`${student.classLevel}-General`] ||
+    DEFAULT_FEE_STRUCTURE[key] ||
+    DEFAULT_FEE_STRUCTURE[`${student.classLevel}-General`] ||
+    DEFAULT_FEE_STRUCTURE['1-General'];
   const perSubRate = structure.perSubjectMonthlyFee || 350;
   const tuition = activeCount * perSubRate;
 
@@ -413,7 +444,12 @@ export function computeStudentFeeSummary(
   subjects?: Subject[]
 ): StudentFeeSummary {
   const key = `${student.classLevel}-${student.stream}`;
-  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const structure =
+    feeStructures[key] ||
+    feeStructures[`${student.classLevel}-General`] ||
+    DEFAULT_FEE_STRUCTURE[key] ||
+    DEFAULT_FEE_STRUCTURE[`${student.classLevel}-General`] ||
+    DEFAULT_FEE_STRUCTURE['1-General'];
 
   // Determine enrolled subject count & coaching mode
   const allEnrollments = getStudentSubjectEnrollments(student, subjects);
@@ -467,8 +503,10 @@ export function computeStudentFeeSummary(
   const applicableExamTerms = enrollmentMonthIdx <= 6 ? 2 : 1;
   const totalExamFee = structure.examFeePerTerm * applicableExamTerms;
 
+  const totalNonTuition = admissionFee + totalExamFee + effectiveMaterialsFee + annualDevFee;
+
   // Total calculated fee for the session: (Sum of Tuition for all 12 Months) + One-Time Fees + Exam Terms
-  const grossAnnual = admissionFee + totalTuitionForSession + totalExamFee + effectiveMaterialsFee + annualDevFee;
+  const grossAnnual = totalTuitionForSession + totalNonTuition;
 
   const scholarshipDiscount = Math.round((grossAnnual * (student.scholarshipPercent || 0)) / 100);
   const netPayable = grossAnnual - scholarshipDiscount;
@@ -493,6 +531,8 @@ export function computeStudentFeeSummary(
   return {
     studentId: student.id,
     totalAnnualFee: grossAnnual,
+    totalTuitionFee: totalTuitionForSession,
+    totalNonTuitionFee: totalNonTuition,
     totalDiscount: scholarshipDiscount,
     netPayable,
     totalPaid,

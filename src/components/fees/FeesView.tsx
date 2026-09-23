@@ -21,6 +21,7 @@ import {
   getStudentFeeHeadsSubmissionStatus,
   getStudentEnrollmentMonth,
   getApplicableSessionMonthsForStudent,
+  getStudentMonthTuitionRate,
 } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
@@ -183,7 +184,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
     studentId: string,
     subjectsCount: number,
     monthsCount: number,
-    termsCount: number
+    termsCount: number,
+    specificMonths?: string[]
   ): { amount: number; rateDisplay: string; details: string } => {
     const student = students.find((s) => s.id === studentId);
     const structKey = student ? `${student.classLevel}-${student.stream}` : '1-General';
@@ -196,7 +198,15 @@ export const FeesView: React.FC<FeesViewProps> = ({
     switch (head) {
       case 'Tuition Fee': {
         const perSub = st.perSubjectMonthlyFee || 350;
-        const amount = perSub * Math.max(1, subjectsCount) * Math.max(1, monthsCount);
+        let amount = 0;
+        if (student && specificMonths && specificMonths.length > 0) {
+          specificMonths.forEach((m) => {
+            const r = getStudentMonthTuitionRate(student, m, feeStructures, subjects);
+            amount += r.requiredTuition;
+          });
+        } else {
+          amount = perSub * Math.max(1, subjectsCount) * Math.max(1, monthsCount);
+        }
         return {
           amount,
           rateDisplay: `₹${perSub}/subj/mo`,
@@ -246,13 +256,14 @@ export const FeesView: React.FC<FeesViewProps> = ({
     studentId: string,
     subjectsCount: number,
     monthsCount: number,
-    termsCount: number
+    termsCount: number,
+    specificMonths?: string[]
   ) => {
     let total = 0;
     const breakdown: { head: FeeHeadType; amount: number; rateDisplay: string; details: string }[] = [];
 
     for (const h of heads) {
-      const item = getHeadRateAndAmount(h, studentId, subjectsCount, monthsCount, termsCount);
+      const item = getHeadRateAndAmount(h, studentId, subjectsCount, monthsCount, termsCount, specificMonths);
       total += item.amount;
       breakdown.push({
         head: h,
@@ -307,7 +318,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
       setAmountPaid(customAmount);
       setIsCustomAmount(true);
     } else {
-      const { total } = calculateTotalForHeads(initialHeads, sId, initialSubjCount, initMonthsCount, 1);
+      const { total } = calculateTotalForHeads(initialHeads, sId, initialSubjCount, initMonthsCount, 1, initMonths);
       setAmountPaid(total);
       setIsCustomAmount(false);
     }
@@ -348,7 +359,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
       selectedStudentId,
       tuitionSubjectCount,
       tuitionMonthsCount,
-      examTermCount
+      examTermCount,
+      selectedMonths
     );
     setAmountPaid(total);
 
@@ -380,7 +392,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
       selectedStudentId,
       tuitionSubjectCount,
       tuitionMonthsCount,
-      examTermCount
+      examTermCount,
+      selectedMonths
     );
     setAmountPaid(total);
     const desc = breakdown.map((b) => b.head).join(', ');
@@ -408,7 +421,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
         newStudentId,
         newSubjCount,
         newMonths.length,
-        examTermCount
+        examTermCount,
+        newMonths
       );
       setAmountPaid(total);
     }
@@ -437,7 +451,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
       selectedStudentId,
       tuitionSubjectCount,
       monthsCount,
-      examTermCount
+      examTermCount,
+      nextMonths
     );
     setAmountPaid(total);
     setRemarks(`Tuition fee for: ${nextMonths.length > 0 ? nextMonths.join(', ') : 'None selected'} (${tuitionSubjectCount} subjects).`);
@@ -475,7 +490,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
       selectedStudentId,
       tuitionSubjectCount,
       monthsCount,
-      examTermCount
+      examTermCount,
+      nextMonths
     );
     setAmountPaid(total);
     setRemarks(`Tuition fee for: ${nextMonths.length > 0 ? nextMonths.join(', ') : 'None'} (${tuitionSubjectCount} subjects).`);
@@ -793,7 +809,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   // Calculations for Dues & Collections
   const allFeeSummaries = students.map((s) => ({
     student: s,
-    summary: computeStudentFeeSummary(s, deposits),
+    summary: computeStudentFeeSummary(s, deposits, feeStructures, subjects),
   }));
 
   const totalCollectedGross = deposits.reduce((sum, d) => sum + d.amountPaid, 0);
@@ -943,6 +959,8 @@ export const FeesView: React.FC<FeesViewProps> = ({
       <SessionRevenueGoalTracker
         students={students}
         deposits={deposits}
+        feeStructures={feeStructures}
+        subjects={subjects}
         onOpenDepositModal={() => handleOpenDepositModal()}
       />
 
@@ -1813,7 +1831,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-xs font-medium"
                     >
                       {students.map((st) => {
-                        const sum = computeStudentFeeSummary(st, deposits);
+                        const sum = computeStudentFeeSummary(st, deposits, feeStructures, subjects);
                         return (
                           <option key={st.id} value={st.id}>
                             {st.name} (Class {st.classLevel} - {st.stream}) • Enrolled: {st.enrolledSubjectIds?.length || 4} Subj • Due: {formatCurrency(sum.dueAmount)}
@@ -1827,7 +1845,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     {(() => {
                       const targetStudent = students.find((s) => s.id === selectedStudentId);
                       if (!targetStudent) return null;
-                      const summary = computeStudentFeeSummary(targetStudent, deposits);
+                      const summary = computeStudentFeeSummary(targetStudent, deposits, feeStructures, subjects);
                       const structKey = `${targetStudent.classLevel}-${targetStudent.stream}`;
                       const st = feeStructures[structKey] || feeStructures[`${targetStudent.classLevel}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
 

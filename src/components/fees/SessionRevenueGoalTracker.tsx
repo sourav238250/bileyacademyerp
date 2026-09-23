@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Student, FeeDeposit, ClassLevel } from '../../types';
-import { formatCurrency, computeStudentFeeSummary, CLASS_LEVELS } from '../../utils/academicUtils';
+import { Student, FeeDeposit, ClassLevel, FeeStructure, Subject } from '../../types';
+import { formatCurrency, computeStudentFeeSummary, CLASS_LEVELS, DEFAULT_FEE_STRUCTURE } from '../../utils/academicUtils';
 import {
   Target,
   TrendingUp,
@@ -19,6 +19,8 @@ import {
 interface SessionRevenueGoalTrackerProps {
   students: Student[];
   deposits: FeeDeposit[];
+  feeStructures?: Record<string, FeeStructure>;
+  subjects?: Subject[];
   onOpenDepositModal?: () => void;
 }
 
@@ -36,18 +38,20 @@ interface MonthlyDataPoint {
 export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps> = ({
   students,
   deposits,
+  feeStructures = DEFAULT_FEE_STRUCTURE,
+  subjects = [],
   onOpenDepositModal,
 }) => {
   const [showClassBreakdown, setShowClassBreakdown] = useState(false);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
 
-  // Compute student fee summaries
+  // Compute student fee summaries based on subject enrollment month to session end
   const allFeeSummaries = useMemo(() => {
     return students.map((s) => ({
       student: s,
-      summary: computeStudentFeeSummary(s, deposits),
+      summary: computeStudentFeeSummary(s, deposits, feeStructures, subjects),
     }));
-  }, [students, deposits]);
+  }, [students, deposits, feeStructures, subjects]);
 
   // Aggregate Metrics
   const totalTargetRevenue = useMemo(() => {
@@ -76,20 +80,20 @@ export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps>
     return Math.min(100, Math.max(0, (totalCollectedGross / totalTargetRevenue) * 100));
   }, [totalCollectedGross, totalTargetRevenue]);
 
-  // Academic year months (Indian academic session: April to March)
+  // Academic year months (January to December 2026)
   const sessionMonths = useMemo(() => [
-    { key: '04', label: 'Apr', fullName: 'April' },
-    { key: '05', label: 'May', fullName: 'May' },
-    { key: '06', label: 'Jun', fullName: 'June' },
-    { key: '07', label: 'Jul', fullName: 'July' },
-    { key: '08', label: 'Aug', fullName: 'August' },
-    { key: '09', label: 'Sep', fullName: 'September' },
-    { key: '10', label: 'Oct', fullName: 'October' },
-    { key: '11', label: 'Nov', fullName: 'November' },
-    { key: '12', label: 'Dec', fullName: 'December' },
-    { key: '01', label: 'Jan', fullName: 'January' },
-    { key: '02', label: 'Feb', fullName: 'February' },
-    { key: '03', label: 'Mar', fullName: 'March' },
+    { key: '01', label: 'Jan', fullName: 'January 2026' },
+    { key: '02', label: 'Feb', fullName: 'February 2026' },
+    { key: '03', label: 'Mar', fullName: 'March 2026' },
+    { key: '04', label: 'Apr', fullName: 'April 2026' },
+    { key: '05', label: 'May', fullName: 'May 2026' },
+    { key: '06', label: 'Jun', fullName: 'June 2026' },
+    { key: '07', label: 'Jul', fullName: 'July 2026' },
+    { key: '08', label: 'Aug', fullName: 'August 2026' },
+    { key: '09', label: 'Sep', fullName: 'September 2026' },
+    { key: '10', label: 'Oct', fullName: 'October 2026' },
+    { key: '11', label: 'Nov', fullName: 'November 2026' },
+    { key: '12', label: 'Dec', fullName: 'December 2026' },
   ], []);
 
   // Compute monthly timeline data for Sparkline Chart
@@ -131,7 +135,7 @@ export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps>
   const classBreakdown = useMemo(() => {
     return CLASS_LEVELS.map((cls) => {
       const classStudents = students.filter((s) => s.classLevel === cls);
-      const classSummaries = classStudents.map((s) => computeStudentFeeSummary(s, deposits));
+      const classSummaries = classStudents.map((s) => computeStudentFeeSummary(s, deposits, feeStructures, subjects));
       const classTarget = classSummaries.reduce((acc, curr) => acc + curr.netPayable, 0);
       
       const classStudentIds = new Set(classStudents.map((s) => s.id));

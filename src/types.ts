@@ -323,6 +323,8 @@ export interface FeeDeposit {
 export interface StudentFeeSummary {
   studentId: string;
   totalAnnualFee: number;
+  totalTuitionFee?: number;
+  totalNonTuitionFee?: number;
   totalDiscount: number;
   netPayable: number;
   totalPaid: number;

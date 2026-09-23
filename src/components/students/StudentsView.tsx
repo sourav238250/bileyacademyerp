@@ -276,6 +276,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const initialStream: StreamType = 'General';
     const available = getAvailableSubjectsForStudent(initialClass, initialStream, subjects);
     
+    const defaultAdmMonth = getSessionMonthFromDate(new Date().toISOString().split('T')[0]);
+    const initialDetails = available.map((s) => ({
+      subjectId: s.id,
+      effectiveMonth: defaultAdmMonth,
+    }));
+
     setFormData({
       name: '',
       classLevel: initialClass,
@@ -298,6 +304,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       notes: '',
       enrolledSubjectIds: available.map((s) => s.id),
       enrollmentType: 'All Subjects Combo',
+      enrolledSubjectsDetails: initialDetails,
     });
     setIsAdmissionModalOpen(true);
   };
@@ -316,10 +323,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       else mode = 'All Subjects Combo';
     }
 
+    const defaultEffectiveMonth = getSessionMonthFromDate(student.admissionDate);
+    const existingEnrollments = student.subjectEnrollments || [];
+    const details = enrolledIds.map((subId) => {
+      const found = existingEnrollments.find((e) => e.subjectId === subId);
+      return {
+        subjectId: subId,
+        effectiveMonth: found?.enrollmentMonth || student.enrollmentMonth || defaultEffectiveMonth,
+      };
+    });
+
     setFormData({
       ...student,
       enrolledSubjectIds: enrolledIds,
       enrollmentType: mode,
+      enrolledSubjectsDetails: details,
     });
     setIsAdmissionModalOpen(true);
   };
@@ -488,12 +506,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     else if (enrolled.length < available.length) finalMode = 'Multiple Subjects';
     else finalMode = 'All Subjects Combo';
 
+    const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate);
+    const resolvedEnrollments = enrolled.map((subId) => {
+      const customDetail = (formData.enrolledSubjectsDetails || []).find((d) => d.subjectId === subId);
+      const existingEnr = (formData.subjectEnrollments || []).find((e) => e.subjectId === subId);
+      const chosenMonth = customDetail?.effectiveMonth || existingEnr?.enrollmentMonth || defaultAdmMonth;
+      return {
+        subjectId: subId,
+        enrollmentMonth: chosenMonth,
+        status: 'Active' as const,
+      };
+    });
+
     if (editingStudent) {
       const updated: Student = {
         ...editingStudent,
         ...(formData as Student),
         enrolledSubjectIds: enrolled,
         enrollmentType: finalMode,
+        subjectEnrollments: resolvedEnrollments,
+        enrollmentMonth: defaultAdmMonth,
       };
       onUpdateStudent(updated);
       setIsAdmissionModalOpen(false);
@@ -535,6 +567,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         notes: formData.notes,
         enrolledSubjectIds: enrolled,
         enrollmentType: finalMode,
+        subjectEnrollments: resolvedEnrollments,
+        enrollmentMonth: defaultAdmMonth,
       };
 
       onAddStudent(newStudent);
@@ -1436,17 +1470,33 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                   {/* Fee Calculation Live Preview Box */}
                   {(() => {
+                    const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate);
+                    const tempEnrollments = (formData.enrolledSubjectIds || []).map((subId) => {
+                      const customDetail = (formData.enrolledSubjectsDetails || []).find((d) => d.subjectId === subId);
+                      const existingEnr = (formData.subjectEnrollments || []).find((e) => e.subjectId === subId);
+                      const chosenMonth = customDetail?.effectiveMonth || existingEnr?.enrollmentMonth || defaultAdmMonth;
+                      return {
+                        subjectId: subId,
+                        enrollmentMonth: chosenMonth,
+                        status: 'Active' as const,
+                      };
+                    });
+
                     const tempStudent: Student = {
                       ...(formData as Student),
                       id: 'TEMP',
                       rollNo: 'TEMP',
                       enrolledSubjectIds: formData.enrolledSubjectIds || [],
+                      subjectEnrollments: tempEnrollments,
                       scholarshipPercent: Number(formData.scholarshipPercent) || 0,
                     };
                     const summary = computeStudentFeeSummary(tempStudent, [], DEFAULT_FEE_STRUCTURE, subjects);
                     const enrolledCount = formData.enrolledSubjectIds?.length || 0;
                     const key = `${formData.classLevel}-${formData.stream}`;
-                    const structure = DEFAULT_FEE_STRUCTURE[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+                    const structure =
+                      DEFAULT_FEE_STRUCTURE[key] ||
+                      DEFAULT_FEE_STRUCTURE[`${formData.classLevel}-General`] ||
+                      DEFAULT_FEE_STRUCTURE['1-General'];
 
                     return (
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
@@ -1471,6 +1521,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             <span>•</span>
                             <span>Exam: {formatCurrency(structure.examFeePerTerm)}/term</span>
                           </div>
+                          <p className="text-[10px] text-indigo-700 font-semibold mt-1">
+                            ℹ️ Tuition calculated strictly from each subject's enrollment month to session end (Dec 2026).
+                          </p>
                         </div>
 
                         <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shrink-0">

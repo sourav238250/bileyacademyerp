@@ -149,11 +149,17 @@ class FirebaseSyncService {
           }
         },
         (error) => {
-          console.warn('Firestore real-time sync notification:', error);
+          // Firestore operates in offline mode when unavailable
           this.isConnected = false;
-          this.notifyStatus(error.message);
-          const localState = loadInitialState();
-          onDataReceived(localState, 'local');
+          const isUnavailable =
+            error?.code === 'unavailable' ||
+            error?.message?.includes('offline') ||
+            error?.message?.includes('backend');
+          
+          if (!isUnavailable) {
+            console.warn('Firestore real-time sync notification:', error);
+          }
+          this.notifyStatus(isUnavailable ? 'Working in offline mode (auto-syncing when online)' : error.message);
         }
       );
 

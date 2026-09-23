@@ -76,7 +76,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
   const sessionSummary = useMemo(() => {
     const active = students.filter((s) => s.status === 'Active');
     let totalMonthsPaid = 0;
-    let totalMonthsPossible = active.length * 12;
+    let totalMonthsPossible = 0;
 
     let admissionSubmittedCount = 0;
     let examFeeSubmittedCount = 0;
@@ -84,8 +84,10 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
     let annualDevSubmittedCount = 0;
 
     active.forEach((student) => {
-      const monthStatuses = getStudentTuitionMonthsStatus(student.id, deposits, ACADEMIC_SESSION_MONTHS);
-      totalMonthsPaid += monthStatuses.filter((m) => m.isPaid).length;
+      const applicable = getApplicableSessionMonthsForStudent(student, ACADEMIC_SESSION_MONTHS);
+      totalMonthsPossible += applicable.length;
+      const monthStatuses = getStudentTuitionMonthsStatus(student, deposits, ACADEMIC_SESSION_MONTHS);
+      totalMonthsPaid += monthStatuses.filter((m) => !m.isPreEnrollment && m.isPaid).length;
 
       const heads = getStudentFeeHeadsSubmissionStatus(student, deposits);
       if (heads.admission.isSubmitted) admissionSubmittedCount++;

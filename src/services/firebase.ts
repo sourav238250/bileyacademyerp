@@ -8,6 +8,7 @@ import {
   User,
 } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
   doc,
   getDoc,
@@ -27,10 +28,19 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-// Use designated firestore database id if specified in config
-export const db = firebaseConfigJson.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfigJson.firestoreDatabaseId)
-  : getFirestore(app);
+// Use designated firestore database id with resilient auto-detect long polling
+let firestoreInstance;
+try {
+  firestoreInstance = firebaseConfigJson.firestoreDatabaseId
+    ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true }, firebaseConfigJson.firestoreDatabaseId)
+    : initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+} catch {
+  firestoreInstance = firebaseConfigJson.firestoreDatabaseId
+    ? getFirestore(app, firebaseConfigJson.firestoreDatabaseId)
+    : getFirestore(app);
+}
+
+export const db = firestoreInstance;
 
 export interface FirestoreSyncStatus {
   isConnected: boolean;
