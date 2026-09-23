@@ -27,11 +27,11 @@ export const DisbursementVoucherModal: React.FC<DisbursementVoucherModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-4 backdrop-blur-md overflow-y-auto print:p-0 print:bg-white">
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-6 print:m-0 print:border-none print:shadow-none print:rounded-none">
+    <div id="voucher-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-4 backdrop-blur-md overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible">
+      <div id="voucher-modal-card" className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-6 print:m-0 print:border-none print:shadow-none print:rounded-none flex flex-col max-h-[94vh] print:max-h-none print:h-auto">
         
         {/* Top Control Bar (Hidden on Print) */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between print:hidden">
+        <div className="shrink-0 bg-slate-900 text-white px-6 py-4 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
               <FileText className="w-5 h-5" />
@@ -62,7 +62,7 @@ export const DisbursementVoucherModal: React.FC<DisbursementVoucherModalProps> =
         </div>
 
         {/* Printable Document Area */}
-        <div ref={printAreaRef} className="p-6 sm:p-10 bg-white text-slate-900 font-sans">
+        <div id="printable-voucher-content" ref={printAreaRef} className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white text-slate-900 font-sans custom-scrollbar print:overflow-visible print:p-0">
           
           {/* Institutional Header */}
           <div className="border-b-2 border-slate-900 pb-6 mb-6">

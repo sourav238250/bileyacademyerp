@@ -134,14 +134,23 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   return (
-    <div id="receipt-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-xs overflow-y-auto">
-      <div id="receipt-modal-card" className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden my-8 border border-slate-200 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none">
+    <div
+      id="receipt-modal-backdrop"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-6 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-transparent print:static print:inset-auto print:overflow-visible"
+    >
+      <div
+        id="receipt-modal-card"
+        className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[94vh] sm:max-h-[90vh] print:max-h-none print:h-auto print:border-none print:shadow-none print:m-0 print:w-full print:max-w-none"
+      >
         
         {/* Header Actions (hidden in print) */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white print:hidden">
+        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 bg-slate-900 text-white print:hidden">
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-emerald-400" />
-            <span className="font-semibold text-sm">Official Payment Receipt</span>
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-bold text-sm block leading-tight">Official Fee Deposit Receipt</span>
+              <span className="text-[10px] text-slate-400 font-mono">Receipt #{deposit.receiptNo}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             <button
@@ -203,7 +212,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <button
               onClick={onClose}
               id="close-receipt-btn"
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ml-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -212,7 +221,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         {/* Download Success Banner */}
         {downloadSuccessNotice && (
-          <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-2 text-xs font-semibold text-emerald-800 flex items-center justify-between print:hidden">
+          <div className="shrink-0 bg-emerald-50 border-b border-emerald-200 px-5 py-2 text-xs font-semibold text-emerald-800 flex items-center justify-between print:hidden">
             <span className="flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600" />
               {downloadSuccessNotice}
@@ -228,7 +237,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         {/* Authorization Inline Edit Toolbar (Hidden in Print) */}
         {isEditingAuth && (
-          <div className="bg-amber-50 border-b border-amber-200 p-4 print:hidden animate-in fade-in space-y-3">
+          <div className="shrink-0 bg-amber-50 border-b border-amber-200 p-4 print:hidden animate-in fade-in space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <Edit3 className="w-3.5 h-3.5 text-amber-700" />
@@ -280,8 +289,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
         )}
 
-        {/* Printable Receipt Body */}
-        <div id="printable-receipt-content" className="p-8 bg-white text-slate-800 font-sans">
+        {/* Scrollable Printable Receipt Body */}
+        <div id="printable-receipt-content" className="flex-1 overflow-y-auto p-5 sm:p-8 bg-white text-slate-800 font-sans custom-scrollbar print:overflow-visible print:p-0">
           {/* Institute Watermark & Header */}
           <div className="border-b-2 border-emerald-800/20 pb-6 mb-6">
             <div className="flex items-start justify-between">
@@ -613,7 +622,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         </div>
 
         {/* Modal Bottom Action Footer (Hidden in Print) */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-slate-50 border-t border-slate-200 print:hidden">
+        <div className="shrink-0 flex items-center justify-between px-5 py-3 bg-slate-50 border-t border-slate-200 print:hidden">
           <div className="text-[11px] text-slate-500">
             <span>Verified System Receipt • </span>
             <span className="font-mono text-slate-700 font-semibold">{deposit.receiptNo}</span>

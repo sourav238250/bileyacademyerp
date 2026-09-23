@@ -504,7 +504,14 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main
+        id="app-main-content"
+        className={`flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 ${
+          selectedReceiptDeposit || selectedReportCardResult || selectedIdCardStudent || selectedVoucherDisbursement
+            ? 'print:hidden'
+            : ''
+        }`}
+      >
         
         {activeTab === 'dashboard' && (
           <DashboardView
@@ -945,7 +952,7 @@ export default function App() {
       />
 
       {/* Subtle Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 px-4 mt-12 text-center text-xs text-slate-500 no-print">
+      <footer className="bg-white border-t border-slate-200 py-6 px-4 mt-12 text-center text-xs text-slate-500 no-print print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800">Biley Academy ERP</span>
