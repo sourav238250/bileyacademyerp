@@ -158,7 +158,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         </div>
 
         {/* Portal Tabs */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800 overflow-x-auto custom-scrollbar scroll-smooth pb-1">
           {[
             { id: 'overview', label: 'My Academic Overview', icon: GraduationCap },
             { id: 'academics', label: `Enrolled Subjects (${enrolledSubjects.length})`, icon: BookOpen },
@@ -173,9 +173,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setPortalTab(tab.id as any)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
-                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    ? 'bg-amber-500 text-slate-950 shadow-md ring-1 ring-amber-400'
                     : 'bg-slate-800/60 text-slate-300 hover:text-white hover:bg-slate-800'
                 }`}
               >

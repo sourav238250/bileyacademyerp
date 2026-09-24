@@ -897,12 +897,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto custom-scrollbar pb-1">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs shrink-0">
             <button
               onClick={() => setActiveTab('deposits')}
               id="fee-deposits-tab-btn"
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'deposits'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -913,7 +913,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
             <button
               onClick={() => setActiveTab('monthly-tracker')}
               id="fee-monthly-tracker-tab-btn"
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'monthly-tracker'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -930,7 +930,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
             <button
               onClick={() => setActiveTab('dues')}
               id="fee-dues-tab-btn"
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'dues'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -941,7 +941,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
             <button
               onClick={() => setActiveTab('structure')}
               id="fee-structure-tab-btn"
-              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'structure'
                   ? 'bg-slate-900 text-amber-300 shadow-xs border border-slate-800'
                   : 'text-slate-600 hover:text-slate-900'
@@ -959,7 +959,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 onClick={handleOpenAuthSettings}
                 id="fee-signatory-settings-btn"
                 title="Edit Authorized Accounts Signatory Name, Designation, and Receipt Seal"
-                className="px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 text-emerald-800 hover:bg-emerald-100 bg-emerald-50 border border-emerald-200"
+                className="px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 text-emerald-800 hover:bg-emerald-100 bg-emerald-50 border border-emerald-200 whitespace-nowrap"
               >
                 <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
                 <span>Receipt Signatory</span>
