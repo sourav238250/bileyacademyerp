@@ -14,6 +14,7 @@ import {
   FileCheck,
   Receipt,
   Wallet,
+  Landmark,
   Lock,
   ChevronLeft,
   ChevronRight,
@@ -34,6 +35,7 @@ interface NavigationProps {
   questionBankCount?: number;
   assignmentCount?: number;
   disbursementsCount?: number;
+  investorsCount?: number;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -47,6 +49,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   questionBankCount,
   assignmentCount,
   disbursementsCount,
+  investorsCount,
 }) => {
   const isSignedOut = !currentAdmin;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +115,14 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Wallet,
       badge: disbursementsCount && disbursementsCount > 0 ? `${disbursementsCount}` : undefined,
       badgeColor: 'bg-indigo-700',
+      requiresAuth: true,
+    },
+    {
+      id: 'investors',
+      label: 'Investor Head & Capital',
+      icon: Landmark,
+      badge: investorsCount && investorsCount > 0 ? `${investorsCount} Inv` : undefined,
+      badgeColor: 'bg-emerald-800',
       requiresAuth: true,
     },
     {

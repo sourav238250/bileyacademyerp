@@ -14,6 +14,8 @@
         "results": { "type": "array" },
         "deposits": { "type": "array" },
         "disbursements": { "type": "array" },
+        "investors": { "type": "array" },
+        "investorTransactions": { "type": "array" },
         "timetable": { "type": "array" },
         "attendance": { "type": "array" },
         "questionBank": { "type": "array" },

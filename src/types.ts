@@ -173,8 +173,67 @@ export type NavigationTab =
   | 'results'
   | 'fees'
   | 'disbursements'
+  | 'investors'
   | 'question-bank'
   | 'student-portal';
+
+export interface Investor {
+  id: string; // e.g. "INV-2026-001"
+  investorCode: string; // e.g. "INV-001"
+  name: string;
+  email: string;
+  phone: string;
+  panNumber?: string;
+  aadhaarNumber?: string;
+  bankAccountOrUpi?: string;
+  bankName?: string;
+  address?: string;
+  status: 'Active' | 'Inactive' | 'Settled';
+  targetRoiPercent?: number; // e.g. 8.5% p.a.
+  investmentPurpose?: string; // e.g. "Working Capital & Academy Expansion"
+  notes?: string;
+  joinedDate: string; // YYYY-MM-DD
+  createdAt: string;
+}
+
+export type InvestorTransactionType = 'Investment' | 'Withdrawal';
+
+export type InvestorTransactionHead =
+  | 'Working Capital Infusion'
+  | 'Infrastructure & Smart Classroom Fund'
+  | 'Emergency Liquidity Cushion'
+  | 'General Academy Investment'
+  | 'Principal Capital Withdrawal'
+  | 'ROI / Profit Share Withdrawal'
+  | 'Full Account Liquidation / Settlement';
+
+export interface InvestorTransaction {
+  id: string; // e.g. "INV-TXN-2026-001"
+  voucherNo: string; // e.g. "INV-VCH-8801"
+  investorId: string;
+  investorName: string;
+  transactionType: InvestorTransactionType;
+  head: InvestorTransactionHead;
+  amount: number;
+  date: string; // YYYY-MM-DD
+  paymentMode: PaymentMode | DisbursementPaymentMode;
+  transactionRef?: string; // UTR Number / Cheque No / Transfer Ref
+  authorizedBy: string; // Signatory (Director / Chief Accounts Officer)
+  status: 'Realized' | 'Pending' | 'Cancelled';
+  purposeDescription?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface InvestorAccountSummary {
+  investor: Investor;
+  totalInvested: number;
+  totalWithdrawn: number;
+  netActiveInvestment: number;
+  lastTransactionDate?: string;
+  transactionsCount: number;
+  status: 'Active' | 'Inactive' | 'Settled';
+}
 
 export interface Student {
   id: string; // e.g. "BA-2026-0501"

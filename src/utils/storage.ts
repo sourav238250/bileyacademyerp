@@ -10,6 +10,8 @@ import {
   QuestionBankItem,
   AssignmentSet,
   PaymentDisbursement,
+  Investor,
+  InvestorTransaction,
   InstitutionalAuthorizationConfig,
   StaffCredential,
   AdminUser,
@@ -29,6 +31,10 @@ import {
   INITIAL_ASSIGNMENT_SETS,
 } from '../data/initialQuestionBankData';
 import { INITIAL_DISBURSEMENTS } from '../data/initialDisbursementsData';
+import {
+  INITIAL_INVESTORS,
+  INITIAL_INVESTOR_TRANSACTIONS,
+} from '../data/initialInvestorData';
 
 export const DEFAULT_DIGITAL_SIGNATURE_DATA_URL =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" width="320" height="100"><path d="M 25,65 Q 45,20 60,35 Q 75,55 90,30 Q 105,10 115,45 Q 125,75 140,50 Q 155,25 175,40 Q 195,55 210,35 Q 225,18 240,48 Q 255,70 280,30 M 45,78 C 100,72 200,68 295,62" fill="none" stroke="%231e3a8a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -123,6 +129,8 @@ export interface AppStateData {
   results: ExamResult[];
   deposits: FeeDeposit[];
   disbursements: PaymentDisbursement[];
+  investors?: Investor[];
+  investorTransactions?: InvestorTransaction[];
   timetable: TimetableSlot[];
   attendance: AttendanceRecord[];
   questionBank: QuestionBankItem[];
@@ -138,6 +146,8 @@ const STORAGE_KEYS = {
   RESULTS: 'biley_academy_results_v1',
   DEPOSITS: 'biley_academy_deposits_v1',
   DISBURSEMENTS: 'biley_academy_disbursements_v1',
+  INVESTORS: 'biley_academy_investors_v1',
+  INVESTOR_TRANSACTIONS: 'biley_academy_investor_transactions_v1',
   TIMETABLE: 'biley_academy_timetable_v1',
   ATTENDANCE: 'biley_academy_attendance_v1',
   QUESTION_BANK: 'biley_academy_question_bank_v1',
@@ -308,6 +318,8 @@ export function loadInitialState(): AppStateData {
     results: sanitizedResults,
     deposits: loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS),
     disbursements: loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS),
+    investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
+    investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),
     timetable: sanitizedTimetable,
     attendance: sanitizedAttendance,
     questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
@@ -324,6 +336,12 @@ export function saveToStorage(data: AppStateData): void {
   saveItemToStorage(STORAGE_KEYS.RESULTS, data.results);
   saveItemToStorage(STORAGE_KEYS.DEPOSITS, data.deposits);
   saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, data.disbursements);
+  if (data.investors) {
+    saveItemToStorage(STORAGE_KEYS.INVESTORS, data.investors);
+  }
+  if (data.investorTransactions) {
+    saveItemToStorage(STORAGE_KEYS.INVESTOR_TRANSACTIONS, data.investorTransactions);
+  }
   saveItemToStorage(STORAGE_KEYS.TIMETABLE, data.timetable);
   saveItemToStorage(STORAGE_KEYS.ATTENDANCE, data.attendance);
   saveItemToStorage(STORAGE_KEYS.QUESTION_BANK, data.questionBank);
@@ -341,6 +359,8 @@ export function resetToInitialMockData(): AppStateData {
   localStorage.removeItem(STORAGE_KEYS.RESULTS);
   localStorage.removeItem(STORAGE_KEYS.DEPOSITS);
   localStorage.removeItem(STORAGE_KEYS.DISBURSEMENTS);
+  localStorage.removeItem(STORAGE_KEYS.INVESTORS);
+  localStorage.removeItem(STORAGE_KEYS.INVESTOR_TRANSACTIONS);
   localStorage.removeItem(STORAGE_KEYS.TIMETABLE);
   localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
   localStorage.removeItem(STORAGE_KEYS.QUESTION_BANK);
@@ -363,6 +383,8 @@ export interface BackupPayload {
     results: number;
     deposits: number;
     disbursements: number;
+    investors: number;
+    investorTransactions: number;
     timetable: number;
     attendance: number;
     questionBank: number;
@@ -380,9 +402,9 @@ export function exportDatabaseBackup(data: AppStateData): { filename: string; si
   });
 
   const payload: BackupPayload = {
-    version: '2.3.0',
+    version: '2.4.0',
     institution: 'Biley Academy ERP System',
-    curriculum: 'Standardized Classes 1 to 12 (Math, Physics, Chemistry, Biology, CS, CA, English, Question Bank, Fee Receipts, Ledgers & Profit Disbursements)',
+    curriculum: 'Standardized Classes 1 to 12 (Math, Physics, Chemistry, Biology, CS, CA, English, Question Bank, Fee Receipts, Ledgers, Investor Head & Capital Management)',
     exportTimestamp: now.toISOString(),
     exportDateFormatted: dateFormatted,
     counts: {
@@ -393,6 +415,8 @@ export function exportDatabaseBackup(data: AppStateData): { filename: string; si
       results: data.results.length,
       deposits: data.deposits.length,
       disbursements: (data.disbursements || []).length,
+      investors: (data.investors || []).length,
+      investorTransactions: (data.investorTransactions || []).length,
       timetable: data.timetable.length,
       attendance: (data.attendance || []).length,
       questionBank: (data.questionBank || []).length,

@@ -282,6 +282,17 @@ export function evaluateSectionAuthorization(
           requiredRole: 'Accounts & Cashier / Director',
         };
 
+      case 'investors':
+        return {
+          isAllowed: false,
+          canWrite: false,
+          roleTitle: 'Signed Out',
+          badgeLabel: 'Staff Login Required',
+          badgeStyle: 'bg-rose-100 text-rose-800 border-rose-300',
+          notice: 'Investor capital management, working capital infusions, and investor withdrawal payouts require Accounts or Director authentication.',
+          requiredRole: 'Accounts & Cashier / Super Admin / Director',
+        };
+
       default:
         return {
           isAllowed: false,
@@ -519,6 +530,37 @@ export function evaluateSectionAuthorization(
         roleTitle: role,
         badgeLabel: 'Ledger Disbursements & Profit Allocation Authorized',
         badgeStyle: 'bg-indigo-50 text-indigo-800 border-indigo-300',
+      };
+
+    case 'investors':
+      if (role === 'Faculty Mentor') {
+        return {
+          isAllowed: true,
+          canWrite: false,
+          roleTitle: role,
+          badgeLabel: 'Investor Capital (Restricted - Read Only)',
+          badgeStyle: 'bg-rose-50 text-rose-800 border-rose-300',
+          notice: 'Investor capital management and withdrawal processing require Accounts or Director authority.',
+          requiredRole: 'Accounts & Cashier / Super Admin / Director',
+        };
+      }
+      if (role === 'Academic Administrator') {
+        return {
+          isAllowed: true,
+          canWrite: false,
+          roleTitle: role,
+          badgeLabel: 'Investor Ledger (Auditor View)',
+          badgeStyle: 'bg-amber-50 text-amber-800 border-amber-300',
+          notice: 'Academic Dean has auditor view to investor capital reserves. Recording investments or withdrawals requires Cashier or Director authorization.',
+          requiredRole: 'Accounts & Cashier / Director',
+        };
+      }
+      return {
+        isAllowed: true,
+        canWrite: true,
+        roleTitle: role,
+        badgeLabel: 'Investor Capital & Liquidity Controller Authorized',
+        badgeStyle: 'bg-emerald-50 text-emerald-800 border-emerald-300',
       };
 
     default:

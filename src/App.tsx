@@ -8,6 +8,8 @@ import {
   ExamResult,
   FeeDeposit,
   PaymentDisbursement,
+  Investor,
+  InvestorTransaction,
   TimetableSlot,
   AttendanceRecord,
   AdminUser,
@@ -49,6 +51,7 @@ import { ExamsView } from './components/exams/ExamsView';
 import { ResultsView } from './components/results/ResultsView';
 import { FeesView } from './components/fees/FeesView';
 import { DisbursementsView } from './components/disbursements/DisbursementsView';
+import { InvestorsView } from './components/investors/InvestorsView';
 import { StudentPortalView } from './components/student-portal/StudentPortalView';
 
 // Printable and detail modals
@@ -91,6 +94,8 @@ export default function App() {
   const [results, setResults] = useState<ExamResult[]>([]);
   const [deposits, setDeposits] = useState<FeeDeposit[]>([]);
   const [disbursements, setDisbursements] = useState<PaymentDisbursement[]>([]);
+  const [investors, setInvestors] = useState<Investor[]>([]);
+  const [investorTransactions, setInvestorTransactions] = useState<InvestorTransaction[]>([]);
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [questionBank, setQuestionBank] = useState<QuestionBankItem[]>([]);
@@ -135,6 +140,8 @@ export default function App() {
     setResults(localData.results);
     setDeposits(localData.deposits);
     setDisbursements(localData.disbursements || []);
+    setInvestors(localData.investors || []);
+    setInvestorTransactions(localData.investorTransactions || []);
     setTimetable(localData.timetable);
     setAttendance(localData.attendance || []);
     setQuestionBank(localData.questionBank || []);
@@ -151,6 +158,8 @@ export default function App() {
       setResults(cloudData.results || []);
       setDeposits(cloudData.deposits || []);
       setDisbursements(cloudData.disbursements || []);
+      setInvestors(cloudData.investors || []);
+      setInvestorTransactions(cloudData.investorTransactions || []);
       setTimetable(cloudData.timetable || []);
       setAttendance(cloudData.attendance || []);
       setQuestionBank(cloudData.questionBank || []);
@@ -176,6 +185,8 @@ export default function App() {
       results,
       deposits,
       disbursements,
+      investors,
+      investorTransactions,
       timetable,
       attendance,
       questionBank,
@@ -188,7 +199,7 @@ export default function App() {
 
     // Schedule debounced, hash-checked cloud push
     firebaseSyncService.scheduleCloudPush(currentState);
-  }, [students, faculty, subjects, exams, results, deposits, disbursements, timetable, attendance, questionBank, assignments, authConfig, isLoaded]);
+  }, [students, faculty, subjects, exams, results, deposits, disbursements, investors, investorTransactions, timetable, attendance, questionBank, assignments, authConfig, isLoaded]);
 
   // Authorization Config Handler
   const handleSaveAuthConfig = (newConfig: InstitutionalAuthorizationConfig) => {
@@ -207,6 +218,27 @@ export default function App() {
 
   const handleDeleteDisbursement = (disbursementId: string) => {
     setDisbursements((prev) => prev.filter((d) => d.id !== disbursementId));
+  };
+
+  // Investors Handlers
+  const handleAddInvestor = (newInvestor: Investor) => {
+    setInvestors((prev) => [newInvestor, ...prev]);
+  };
+
+  const handleUpdateInvestor = (updated: Investor) => {
+    setInvestors((prev) => prev.map((inv) => (inv.id === updated.id ? updated : inv)));
+  };
+
+  const handleDeleteInvestor = (id: string) => {
+    setInvestors((prev) => prev.filter((inv) => inv.id !== id));
+  };
+
+  const handleAddInvestorTransaction = (newTxn: InvestorTransaction) => {
+    setInvestorTransactions((prev) => [newTxn, ...prev]);
+  };
+
+  const handleDeleteInvestorTransaction = (id: string) => {
+    setInvestorTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
   // Students Handlers
@@ -422,6 +454,9 @@ export default function App() {
       setExams(initial.exams);
       setResults(initial.results);
       setDeposits(initial.deposits);
+      setDisbursements(initial.disbursements || []);
+      setInvestors(initial.investors || []);
+      setInvestorTransactions(initial.investorTransactions || []);
       setTimetable(initial.timetable);
       setAttendance(initial.attendance || []);
       setQuestionBank(initial.questionBank || []);
@@ -436,6 +471,9 @@ export default function App() {
     setExams(restoredData.exams);
     setResults(restoredData.results);
     setDeposits(restoredData.deposits);
+    setDisbursements(restoredData.disbursements || []);
+    setInvestors(restoredData.investors || []);
+    setInvestorTransactions(restoredData.investorTransactions || []);
     setTimetable(restoredData.timetable);
     setAttendance(restoredData.attendance || []);
     setQuestionBank(restoredData.questionBank || []);
@@ -498,6 +536,7 @@ export default function App() {
         resultsCount={results.length}
         feeDepositsCount={deposits.length}
         disbursementsCount={disbursements.length}
+        investorsCount={investors.length}
         attendanceRecordsCount={attendance.length}
         questionBankCount={questionBank.length}
         assignmentCount={assignments.length}
@@ -846,6 +885,43 @@ export default function App() {
               }}
               onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
               onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
+            />
+          )
+        )}
+
+        {activeTab === 'investors' && (
+          !currentAdmin ? (
+            <AccessDeniedGate
+              sectionName="Investor Head & Capital Treasury"
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Investor Head & Capital Treasury');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onNavigateToPortal={() => setActiveTab('student-portal')}
+              onNavigateToTab={setActiveTab}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              requiredRoleHint={evaluateSectionAuthorization(null, 'investors').requiredRole}
+              onDirectLogin={handleLoginSuccess}
+            />
+          ) : (
+            <InvestorsView
+              investors={investors}
+              investorTransactions={investorTransactions}
+              deposits={deposits}
+              disbursements={disbursements}
+              currentAdmin={currentAdmin}
+              authConfig={authConfig}
+              onAddInvestor={handleAddInvestor}
+              onUpdateInvestor={handleUpdateInvestor}
+              onDeleteInvestor={handleDeleteInvestor}
+              onAddTransaction={handleAddInvestorTransaction}
+              onDeleteTransaction={handleDeleteInvestorTransaction}
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Investor Head & Capital Treasury');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              onOpenAuthSettings={() => setIsAuthorizationSettingsOpen(true)}
             />
           )
         )}
