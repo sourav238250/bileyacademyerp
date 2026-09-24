@@ -561,6 +561,8 @@ export default function App() {
             results={results}
             deposits={deposits}
             disbursements={disbursements}
+            investors={investors}
+            investorTransactions={investorTransactions}
             timetable={timetable}
             attendance={attendance}
             authConfig={authConfig}
