@@ -60,8 +60,10 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
   );
   const [purposeDescription, setPurposeDescription] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    setErrorMessage(null);
     if (preselectedInvestorId && investors.some((i) => i.id === preselectedInvestorId)) {
       setInvestorId(preselectedInvestorId);
     } else if (investors.length > 0 && !investorId) {
@@ -80,6 +82,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
   // When type changes, adjust head default
   const handleTypeChange = (newType: InvestorTransactionType) => {
     setTransactionType(newType);
+    setErrorMessage(null);
     if (newType === 'Investment') {
       setHead('Working Capital Infusion');
       setPurposeDescription('Capital infusion for operational liquidity and faculty compensation support.');
@@ -102,17 +105,19 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
     if (!investorId) {
-      alert('Please select an Investor.');
+      setErrorMessage('Please select an Investor.');
       return;
     }
     if (!numAmount || numAmount <= 0) {
-      alert('Please enter a valid non-negative transaction amount.');
+      setErrorMessage('Please enter a valid non-negative transaction amount.');
       return;
     }
 
     if (transactionType === 'Withdrawal' && numAmount > currentActiveHolding) {
-      alert(
+      setErrorMessage(
         `Withdrawal amount (${formatCurrency(numAmount)}) exceeds the investor's active holding balance (${formatCurrency(currentActiveHolding)}). Please reduce the withdrawal amount.`
       );
       return;
@@ -121,7 +126,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
     const voucherNo = generateInvestorTransactionVoucherNo(transactionType);
 
     const newTxn: InvestorTransaction = {
-      id: `INV-TXN-${Date.now()}`,
+      id: `INV-TXN-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       voucherNo,
       investorId,
       investorName: selectedInvestor ? selectedInvestor.name : 'Investor',
@@ -174,12 +179,21 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Validation Error Notice */}
+        {errorMessage && (
+          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-800 text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {/* Body Form */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
@@ -221,7 +235,10 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
               <select
                 required
                 value={investorId}
-                onChange={(e) => setInvestorId(e.target.value)}
+                onChange={(e) => {
+                  setInvestorId(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 className="w-full px-3 py-2 text-sm font-bold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white"
               >
                 {investors.map((inv) => (
@@ -279,7 +296,10 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
                   step="1"
                   placeholder="e.g. 200000"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => {
+                    setAmount(e.target.value === '' ? '' : Number(e.target.value));
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   className="w-full pl-8 pr-3 py-2 text-base font-black text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -294,7 +314,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900"
               />
             </div>
           </div>
@@ -308,7 +328,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
               <select
                 value={head}
                 onChange={(e) => setHead(e.target.value as InvestorTransactionHead)}
-                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
               >
                 {transactionType === 'Investment' ? (
                   <>
@@ -334,7 +354,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
               <select
                 value={paymentMode}
                 onChange={(e) => setPaymentMode(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
               >
                 <option value="Bank NEFT / RTGS">Bank NEFT / RTGS (Direct Bank Transfer)</option>
                 <option value="Corporate UPI / IMPS">Corporate UPI / IMPS (Instant Settlement)</option>
@@ -355,7 +375,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
                 placeholder="e.g. NEFT-HDFC-20260924-00129"
                 value={transactionRef}
                 onChange={(e) => setTransactionRef(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900"
               />
             </div>
 
@@ -367,7 +387,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
                 type="text"
                 value={authorizedBy}
                 onChange={(e) => setAuthorizedBy(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-900"
               />
             </div>
           </div>
@@ -382,7 +402,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
               value={purposeDescription}
               onChange={(e) => setPurposeDescription(e.target.value)}
               placeholder="e.g. Inflow to support Q3 batch expansion and faculty honorarium reserve..."
-              className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900"
             />
           </div>
 
@@ -397,6 +417,7 @@ export const InvestorTransactionModal: React.FC<InvestorTransactionModalProps> =
             </button>
             <button
               type="submit"
+              id="confirm-investor-txn-btn"
               disabled={isWithdrawalExceeding}
               className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer ${
                 isWithdrawalExceeding

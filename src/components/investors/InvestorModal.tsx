@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface InvestorModalProps {
@@ -46,19 +47,21 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
   const [investmentPurpose, setInvestmentPurpose] = useState('');
   const [notes, setNotes] = useState('');
   const [joinedDate, setJoinedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    setErrorMessage(null);
     if (investorToEdit) {
-      setName(investorToEdit.name);
-      setInvestorCode(investorToEdit.investorCode);
-      setEmail(investorToEdit.email);
-      setPhone(investorToEdit.phone);
+      setName(investorToEdit.name || '');
+      setInvestorCode(investorToEdit.investorCode || '');
+      setEmail(investorToEdit.email || '');
+      setPhone(investorToEdit.phone || '');
       setPanNumber(investorToEdit.panNumber || '');
       setAadhaarNumber(investorToEdit.aadhaarNumber || '');
       setBankAccountOrUpi(investorToEdit.bankAccountOrUpi || '');
       setBankName(investorToEdit.bankName || '');
       setAddress(investorToEdit.address || '');
-      setStatus(investorToEdit.status);
+      setStatus(investorToEdit.status || 'Active');
       setTargetRoiPercent(investorToEdit.targetRoiPercent ?? '');
       setInvestmentPurpose(investorToEdit.investmentPurpose || '');
       setNotes(investorToEdit.notes || '');
@@ -85,17 +88,20 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      alert('Please fill in the Investor Name and Phone Number.');
+    setErrorMessage(null);
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErrorMessage('Investor Full Name is required.');
       return;
     }
 
     const payload: Investor = {
-      id: investorToEdit ? investorToEdit.id : `INV-${Date.now()}`,
+      id: investorToEdit && investorToEdit.id ? investorToEdit.id : `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       investorCode: investorCode.trim() || generateInvestorCode(existingInvestorsCount),
-      name: name.trim(),
+      name: trimmedName,
       email: email.trim(),
-      phone: phone.trim(),
+      phone: phone.trim() || '+91 - Not Provided',
       panNumber: panNumber.trim().toUpperCase() || undefined,
       aadhaarNumber: aadhaarNumber.trim() || undefined,
       bankAccountOrUpi: bankAccountOrUpi.trim() || undefined,
@@ -106,7 +112,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
       investmentPurpose: investmentPurpose.trim() || undefined,
       notes: notes.trim() || undefined,
       joinedDate: joinedDate || new Date().toISOString().slice(0, 10),
-      createdAt: investorToEdit ? investorToEdit.createdAt : new Date().toISOString(),
+      createdAt: investorToEdit?.createdAt || new Date().toISOString(),
     };
 
     onSaveInvestor(payload);
@@ -133,12 +139,21 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Validation Error Notice */}
+        {errorMessage && (
+          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-800 text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {/* Body Form */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
@@ -154,8 +169,11 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
                   required
                   placeholder="e.g. Dr. Subir Sen"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-3 pr-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  className="w-full pl-3 pr-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
                 />
               </div>
             </div>
@@ -177,17 +195,16 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Contact Phone / WhatsApp *
+                Contact Phone / WhatsApp
               </label>
               <div className="relative">
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="tel"
-                  required
                   placeholder="e.g. +91 98302 11984"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
                 />
               </div>
             </div>
@@ -203,7 +220,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
                   placeholder="e.g. dr.subir.sen@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
                 />
               </div>
             </div>
@@ -220,7 +237,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
                 placeholder="e.g. AAFPS8912K"
                 value={panNumber}
                 onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 text-sm font-bold uppercase tracking-wider border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-sm font-bold uppercase tracking-wider border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
               />
             </div>
 
@@ -251,7 +268,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
                 type="date"
                 value={joinedDate}
                 onChange={(e) => setJoinedDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-sm font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
               />
             </div>
           </div>
@@ -273,7 +290,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
                   placeholder="e.g. HDFC A/C 50100482910291 or upi@okhdfc"
                   value={bankAccountOrUpi}
                   onChange={(e) => setBankAccountOrUpi(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
                 />
               </div>
 
@@ -286,7 +303,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
                   placeholder="e.g. HDFC Bank, Salt Lake Branch"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
                 />
               </div>
             </div>
@@ -301,7 +318,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
               placeholder="e.g. Core Working Capital Infusion & Smart Physics Lab Expansion"
               value={investmentPurpose}
               onChange={(e) => setInvestmentPurpose(e.target.value)}
-              className="w-full px-3 py-2 text-sm font-medium border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 text-sm font-medium border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
             />
           </div>
 
@@ -314,7 +331,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
               placeholder="e.g. Terms of investment, withdrawal terms, quarterly profit share agreement..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
             />
           </div>
 
@@ -329,6 +346,7 @@ export const InvestorModal: React.FC<InvestorModalProps> = ({
             </button>
             <button
               type="submit"
+              id="save-investor-btn"
               className="px-5 py-2 text-xs font-bold text-white bg-indigo-700 hover:bg-indigo-600 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />

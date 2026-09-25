@@ -115,6 +115,8 @@ class FirebaseSyncService {
               results: remoteData.results || [],
               deposits: remoteData.deposits || [],
               disbursements: remoteData.disbursements || [],
+              investors: remoteData.investors || [],
+              investorTransactions: remoteData.investorTransactions || [],
               timetable: remoteData.timetable || [],
               attendance: remoteData.attendance || [],
               questionBank: remoteData.questionBank || [],

@@ -792,13 +792,19 @@ export const InvestorsView: React.FC<InvestorsViewProps> = ({
       {/* MODAL 1: INVESTOR PROFILE MODAL */}
       <InvestorModal
         isOpen={isInvestorModalOpen}
-        onClose={() => setIsInvestorModalOpen(false)}
+        onClose={() => {
+          setEditingInvestor(null);
+          setIsInvestorModalOpen(false);
+        }}
         onSaveInvestor={(inv) => {
-          if (editingInvestor) {
+          const isExisting = investors.some((i) => i.id === inv.id);
+          if (isExisting || editingInvestor) {
             onUpdateInvestor(inv);
           } else {
             onAddInvestor(inv);
           }
+          setEditingInvestor(null);
+          setIsInvestorModalOpen(false);
         }}
         investorToEdit={editingInvestor}
         existingInvestorsCount={investors.length}
@@ -807,10 +813,17 @@ export const InvestorsView: React.FC<InvestorsViewProps> = ({
       {/* MODAL 2: INVESTOR TRANSACTION (INVEST / WITHDRAW) MODAL */}
       <InvestorTransactionModal
         isOpen={isTxnModalOpen}
-        onClose={() => setIsTxnModalOpen(false)}
+        onClose={() => {
+          setPreselectedInvestorForTxn(undefined);
+          setIsTxnModalOpen(false);
+        }}
         investors={investors}
         allTransactions={investorTransactions}
-        onSaveTransaction={onAddTransaction}
+        onSaveTransaction={(txn) => {
+          onAddTransaction(txn);
+          setPreselectedInvestorForTxn(undefined);
+          setIsTxnModalOpen(false);
+        }}
         preselectedInvestorId={preselectedInvestorForTxn}
         defaultType={txnModalType}
         authConfig={authConfig}
