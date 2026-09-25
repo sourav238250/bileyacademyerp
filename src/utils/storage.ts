@@ -233,6 +233,7 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
+        fac.id === 'FAC-09' || fac.name === 'Mr. Soumen Ganguly' || fac.name === 'Mr. Buddhadev Chakraborty' ||
         fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh' ||
         fac.id === 'FAC-03' || fac.name === 'Dr. Debabrata Roy' ||
         fac.id === 'FAC-02' || fac.name === 'Prof. Sangeeta Sharma'
@@ -310,6 +311,12 @@ export function loadInitialState(): AppStateData {
     return att;
   });
 
+  const loadedDisbursements = loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS);
+  const sanitizedDisbursements = loadedDisbursements.map((d) => ({
+    ...d,
+    amount: 1,
+  }));
+
   return {
     students: sanitizedStudents,
     faculty: mergedFaculty,
@@ -317,7 +324,7 @@ export function loadInitialState(): AppStateData {
     exams: sanitizedExams,
     results: sanitizedResults,
     deposits: loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS),
-    disbursements: loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS),
+    disbursements: sanitizedDisbursements,
     investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
     investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),
     timetable: sanitizedTimetable,
