@@ -311,12 +311,6 @@ export function loadInitialState(): AppStateData {
     return att;
   });
 
-  const loadedDisbursements = loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS);
-  const sanitizedDisbursements = loadedDisbursements.map((d) => ({
-    ...d,
-    amount: 1,
-  }));
-
   return {
     students: sanitizedStudents,
     faculty: mergedFaculty,
@@ -324,7 +318,7 @@ export function loadInitialState(): AppStateData {
     exams: sanitizedExams,
     results: sanitizedResults,
     deposits: loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS),
-    disbursements: sanitizedDisbursements,
+    disbursements: loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS),
     investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
     investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),
     timetable: sanitizedTimetable,
