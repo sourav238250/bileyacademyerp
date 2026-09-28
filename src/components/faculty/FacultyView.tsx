@@ -533,9 +533,11 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                       <strong className="text-slate-800">
                         {selectedClassRoutine === '12' || selectedClassRoutine === '11'
                           ? 'Dr. Anirban Mukherjee / Mr. Buddhadev Chakraborty'
-                          : selectedClassRoutine >= '8'
-                          ? 'Mr. Buddhadev Chakraborty'
-                          : 'Mrs. Rupa Chakraborty'}
+                          : Number(selectedClassRoutine) >= 8
+                          ? 'Mr. Buddhadev Chakraborty / Mr. Soumyadip Dinda'
+                          : Number(selectedClassRoutine) >= 6
+                          ? 'Mrs. Rupa Chakraborty / Mr. Buddhadev Chakraborty'
+                          : 'Mrs. Madhumita Maity Dinda / Monalisa Maity / Mr. Subhadip Dinda'}
                       </strong>
                     </div>
 
@@ -1411,6 +1413,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                     <option value="Subject Lead">Subject Lead</option>
                     <option value="Senior Faculty">Senior Faculty</option>
                     <option value="Assistant Faculty">Assistant Faculty</option>
+                    <option value="Computer Instructor">Computer Instructor</option>
                     <option value="Guest Lecturer">Guest Lecturer</option>
                   </select>
                 </div>

@@ -297,7 +297,7 @@ export interface Faculty {
   id: string; // e.g. "FAC-01"
   name: string;
   avatarUrl?: string;
-  designation: 'Senior Faculty' | 'Subject Lead' | 'Assistant Faculty' | 'Guest Lecturer';
+  designation: 'Senior Faculty' | 'Subject Lead' | 'Assistant Faculty' | 'Guest Lecturer' | 'Computer Instructor';
   qualification: string; // e.g. "M.Sc. Physics (IIT Kharagpur)", "M.Com, B.Ed"
   email: string;
   phone: string;

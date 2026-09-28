@@ -205,7 +205,8 @@ export function loadInitialState(): AppStateData {
   const mergedSubjects = sanitizedLoadedSubjects.map((sub) => {
     const initSub = INITIAL_SUBJECTS.find((s) => s.id === sub.id);
     if (initSub) {
-      const shouldOverrideFaculty = [
+      const isClass1To5 = ['1', '2', '3', '4', '5'].includes(sub.classLevel);
+      const shouldOverrideFaculty = isClass1To5 || [
         'SUB-08-SCI', 'SUB-09-SCI', 'SUB-10-SCI', 'SUB-11-CHEM', 'SUB-12-CHEM', 'SUB-07-SCI',
         'SUB-09-MATH', 'SUB-10-MATH', 'SUB-11-MATH', 'SUB-12-MATH'
       ].includes(sub.id);
@@ -238,7 +239,10 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
-        fac.id === 'FAC-03' || fac.name === 'Mr. Soumyadip Dinda' || fac.name === 'Dr. Debabrata Roy'
+        fac.id === 'FAC-03' || fac.name === 'Mr. Soumyadip Dinda' || fac.name === 'Dr. Debabrata Roy' ||
+        fac.id === 'FAC-11' || fac.name === 'Mrs. Madhumita Maity Dinda' ||
+        fac.id === 'FAC-12' || fac.name === 'Mr. Subhadip Dinda' ||
+        fac.id === 'FAC-13' || fac.name === 'Monalisa Maity'
       ) {
         return {
           ...fac,
@@ -268,6 +272,14 @@ export function loadInitialState(): AppStateData {
       assignedSubjectIds: (fac.assignedSubjectIds || []).filter((id) => validSubjectIds.has(id)),
     };
   });
+
+  const facultyIdMap = new Set(mergedFaculty.map((f) => f.id));
+  for (const initFac of INITIAL_FACULTY) {
+    if (!facultyIdMap.has(initFac.id)) {
+      mergedFaculty.push(initFac);
+      facultyIdMap.add(initFac.id);
+    }
+  }
 
   const loadedStudents = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
   const sanitizedStudents = loadedStudents.map((st) => {
