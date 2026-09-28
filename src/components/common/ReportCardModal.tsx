@@ -214,8 +214,8 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               </div>
             </div>
             <p className="text-[11px] text-slate-500 flex items-center justify-center gap-4 mt-2">
-              <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> 42/1 Academy Avenue, Kolkata</span>
-              <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> +91 98301 00000</span>
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> Jamna, Pingla, Paschim Medinipur, Pin-721140, W.B.</span>
+              <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> +91 9732531730</span>
               <span className="font-semibold text-slate-700">Affiliation / Session: {exam.academicYear}</span>
             </p>
             

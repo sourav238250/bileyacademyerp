@@ -3,6 +3,7 @@ import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType, BatchShift, Ad
 import { CLASS_LEVELS, STREAMS_FOR_CLASS } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
+import { RoutinePrintModal } from './RoutinePrintModal';
 import {
   Users,
   Plus,
@@ -22,6 +23,11 @@ import {
   Layers,
   MapPin,
   Sparkles,
+  Printer,
+  CalendarDays,
+  UserCheck,
+  Building,
+  Filter,
 } from 'lucide-react';
 
 interface FacultyViewProps {
@@ -40,22 +46,43 @@ interface FacultyViewProps {
 }
 
 const PRESET_TIME_SLOTS = [
-  '06:30 AM - 07:30 AM',
-  '07:30 AM - 08:30 AM',
-  '08:30 AM - 09:30 AM',
-  '10:00 AM - 11:30 AM',
-  '11:30 AM - 01:00 PM',
+  '06:30 AM - 07:45 AM',
+  '07:45 AM - 09:00 AM',
+  '06:30 AM - 09:00 AM',
+  '06:30 AM - 11:30 AM',
+  '08:00 AM - 11:00 AM',
+  '08:30 AM - 11:00 AM',
+  '08:30 AM - 11:30 AM',
+  '09:00 AM - 10:30 AM',
+  '09:00 AM - 11:30 AM',
+  '11:30 AM - 02:30 PM',
+  '03:00 PM - 04:30 PM',
+  '03:00 PM - 05:00 PM',
+  '03:00 PM - 05:30 PM',
+  '03:00 PM - 08:30 PM',
+  '04:00 PM - 05:15 PM',
+  '04:00 PM - 05:30 PM',
+  '04:00 PM - 05:45 PM',
+  '04:00 PM - 06:00 PM',
+  '04:00 PM - 08:30 PM',
   '04:30 PM - 05:30 PM',
+  '04:30 PM - 06:00 PM',
+  '05:00 PM - 06:30 PM',
   '05:30 PM - 06:30 PM',
-  '06:30 PM - 07:30 PM',
-  '07:30 PM - 08:30 PM',
-  '09:00 AM - 11:00 AM',
-  '11:00 AM - 01:00 PM',
+  '06:00 PM - 07:00 PM',
+  '06:00 PM - 08:00 PM',
+  '06:00 PM - 08:30 PM',
+  '06:15 PM - 07:30 PM',
+  '06:15 PM - 08:30 PM',
+  '06:30 PM - 08:30 PM',
 ];
 
 const BATCH_OPTIONS: BatchShift[] = [
   'Morning Batch (6:30 AM - 9:00 AM)',
-  'Evening Batch (4:00 PM - 7:30 PM)',
+  'Evening Batch (4:00 PM - 8:30 PM)',
+  'Saturday Evening Batch (3:00 PM - 8:30 PM)',
+  'Sunday Morning Batch (6:30 AM - 11:30 AM)',
+  'Sunday Evening Batch (3:00 PM - 8:30 PM)',
   'Weekend Intensive (Sat-Sun)',
 ];
 
@@ -76,7 +103,29 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   const auth = evaluateSectionAuthorization(currentAdmin, 'faculty');
   const canManageFaculty = auth.canWrite && hasPermission(currentAdmin, 'FACULTY_ALLOCATION_WRITE');
   const canManageTimetable = auth.canWrite && hasPermission(currentAdmin, 'TIMETABLE_MANAGE');
-  const [activeTab, setActiveTab] = useState<'directory' | 'timetable'>('directory');
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'class-routine' | 'faculty-routine' | 'timetable' | 'directory'>('class-routine');
+  
+  // Class Routine View State
+  const [selectedClassRoutine, setSelectedClassRoutine] = useState<ClassLevel>('10');
+  const [selectedStreamRoutine, setSelectedStreamRoutine] = useState<StreamType>('General');
+
+  // Faculty Routine View State
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string>(faculty[0]?.id || 'FAC-09');
+
+  // Print Modal State
+  const [printModalConfig, setPrintModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'class' | 'faculty';
+    classLevel?: ClassLevel;
+    stream?: StreamType;
+    facultyMember?: Faculty;
+  }>({
+    isOpen: false,
+    type: 'class',
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
@@ -108,10 +157,10 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     timeSlot: '06:30 AM - 07:30 AM',
     classLevel: '10',
     stream: 'General',
-    batch: 'Morning Batch (6:30 AM - 9:00 AM)',
+    batch: 'Evening Batch (4:00 PM - 8:30 PM)',
     subjectId: '',
     facultyId: '',
-    room: 'Room 101',
+    room: 'Room 201',
   });
 
   const handleOpenAdd = () => {
@@ -154,7 +203,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       const newFaculty: Faculty = {
         id: `FAC-${String(faculty.length + 1).padStart(2, '0')}`,
         name: formData.name || '',
-        designation: formData.designation as any || 'Senior Faculty',
+        designation: (formData.designation as any) || 'Senior Faculty',
         qualification: formData.qualification || '',
         email: formData.email || '',
         phone: formData.phone || '',
@@ -176,13 +225,13 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     const initialFaculty = faculty[0]?.id || '';
     setSlotFormData({
       day: (selectedDay as any) || 'Monday',
-      timeSlot: '06:30 AM - 07:30 AM',
+      timeSlot: '04:00 PM - 06:00 PM',
       classLevel: '10',
       stream: 'General',
-      batch: 'Morning Batch (6:30 AM - 9:00 AM)',
+      batch: 'Evening Batch (4:00 PM - 8:30 PM)',
       subjectId: initialSubject,
       facultyId: initialFaculty,
-      room: 'Room 101',
+      room: 'Room 201',
     });
     setIsTimetableModalOpen(true);
   };
@@ -239,7 +288,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         timeSlot: slotFormData.timeSlot.trim(),
         classLevel: (slotFormData.classLevel as ClassLevel) || '10',
         stream: (slotFormData.stream as StreamType) || 'General',
-        batch: (slotFormData.batch as BatchShift) || 'Morning Batch (6:30 AM - 9:00 AM)',
+        batch: (slotFormData.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
         subjectId: slotFormData.subjectId,
         facultyId: slotFormData.facultyId,
         room: slotFormData.room || 'Room 101',
@@ -258,7 +307,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     );
   });
 
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Subjects filtered for current selected classLevel and stream in slotFormData
   const filteredSubjectsForSlot = subjects.filter(
@@ -266,6 +315,9 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       s.classLevel === (slotFormData.classLevel || '10') &&
       (s.stream === (slotFormData.stream || 'General') || s.stream === 'General')
   );
+
+  // Selected faculty object for Faculty Routine view
+  const currentFacultyMember = faculty.find((f) => f.id === selectedFacultyId) || faculty[0];
 
   return (
     <div className="space-y-6">
@@ -279,209 +331,518 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       />
 
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <Users className="w-6 h-6 text-purple-600" />
-            Faculty Allocation & Timetable
+            Class Routine & Faculty Allocation
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Teacher directory, subject mentorship assignments, weekly teaching workload, and batch schedule.
+            Full class-by-class routines (Classes 1–12), individual teacher duty sheets, and weekly time schedule matrix.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Sub-tab switcher */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
             <button
-              onClick={() => setActiveTab('directory')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                activeTab === 'directory'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setActiveTab('class-routine')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'class-routine'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-950'
               }`}
             >
-              Faculty Directory ({faculty.length})
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Class Routine (1-12)</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('faculty-routine')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'faculty-routine'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-950'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Faculty Routine</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('timetable')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'timetable'
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-700 hover:text-slate-950'
               }`}
             >
-              Weekly Schedule Grid
+              <Clock className="w-3.5 h-3.5" />
+              <span>Master Grid</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('directory')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'directory'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-950'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Directory ({faculty.length})</span>
             </button>
           </div>
 
-          {canManageFaculty ? (
+          {canManageFaculty && (
             <button
               onClick={handleOpenAdd}
               id="add-faculty-btn"
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
             >
-              <Plus className="w-4 h-4" />
-              Add Faculty
+              <Plus className="w-3.5 h-3.5" />
+              Add Mentor
             </button>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-semibold">
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span>Staff Locked</span>
-            </div>
           )}
         </div>
       </div>
 
-      {activeTab === 'directory' ? (
+      {/* TAB 1: CLASS ROUTINE (CLASS 1 TO 12) */}
+      {activeTab === 'class-routine' && (
         <div className="space-y-6">
-          {/* Search bar */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <div className="relative w-full max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search teacher by name, qualification or role..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50/50"
-              />
+          
+          {/* Class Level Selector Ribbon */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                  ACADEMIC CLASS ROUTINE
+                </span>
+                <h3 className="text-base font-bold text-slate-900 mt-1">Select Target Class Routine</h3>
+                <p className="text-xs text-slate-500">View complete weekly timetable schedule for any coaching batch.</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    setPrintModalConfig({
+                      isOpen: true,
+                      type: 'class',
+                      classLevel: selectedClassRoutine,
+                      stream: (selectedClassRoutine === '11' || selectedClassRoutine === '12') ? selectedStreamRoutine : 'General',
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print Class {selectedClassRoutine} Routine</span>
+                </button>
+              </div>
             </div>
-            <span className="text-xs text-slate-500 hidden sm:inline">
-              Showing {filteredFaculty.length} Academic Mentors
-            </span>
+
+            {/* Class Buttons Grid */}
+            <div>
+              <div className="flex flex-wrap gap-1.5">
+                {CLASS_LEVELS.map((cls) => {
+                  const isSelected = selectedClassRoutine === cls;
+                  const clsSlotsCount = timetable.filter((s) => s.classLevel === cls).length;
+
+                  return (
+                    <button
+                      key={cls}
+                      onClick={() => {
+                        setSelectedClassRoutine(cls);
+                        const validStreams = STREAMS_FOR_CLASS[cls];
+                        if (!validStreams.includes(selectedStreamRoutine)) {
+                          setSelectedStreamRoutine(validStreams[0] as StreamType);
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                        isSelected
+                          ? 'bg-slate-900 text-amber-300 shadow-md scale-102 ring-2 ring-purple-600'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      <span>Class {cls}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isSelected ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-200 text-slate-600'}`}>
+                        {clsSlotsCount}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Stream Switcher for Senior Secondary (Class 11 & 12) */}
+              {(selectedClassRoutine === '11' || selectedClassRoutine === '12') && (
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <span className="text-xs font-bold text-slate-600">Stream Track:</span>
+                  <div className="flex gap-1.5">
+                    {STREAMS_FOR_CLASS[selectedClassRoutine].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setSelectedStreamRoutine(st as StreamType)}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                          selectedStreamRoutine === st
+                            ? 'bg-purple-700 text-white font-bold shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {st} Stream
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Faculty Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredFaculty.map((fac) => {
-              // Find subjects assigned to this faculty
-              const assignedSubs = subjects.filter((s) => s.facultyId === fac.id);
-              const totalHours = assignedSubs.reduce((sum, s) => sum + s.weeklyHours, 0);
-              const loadPercent = Math.min(100, Math.round((totalHours / fac.maxWeeklyHours) * 100));
+          {/* Class Routine Schedule Cards by Day */}
+          {(() => {
+            const classSlots = timetable.filter(
+              (s) =>
+                s.classLevel === selectedClassRoutine &&
+                (selectedClassRoutine === '11' || selectedClassRoutine === '12'
+                  ? s.stream === selectedStreamRoutine
+                  : true)
+            );
 
-              return (
-                <div
-                  key={fac.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Header */}
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-amber-400 font-bold text-lg flex items-center justify-center shadow shrink-0">
-                        {fac.name.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                          {fac.designation}
-                        </span>
-                        <h3 className="text-base font-bold text-slate-900 mt-1 truncate">{fac.name}</h3>
-                        <p className="text-xs text-slate-600 truncate">{fac.qualification}</p>
-                      </div>
+            return (
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+                
+                {/* Routine Overview Ribbon */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-purple-50/70 border border-purple-200 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-lg shadow-sm">
+                      {selectedClassRoutine}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                        Weekly Routine for Class {selectedClassRoutine}
+                        {(selectedClassRoutine === '11' || selectedClassRoutine === '12') && ` (${selectedStreamRoutine})`}
+                      </h4>
+                      <p className="text-xs text-purple-900 font-medium">
+                        {classSlots.length} Total Scheduled Lecture Periods Across Week
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-2xs">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Class Mentor</span>
+                      <strong className="text-slate-800">
+                        {selectedClassRoutine === '12' || selectedClassRoutine === '11'
+                          ? 'Dr. Anirban Mukherjee / Mr. Buddhadev Chakraborty'
+                          : selectedClassRoutine >= '8'
+                          ? 'Mr. Buddhadev Chakraborty'
+                          : 'Mrs. Rupa Chakraborty'}
+                      </strong>
                     </div>
 
-                    {/* Bio */}
-                    {fac.bio && (
-                      <p className="text-xs text-slate-500 italic mb-4 line-clamp-2">
-                        "{fac.bio}"
-                      </p>
+                    {canManageTimetable && (
+                      <button
+                        onClick={handleOpenAddSlot}
+                        className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Slot</span>
+                      </button>
                     )}
+                  </div>
+                </div>
 
-                    {/* Contact details */}
-                    <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
-                      <p className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="font-mono">{fac.phone}</span>
-                      </p>
-                      <p className="flex items-center gap-2 truncate">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="truncate">{fac.email}</span>
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <Award className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{fac.experienceYears} Years Teaching Experience</span>
-                      </p>
-                    </div>
+                {/* 7 Days Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
+                  {daysOfWeek.map((day) => {
+                    const daySlots = classSlots.filter((s) => s.day === day);
+                    const isRest = daySlots.length === 0;
 
-                    {/* Assigned Subjects */}
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="font-bold text-slate-700">Assigned Subjects ({assignedSubs.length})</span>
-                        <span className="text-[11px] font-bold text-slate-900">
-                          {totalHours} / {fac.maxWeeklyHours} hrs/wk ({loadPercent}%)
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            loadPercent > 90 ? 'bg-amber-500' : 'bg-emerald-500'
-                          }`}
-                          style={{ width: `${loadPercent}%` }}
-                        ></div>
-                      </div>
+                    return (
+                      <div
+                        key={day}
+                        className={`flex flex-col rounded-xl border p-3 min-h-[220px] transition-all ${
+                          isRest
+                            ? 'bg-slate-50/50 border-slate-200 text-slate-400'
+                            : 'bg-white border-slate-300 shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                          <span className="font-extrabold text-xs uppercase tracking-wider text-slate-900">
+                            {day.slice(0, 3)}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${isRest ? 'bg-slate-200 text-slate-500' : 'bg-purple-100 text-purple-800'}`}>
+                            {daySlots.length}
+                          </span>
+                        </div>
 
-                      <div className="flex flex-wrap gap-1">
-                        {assignedSubs.length === 0 ? (
-                          <span className="text-xs text-slate-400">No subjects assigned yet.</span>
+                        {isRest ? (
+                          <div className="flex-1 flex flex-col items-center justify-center text-center p-2">
+                            <span className="text-[10px] text-slate-400 italic">No class</span>
+                            <span className="text-[9px] text-slate-400">Self-study / Break</span>
+                          </div>
                         ) : (
-                          assignedSubs.map((sub) => (
-                            <span
-                              key={sub.id}
-                              className="text-[10px] font-semibold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200"
-                            >
-                              Class {sub.classLevel} {sub.code} ({sub.weeklyHours}h)
-                            </span>
-                          ))
+                          <div className="space-y-2 flex-1">
+                            {daySlots.map((slot) => {
+                              const subject = subjects.find((s) => s.id === slot.subjectId);
+                              const teacher = faculty.find((f) => f.id === slot.facultyId);
+
+                              return (
+                                <div
+                                  key={slot.id}
+                                  className="p-2 bg-slate-50 rounded-lg border border-slate-200 hover:border-purple-300 hover:bg-purple-50/40 transition-all text-xs flex flex-col justify-between space-y-1 group"
+                                >
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="font-mono font-bold text-[10px] text-slate-900">
+                                      {slot.timeSlot}
+                                    </span>
+                                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1 rounded">
+                                      {slot.room}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <p className="font-bold text-purple-950 text-[11px] truncate">
+                                      {subject?.name || slot.subjectId}
+                                    </p>
+                                    <p className="text-[10px] text-slate-600 truncate mt-0.5">
+                                      👨‍🏫 {teacher?.name?.split(' ').slice(-2).join(' ') || 'Unassigned'}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-200/50">
+                                    <span className="truncate">{slot.batch.split('(')[0]}</span>
+                                    {canManageTimetable && (
+                                      <button
+                                        onClick={() => handleOpenEditSlot(slot)}
+                                        className="text-purple-600 hover:text-purple-900 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                                        title="Edit slot"
+                                      >
+                                        <Edit2 className="w-2.5 h-2.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+            );
+          })()}
+
+        </div>
+      )}
+
+      {/* TAB 2: FACULTY ROUTINE (TEACHER-WISE) */}
+      {activeTab === 'faculty-routine' && (
+        <div className="space-y-6">
+          
+          {/* Teacher Selector Ribbon */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                  INDIVIDUAL TEACHER SCHEDULE
+                </span>
+                <h3 className="text-base font-bold text-slate-900 mt-1">Select Academic Mentor Duty Sheet</h3>
+                <p className="text-xs text-slate-500">View weekly lecture timetable, room assignments, and teaching hours per teacher.</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    setPrintModalConfig({
+                      isOpen: true,
+                      type: 'faculty',
+                      facultyMember: currentFacultyMember,
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print {currentFacultyMember?.name}'s Routine</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Teacher Pills */}
+            <div className="flex flex-wrap gap-2">
+              {faculty.map((f) => {
+                const isSelected = f.id === selectedFacultyId;
+                const teacherSlots = timetable.filter((s) => s.facultyId === f.id);
+
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setSelectedFacultyId(f.id)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                      isSelected
+                        ? 'bg-slate-900 text-amber-300 shadow-md scale-102 ring-2 ring-purple-600'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>{f.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isSelected ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-200 text-slate-600'}`}>
+                      {teacherSlots.length} slots
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Teacher Profile & Day-by-Day Schedule */}
+          {currentFacultyMember && (() => {
+            const facultySlots = timetable.filter((s) => s.facultyId === currentFacultyMember.id);
+            const loadPercent = Math.min(100, Math.round((facultySlots.length / currentFacultyMember.maxWeeklyHours) * 100));
+
+            return (
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+                
+                {/* Faculty Detail Ribbon */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-lg shadow shrink-0">
+                      {currentFacultyMember.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-900 text-base">{currentFacultyMember.name}</h4>
+                        <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                          {currentFacultyMember.designation}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600">{currentFacultyMember.qualification}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{currentFacultyMember.bio}</p>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="font-mono text-[10px] text-slate-400">{fac.id}</span>
-                    {canManageFaculty && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleOpenEdit(fac)}
-                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded cursor-pointer"
-                          title="Edit Faculty Details"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Remove ${fac.name} from faculty directory?`)) {
-                              onDeleteFaculty(fac.id);
-                            }
-                          }}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded cursor-pointer"
-                          title="Delete Faculty"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                  <div className="flex items-center gap-4 text-xs border-t md:border-t-0 md:border-l md:border-slate-200 pt-3 md:pt-0 md:pl-6">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Weekly Workload</span>
+                      <strong className="text-slate-900 text-sm">
+                        {facultySlots.length} Slots / {currentFacultyMember.maxWeeklyHours} hrs cap
+                      </strong>
+                      <div className="w-28 h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                        <div
+                          className="h-full bg-purple-600 rounded-full"
+                          style={{ width: `${Math.min(100, (facultySlots.length / currentFacultyMember.maxWeeklyHours) * 100)}%` }}
+                        ></div>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Contact</span>
+                      <span className="font-mono text-xs text-slate-800 font-semibold">{currentFacultyMember.phone}</span>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* 7 Days Grid for this Teacher */}
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
+                  {daysOfWeek.map((day) => {
+                    const daySlots = facultySlots.filter((s) => s.day === day);
+                    const isFree = daySlots.length === 0;
+
+                    return (
+                      <div
+                        key={day}
+                        className={`flex flex-col rounded-xl border p-3 min-h-[220px] transition-all ${
+                          isFree
+                            ? 'bg-slate-50/50 border-slate-200 text-slate-400'
+                            : 'bg-white border-purple-300 shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                          <span className="font-extrabold text-xs uppercase tracking-wider text-slate-900">
+                            {day.slice(0, 3)}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${isFree ? 'bg-slate-200 text-slate-500' : 'bg-emerald-100 text-emerald-800'}`}>
+                            {daySlots.length}
+                          </span>
+                        </div>
+
+                        {isFree ? (
+                          <div className="flex-1 flex flex-col items-center justify-center text-center p-2">
+                            <span className="text-[10px] text-slate-400 italic">Off / Research</span>
+                            <span className="text-[9px] text-slate-400">No scheduled periods</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 flex-1">
+                            {daySlots.map((slot) => {
+                              const subject = subjects.find((s) => s.id === slot.subjectId);
+
+                              return (
+                                <div
+                                  key={slot.id}
+                                  className="p-2 bg-purple-50/50 rounded-lg border border-purple-200 hover:border-purple-400 transition-all text-xs flex flex-col justify-between space-y-1 group"
+                                >
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="font-mono font-bold text-[10px] text-purple-950">
+                                      {slot.timeSlot}
+                                    </span>
+                                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1 rounded">
+                                      {slot.room}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <p className="font-bold text-slate-900 text-[11px]">
+                                      Class {slot.classLevel} ({slot.stream})
+                                    </p>
+                                    <p className="text-[10px] text-purple-900 font-semibold truncate mt-0.5">
+                                      📖 {subject?.name || slot.subjectId}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-purple-100">
+                                    <span className="truncate">{slot.batch.split('(')[0]}</span>
+                                    {canManageTimetable && (
+                                      <button
+                                        onClick={() => handleOpenEditSlot(slot)}
+                                        className="text-purple-600 hover:text-purple-900 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                                        title="Edit slot"
+                                      >
+                                        <Edit2 className="w-2.5 h-2.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+            );
+          })()}
+
         </div>
-      ) : (
-        /* Weekly Timetable Schedule Matrix */
+      )}
+
+      {/* TAB 3: MASTER SCHEDULE GRID (DAY-WISE SLOT MANAGER) */}
+      {activeTab === 'timetable' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900">Weekly Class Timetable Slots</h3>
+                <h3 className="text-base font-bold text-slate-900">Master Day-Wise Schedule Grid</h3>
                 <span className="text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
-                  Editable Schedule
+                  Editable Schedule Matrix
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Manage and customize lecture timings, teacher allocations, classrooms, and batches across days.
+                Manage and customize lecture timings, teacher allocations, classrooms, and batches across all days.
               </p>
             </div>
 
@@ -627,6 +988,170 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         </div>
       )}
 
+      {/* TAB 4: FACULTY DIRECTORY */}
+      {activeTab === 'directory' && (
+        <div className="space-y-6">
+          {/* Search bar */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+            <div className="relative w-full max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search teacher by name, qualification or role..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50/50"
+              />
+            </div>
+            <span className="text-xs text-slate-500 hidden sm:inline">
+              Showing {filteredFaculty.length} Academic Mentors
+            </span>
+          </div>
+
+          {/* Faculty Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredFaculty.map((fac) => {
+              // Find subjects assigned to this faculty
+              const assignedSubs = subjects.filter((s) => s.facultyId === fac.id);
+              const totalHours = assignedSubs.reduce((sum, s) => sum + s.weeklyHours, 0);
+              const loadPercent = Math.min(100, Math.round((totalHours / fac.maxWeeklyHours) * 100));
+
+              return (
+                <div
+                  key={fac.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-amber-400 font-bold text-lg flex items-center justify-center shadow shrink-0">
+                        {fac.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                          {fac.designation}
+                        </span>
+                        <h3 className="text-base font-bold text-slate-900 mt-1 truncate">{fac.name}</h3>
+                        <p className="text-xs text-slate-600 truncate">{fac.qualification}</p>
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    {fac.bio && (
+                      <p className="text-xs text-slate-500 italic mb-4 line-clamp-2">
+                        "{fac.bio}"
+                      </p>
+                    )}
+
+                    {/* Contact details */}
+                    <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
+                      <p className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-mono">{fac.phone}</span>
+                      </p>
+                      <p className="flex items-center gap-2 truncate">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="truncate">{fac.email}</span>
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <Award className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{fac.experienceYears} Years Teaching Experience</span>
+                      </p>
+                    </div>
+
+                    {/* Assigned Subjects */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="font-bold text-slate-700">Assigned Subjects ({assignedSubs.length})</span>
+                        <span className="text-[11px] font-bold text-slate-900">
+                          {totalHours} / {fac.maxWeeklyHours} hrs/wk ({loadPercent}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            loadPercent > 90 ? 'bg-amber-500' : 'bg-emerald-500'
+                          }`}
+                          style={{ width: `${loadPercent}%` }}
+                        ></div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {assignedSubs.length === 0 ? (
+                          <span className="text-xs text-slate-400">No subjects assigned yet.</span>
+                        ) : (
+                          assignedSubs.map((sub) => (
+                            <span
+                              key={sub.id}
+                              className="text-[10px] font-semibold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200"
+                            >
+                              Class {sub.classLevel} {sub.code} ({sub.weeklyHours}h)
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="font-mono text-[10px] text-slate-400">{fac.id}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setSelectedFacultyId(fac.id);
+                          setActiveTab('faculty-routine');
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
+                      >
+                        View Routine
+                      </button>
+                      {canManageFaculty && (
+                        <>
+                          <button
+                            onClick={() => handleOpenEdit(fac)}
+                            className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded cursor-pointer"
+                            title="Edit Faculty Details"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove ${fac.name} from faculty directory?`)) {
+                                onDeleteFaculty(fac.id);
+                              }
+                            }}
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded cursor-pointer"
+                            title="Delete Faculty"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Routine Print Modal */}
+      {printModalConfig.isOpen && (
+        <RoutinePrintModal
+          type={printModalConfig.type}
+          classLevel={printModalConfig.classLevel}
+          stream={printModalConfig.stream}
+          facultyMember={printModalConfig.facultyMember}
+          timetable={timetable}
+          faculty={faculty}
+          subjects={subjects}
+          onClose={() => setPrintModalConfig({ ...printModalConfig, isOpen: false })}
+        />
+      )}
+
       {/* Add / Edit Timetable Slot Modal */}
       {isTimetableModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs overflow-y-auto">
@@ -641,7 +1166,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
               </div>
               <button
                 onClick={() => setIsTimetableModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -776,7 +1301,6 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                   onChange={(e) => {
                     const subId = e.target.value;
                     const subObj = subjects.find((s) => s.id === subId);
-                    // auto select faculty if assigned to subject
                     const autoFaculty = subObj?.facultyId || slotFormData.facultyId;
                     setSlotFormData({ ...slotFormData, subjectId: subId, facultyId: autoFaculty });
                   }}
@@ -857,7 +1381,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

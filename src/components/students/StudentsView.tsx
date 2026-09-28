@@ -243,7 +243,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     name: '',
     classLevel: '10',
     stream: 'General',
-    batch: 'Evening Batch (4:00 PM - 7:30 PM)',
+    batch: 'Evening Batch (4:00 PM - 8:30 PM)',
     gender: 'Male',
     dob: '2010-01-01',
     admissionDate: new Date().toISOString().split('T')[0],
@@ -286,7 +286,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       name: '',
       classLevel: initialClass,
       stream: initialStream,
-      batch: 'Evening Batch (4:00 PM - 7:30 PM)',
+      batch: 'Evening Batch (4:00 PM - 8:30 PM)',
       gender: 'Male',
       dob: '2010-01-01',
       admissionDate: new Date().toISOString().split('T')[0],
@@ -548,7 +548,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         name: formData.name || '',
         classLevel: formData.classLevel as ClassLevel,
         stream: (formData.stream as StreamType) || 'General',
-        batch: (formData.batch as BatchShift) || 'Evening Batch (4:00 PM - 7:30 PM)',
+        batch: (formData.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
         gender: (formData.gender as Gender) || 'Male',
         dob: formData.dob || '2010-01-01',
         admissionDate: formData.admissionDate || new Date().toISOString().split('T')[0],
@@ -1096,7 +1096,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     <div className="space-y-1.5">
                       <select
                         value={
-                          ['Morning Batch (6:30 AM - 9:00 AM)', 'Evening Batch (4:00 PM - 7:30 PM)', 'Weekend Intensive (Sat-Sun)'].includes(formData.batch || '')
+                          [
+                            'Morning Batch (6:30 AM - 9:00 AM)',
+                            'Evening Batch (4:00 PM - 8:30 PM)',
+                            'Saturday Evening Batch (3:00 PM - 8:30 PM)',
+                            'Sunday Morning Batch (6:30 AM - 11:30 AM)',
+                            'Sunday Evening Batch (3:00 PM - 8:30 PM)',
+                            'Weekend Intensive (Sat-Sun)',
+                          ].includes(formData.batch || '')
                             ? formData.batch
                             : 'CUSTOM'
                         }
@@ -1105,10 +1112,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             setFormData({ ...formData, batch: e.target.value as BatchShift });
                           }
                         }}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white font-medium"
                       >
                         <option value="Morning Batch (6:30 AM - 9:00 AM)">Morning Batch (6:30 AM - 9:00 AM)</option>
-                        <option value="Evening Batch (4:00 PM - 7:30 PM)">Evening Batch (4:00 PM - 7:30 PM)</option>
+                        <option value="Evening Batch (4:00 PM - 8:30 PM)">Evening Batch (4:00 PM - 8:30 PM)</option>
+                        <option value="Saturday Evening Batch (3:00 PM - 8:30 PM)">Saturday Evening Batch (3:00 PM - 8:30 PM)</option>
+                        <option value="Sunday Morning Batch (6:30 AM - 11:30 AM)">Sunday Morning Batch (6:30 AM - 11:30 AM)</option>
+                        <option value="Sunday Evening Batch (3:00 PM - 8:30 PM)">Sunday Evening Batch (3:00 PM - 8:30 PM)</option>
                         <option value="Weekend Intensive (Sat-Sun)">Weekend Intensive (Sat-Sun)</option>
                         <option value="CUSTOM">Custom Time Slot...</option>
                       </select>

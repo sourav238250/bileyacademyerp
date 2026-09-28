@@ -85,7 +85,7 @@ export function generateFeeReceiptPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(148, 163, 184); // slate-400
-  doc.text('42/1 Academy Avenue, Kolkata 700029  |  Ph: +91 98301 00000  |  Email: bileyacademy@gmail.com', margin + 6, y + 21);
+  doc.text('Jamna, Pingla, Paschim Medinipur, Pin-721140, W.B.  |  Ph: +91 9732531730  |  Email: bileyacademy@gmail.com', margin + 6, y + 21);
 
   // Receipt Badge on top right
   doc.setFillColor(16, 185, 129); // emerald-500

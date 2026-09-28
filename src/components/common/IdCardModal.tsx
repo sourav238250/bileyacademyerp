@@ -111,7 +111,7 @@ export const IdCardModal: React.FC<IdCardModalProps> = ({ student, onClose }) =>
                 <Phone className="w-3 h-3 text-amber-400" />
                 {student.contactNumber}
               </p>
-              <p className="text-slate-500 text-[9px] mt-0.5">Emergency: {student.emergencyContact || '+91 98301 00000'}</p>
+              <p className="text-slate-500 text-[9px] mt-0.5">Emergency: {student.emergencyContact || '+91 9732531730'}</p>
             </div>
             <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded text-slate-300">
               <QrCode className="w-5 h-5 text-amber-300" />

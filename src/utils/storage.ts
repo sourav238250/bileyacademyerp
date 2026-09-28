@@ -7,6 +7,7 @@ import {
   ExamResult,
   FeeDeposit,
   TimetableSlot,
+  BatchShift,
   QuestionBankItem,
   AssignmentSet,
   PaymentDisbursement,
@@ -204,13 +205,17 @@ export function loadInitialState(): AppStateData {
   const mergedSubjects = sanitizedLoadedSubjects.map((sub) => {
     const initSub = INITIAL_SUBJECTS.find((s) => s.id === sub.id);
     if (initSub) {
+      const shouldOverrideFaculty = [
+        'SUB-08-SCI', 'SUB-09-SCI', 'SUB-10-SCI', 'SUB-11-CHEM', 'SUB-12-CHEM', 'SUB-07-SCI',
+        'SUB-09-MATH', 'SUB-10-MATH', 'SUB-11-MATH', 'SUB-12-MATH'
+      ].includes(sub.id);
       return {
         ...sub,
         name: initSub.name,
         code: initSub.code,
         textbook: initSub.textbook,
         description: initSub.description,
-        facultyId: sub.facultyId || initSub.facultyId,
+        facultyId: shouldOverrideFaculty ? initSub.facultyId : (sub.facultyId || initSub.facultyId),
         weeklyHours: sub.weeklyHours || initSub.weeklyHours,
       };
     }
@@ -233,9 +238,18 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
+        fac.id === 'FAC-03' || fac.name === 'Mr. Soumyadip Dinda' || fac.name === 'Dr. Debabrata Roy'
+      ) {
+        return {
+          ...fac,
+          ...initFac,
+          assignedSubjectIds: initFac.assignedSubjectIds,
+          maxWeeklyHours: initFac.maxWeeklyHours,
+        };
+      }
+      if (
         fac.id === 'FAC-09' || fac.name === 'Mr. Soumen Ganguly' || fac.name === 'Mr. Buddhadev Chakraborty' ||
         fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh' ||
-        fac.id === 'FAC-03' || fac.name === 'Dr. Debabrata Roy' ||
         fac.id === 'FAC-02' || fac.name === 'Prof. Sangeeta Sharma'
       ) {
         return {
@@ -257,6 +271,11 @@ export function loadInitialState(): AppStateData {
 
   const loadedStudents = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
   const sanitizedStudents = loadedStudents.map((st) => {
+    let batch = st.batch;
+    if (batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)) {
+      batch = 'Evening Batch (4:00 PM - 8:30 PM)';
+    }
+
     if (standardClassLevels.includes(st.classLevel) && st.enrolledSubjectIds) {
       const filteredEnrolled = st.enrolledSubjectIds.filter((id) => validSubjectIds.has(id));
       if (filteredEnrolled.length === 0) {
@@ -264,15 +283,20 @@ export function loadInitialState(): AppStateData {
         const classSubs = mergedSubjects.filter((s) => s.classLevel === st.classLevel).map((s) => s.id);
         return {
           ...st,
+          batch,
           enrolledSubjectIds: classSubs,
         };
       }
       return {
         ...st,
+        batch,
         enrolledSubjectIds: filteredEnrolled,
       };
     }
-    return st;
+    return {
+      ...st,
+      batch,
+    };
   });
 
   const loadedExams = loadFromStorage<Exam[]>(STORAGE_KEYS.EXAMS, INITIAL_EXAMS);
@@ -294,13 +318,23 @@ export function loadInitialState(): AppStateData {
   });
 
   const loadedTimetable = loadFromStorage<TimetableSlot[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
-  const sanitizedTimetable = loadedTimetable.map((slot) => {
+  const timetableMap = new Set(loadedTimetable.map((t) => t.id));
+  const mergedTimetable: TimetableSlot[] = loadedTimetable.map((slot) => {
     const initSlot = INITIAL_TIMETABLE.find((t) => t.id === slot.id);
     if (initSlot && standardClassLevels.includes(slot.classLevel)) {
       return initSlot;
     }
+    if (slot.batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)) {
+      return { ...slot, batch: 'Evening Batch (4:00 PM - 8:30 PM)' as BatchShift };
+    }
     return slot;
   });
+  for (const initT of INITIAL_TIMETABLE) {
+    if (!timetableMap.has(initT.id)) {
+      mergedTimetable.push(initT);
+      timetableMap.add(initT.id);
+    }
+  }
 
   const loadedAttendance = loadFromStorage<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE, INITIAL_ATTENDANCE);
   const sanitizedAttendance = loadedAttendance.map((att) => {
@@ -321,7 +355,7 @@ export function loadInitialState(): AppStateData {
     disbursements: loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS),
     investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
     investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),
-    timetable: sanitizedTimetable,
+    timetable: mergedTimetable,
     attendance: sanitizedAttendance,
     questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
     assignments: loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS),

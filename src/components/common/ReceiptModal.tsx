@@ -309,8 +309,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     Center for Secondary & Higher Secondary Academic Excellence (Class 5 to 12)
                   </p>
                   <p className="text-[11px] text-slate-500 flex items-center gap-3 mt-1">
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> 42/1 Academy Avenue, Kolkata 700029</span>
-                    <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> +91 98301 00000</span>
+                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> Jamna, Pingla, Paschim Medinipur, Pin-721140, W.B.</span>
+                    <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> +91 9732531730</span>
                   </p>
                 </div>
               </div>

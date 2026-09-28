@@ -2,7 +2,13 @@ export type ClassLevel = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '
 
 export type StreamType = 'General' | 'Science' | 'Commerce' | 'Arts';
 
-export type BatchShift = 'Morning Batch (6:30 AM - 9:00 AM)' | 'Evening Batch (4:00 PM - 7:30 PM)' | 'Weekend Intensive (Sat-Sun)';
+export type BatchShift =
+  | 'Morning Batch (6:30 AM - 9:00 AM)'
+  | 'Evening Batch (4:00 PM - 8:30 PM)'
+  | 'Saturday Evening Batch (3:00 PM - 8:30 PM)'
+  | 'Sunday Morning Batch (6:30 AM - 11:30 AM)'
+  | 'Sunday Evening Batch (3:00 PM - 8:30 PM)'
+  | 'Weekend Intensive (Sat-Sun)';
 
 export type Gender = 'Male' | 'Female' | 'Other';
 
@@ -409,7 +415,7 @@ export interface StudentFeeSummary {
 
 export interface TimetableSlot {
   id: string;
-  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
   timeSlot: string; // e.g. "06:30 AM - 07:30 AM"
   classLevel: ClassLevel;
   stream: StreamType;
