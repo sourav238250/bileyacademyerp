@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType, BatchShift, AdminUser } from '../../types';
-import { CLASS_LEVELS, STREAMS_FOR_CLASS } from '../../utils/academicUtils';
+import { CLASS_LEVELS, STREAMS_FOR_CLASS, ACADEMY_ROOMS, MAX_CONCURRENT_ROOMS } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
 import { RoutinePrintModal } from './RoutinePrintModal';
@@ -28,6 +28,9 @@ import {
   UserCheck,
   Building,
   Filter,
+  AlertTriangle,
+  DoorClosed,
+  Check,
 } from 'lucide-react';
 
 interface FacultyViewProps {
@@ -46,35 +49,22 @@ interface FacultyViewProps {
 }
 
 const PRESET_TIME_SLOTS = [
-  '06:30 AM - 07:45 AM',
-  '07:45 AM - 09:00 AM',
-  '06:30 AM - 09:00 AM',
-  '06:30 AM - 11:30 AM',
-  '08:00 AM - 11:00 AM',
-  '08:30 AM - 11:00 AM',
-  '08:30 AM - 11:30 AM',
-  '09:00 AM - 10:30 AM',
-  '09:00 AM - 11:30 AM',
-  '11:30 AM - 02:30 PM',
-  '03:00 PM - 04:30 PM',
-  '03:00 PM - 05:00 PM',
-  '03:00 PM - 05:30 PM',
-  '03:00 PM - 08:30 PM',
-  '04:00 PM - 05:15 PM',
-  '04:00 PM - 05:30 PM',
-  '04:00 PM - 05:45 PM',
-  '04:00 PM - 06:00 PM',
-  '04:00 PM - 08:30 PM',
-  '04:30 PM - 05:30 PM',
-  '04:30 PM - 06:00 PM',
-  '05:00 PM - 06:30 PM',
-  '05:30 PM - 06:30 PM',
-  '06:00 PM - 07:00 PM',
-  '06:00 PM - 08:00 PM',
-  '06:00 PM - 08:30 PM',
-  '06:15 PM - 07:30 PM',
-  '06:15 PM - 08:30 PM',
-  '06:30 PM - 08:30 PM',
+  '06:30 AM - 08:00 AM', // 1 hr 30 mins
+  '08:00 AM - 09:30 AM', // 1 hr 30 mins
+  '08:30 AM - 10:00 AM', // 1 hr 30 mins
+  '09:00 AM - 10:30 AM', // 1 hr 30 mins
+  '09:30 AM - 11:00 AM', // 1 hr 30 mins
+  '10:00 AM - 11:30 AM', // 1 hr 30 mins
+  '11:30 AM - 01:00 PM', // 1 hr 30 mins
+  '01:00 PM - 02:30 PM', // 1 hr 30 mins
+  '03:00 PM - 04:30 PM', // 1 hr 30 mins
+  '04:00 PM - 05:30 PM', // 1 hr 30 mins
+  '04:30 PM - 06:00 PM', // 1 hr 30 mins
+  '05:00 PM - 06:30 PM', // 1 hr 30 mins
+  '05:30 PM - 07:00 PM', // 1 hr 30 mins
+  '06:00 PM - 07:30 PM', // 1 hr 30 mins
+  '06:30 PM - 08:00 PM', // 1 hr 30 mins
+  '07:00 PM - 08:30 PM', // 1 hr 30 mins
 ];
 
 const BATCH_OPTIONS: BatchShift[] = [
@@ -105,7 +95,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   const canManageTimetable = auth.canWrite && hasPermission(currentAdmin, 'TIMETABLE_MANAGE');
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<'class-routine' | 'faculty-routine' | 'timetable' | 'directory'>('class-routine');
+  const [activeTab, setActiveTab] = useState<'class-routine' | 'faculty-routine' | 'room-allocation' | 'timetable' | 'directory'>('class-routine');
   
   // Class Routine View State
   const [selectedClassRoutine, setSelectedClassRoutine] = useState<ClassLevel>('10');
@@ -113,6 +103,10 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
 
   // Faculty Routine View State
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>(faculty[0]?.id || 'FAC-09');
+
+  // Room Allocation View State
+  const [selectedRoomDay, setSelectedRoomDay] = useState<string>('Monday');
+  const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('all');
 
   // Print Modal State
   const [printModalConfig, setPrintModalConfig] = useState<{
@@ -154,13 +148,13 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   // Timetable slot form data
   const [slotFormData, setSlotFormData] = useState<Partial<TimetableSlot>>({
     day: 'Monday',
-    timeSlot: '06:30 AM - 07:30 AM',
+    timeSlot: '04:00 PM - 05:30 PM',
     classLevel: '10',
     stream: 'General',
     batch: 'Evening Batch (4:00 PM - 8:30 PM)',
     subjectId: '',
     facultyId: '',
-    room: 'Room 201',
+    room: 'ROOM-1',
   });
 
   const handleOpenAdd = () => {
@@ -223,15 +217,26 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     setEditingTimetableSlot(null);
     const initialSubject = subjects.find((s) => s.classLevel === '10')?.id || subjects[0]?.id || '';
     const initialFaculty = faculty[0]?.id || '';
+    const currentDay = (selectedDay as any) || 'Monday';
+    const currentTime = '04:00 PM - 05:30 PM';
+    
+    // Find next available room in ROOM-1..ROOM-8 for this day and time
+    const activeRoomsInSlot = new Set(
+      timetable
+        .filter((s) => s.day === currentDay && s.timeSlot === currentTime)
+        .map((s) => s.room)
+    );
+    const nextFreeRoom = ACADEMY_ROOMS.find((r) => !activeRoomsInSlot.has(r)) || 'ROOM-1';
+
     setSlotFormData({
-      day: (selectedDay as any) || 'Monday',
-      timeSlot: '04:00 PM - 06:00 PM',
+      day: currentDay,
+      timeSlot: currentTime,
       classLevel: '10',
       stream: 'General',
       batch: 'Evening Batch (4:00 PM - 8:30 PM)',
       subjectId: initialSubject,
       facultyId: initialFaculty,
-      room: 'Room 201',
+      room: nextFreeRoom,
     });
     setIsTimetableModalOpen(true);
   };
@@ -252,10 +257,15 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     setIsTimetableModalOpen(true);
   };
 
-  // Handle Timetable Slot Submit
+  // Handle Timetable Slot Submit with 5 concurrent rooms validation
   const handleSlotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!slotFormData.timeSlot?.trim()) {
+    const day = (slotFormData.day as any) || 'Monday';
+    const timeSlot = slotFormData.timeSlot?.trim();
+    const targetRoom = slotFormData.room?.trim() || 'ROOM-1';
+    const chosenFacultyId = slotFormData.facultyId;
+
+    if (!timeSlot) {
       alert('Please enter or select a valid time slot.');
       return;
     }
@@ -263,8 +273,46 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       alert('Please select a subject for this slot.');
       return;
     }
-    if (!slotFormData.facultyId) {
+    if (!chosenFacultyId) {
       alert('Please select an allocated teacher.');
+      return;
+    }
+
+    // Check existing slots in the exact same day & timeSlot (excluding the current one being edited)
+    const otherSlotsInSameSlot = timetable.filter(
+      (s) =>
+        s.day === day &&
+        s.timeSlot === timeSlot &&
+        (!editingTimetableSlot || s.id !== editingTimetableSlot.id)
+    );
+
+    // 1. Room double-booking conflict check
+    const roomConflict = otherSlotsInSameSlot.find((s) => s.room.toLowerCase() === targetRoom.toLowerCase());
+    if (roomConflict) {
+      const conflictSub = subjects.find((sub) => sub.id === roomConflict.subjectId)?.name || roomConflict.subjectId;
+      const conflictTeacher = faculty.find((f) => f.id === roomConflict.facultyId)?.name || 'Teacher';
+      alert(
+        `Room Allocation Conflict: ${targetRoom} is already in use by Class ${roomConflict.classLevel} (${conflictSub} - ${conflictTeacher}) on ${day} at ${timeSlot}. Please choose another available room from ROOM-1 through ROOM-8.`
+      );
+      return;
+    }
+
+    // 2. Maximum 5 concurrent rooms allocation limit check
+    const distinctRoomsInSlot = new Set(otherSlotsInSameSlot.map((s) => s.room));
+    if (!distinctRoomsInSlot.has(targetRoom) && distinctRoomsInSlot.size >= MAX_CONCURRENT_ROOMS) {
+      alert(
+        `Institutional Room Limit Exceeded: At most ${MAX_CONCURRENT_ROOMS} rooms can be allocated concurrently for classes (Policy: 8 Available Rooms, Max ${MAX_CONCURRENT_ROOMS} active at a time). Current allocated rooms on ${day} (${timeSlot}): ${Array.from(distinctRoomsInSlot).join(', ')}.`
+      );
+      return;
+    }
+
+    // 3. Faculty clash check (teacher cannot be in two classrooms at the same time)
+    const teacherConflict = otherSlotsInSameSlot.find((s) => s.facultyId === chosenFacultyId);
+    if (teacherConflict) {
+      const conflictTeacher = faculty.find((f) => f.id === chosenFacultyId)?.name || 'This teacher';
+      alert(
+        `Teacher Conflict: ${conflictTeacher} is already assigned to Class ${teacherConflict.classLevel} in ${teacherConflict.room} on ${day} at ${timeSlot}.`
+      );
       return;
     }
 
@@ -272,26 +320,26 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       const updated: TimetableSlot = {
         ...editingTimetableSlot,
         day: (slotFormData.day as any) || editingTimetableSlot.day,
-        timeSlot: slotFormData.timeSlot.trim(),
+        timeSlot: timeSlot,
         classLevel: (slotFormData.classLevel as ClassLevel) || editingTimetableSlot.classLevel,
         stream: (slotFormData.stream as StreamType) || editingTimetableSlot.stream,
         batch: (slotFormData.batch as BatchShift) || editingTimetableSlot.batch,
         subjectId: slotFormData.subjectId,
-        facultyId: slotFormData.facultyId,
-        room: slotFormData.room || 'Room 101',
+        facultyId: chosenFacultyId,
+        room: targetRoom,
       };
       onUpdateTimetableSlot(updated);
     } else {
       const newSlot: TimetableSlot = {
         id: `TS-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         day: (slotFormData.day as any) || 'Monday',
-        timeSlot: slotFormData.timeSlot.trim(),
+        timeSlot: timeSlot,
         classLevel: (slotFormData.classLevel as ClassLevel) || '10',
         stream: (slotFormData.stream as StreamType) || 'General',
         batch: (slotFormData.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
         subjectId: slotFormData.subjectId,
-        facultyId: slotFormData.facultyId,
-        room: slotFormData.room || 'Room 101',
+        facultyId: chosenFacultyId,
+        room: targetRoom,
       };
       onAddTimetableSlot(newSlot);
     }
@@ -367,6 +415,18 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Faculty Routine</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('room-allocation')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'room-allocation'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-950'
+              }`}
+            >
+              <Building className="w-3.5 h-3.5" />
+              <span>Room Allocations (Max 5/8)</span>
             </button>
 
             <button
@@ -832,7 +892,297 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         </div>
       )}
 
-      {/* TAB 3: MASTER SCHEDULE GRID (DAY-WISE SLOT MANAGER) */}
+      {/* TAB: ROOM ALLOCATION & CAPACITY (MAX 5 OF 8 ROOMS) */}
+      {activeTab === 'room-allocation' && (
+        <div className="space-y-6">
+          {/* Institutional Capacity & Policy Banner */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5" />
+                    INSTITUTIONAL FACILITY ALLOCATION POLICY
+                  </span>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    Policy Active & Enforced
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mt-1.5 flex items-center gap-2">
+                  <span>8 Available Classrooms (ROOM-1 to ROOM-8)</span>
+                  <span className="text-purple-600">•</span>
+                  <span className="text-purple-700">Max 5 Concurrent Rooms Allocated</span>
+                </h3>
+                <p className="text-xs text-slate-600 mt-1">
+                  The academy infrastructure comprises 8 fully-equipped classrooms. To ensure optimal acoustics, mentor invigilation, and student corridor safety, at any given time slot a maximum of <strong>5 rooms</strong> are allocated for lectures, while remaining rooms serve as self-study lounges or contingency reserves.
+                </p>
+              </div>
+
+              {canManageTimetable && (
+                <button
+                  onClick={handleOpenAddSlot}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 shrink-0 self-start lg:self-center"
+                >
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <span>Allocate New Room Slot</span>
+                </button>
+              )}
+            </div>
+
+            {/* Quick Metrics Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                <span className="text-[10px] font-bold uppercase text-slate-500 block">Total Facility Classrooms</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-black text-slate-900">{ACADEMY_ROOMS.length}</span>
+                  <span className="text-[11px] font-bold text-slate-600">Rooms (ROOM-1 to ROOM-8)</span>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 p-3.5 rounded-xl">
+                <span className="text-[10px] font-bold uppercase text-purple-700 block">Max Concurrent Limit</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-black text-purple-900">{MAX_CONCURRENT_ROOMS}</span>
+                  <span className="text-[11px] font-bold text-purple-700">Rooms at a time</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+                <span className="text-[10px] font-bold uppercase text-emerald-700 block">Standby / Buffer Rooms</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-black text-emerald-900">{ACADEMY_ROOMS.length - MAX_CONCURRENT_ROOMS}</span>
+                  <span className="text-[11px] font-bold text-emerald-700">Reserve per peak slot</span>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl">
+                <span className="text-[10px] font-bold uppercase text-amber-800 block">Total Scheduled Slots</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-black text-amber-900">{timetable.length}</span>
+                  <span className="text-[11px] font-bold text-amber-800">Weekly 1.5h sessions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 8 Room Infrastructure Overview Cards */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <Building className="w-4 h-4 text-purple-600" />
+                  Academy Classroom Fleet Status (8 Rooms)
+                </h4>
+                <p className="text-xs text-slate-500">Weekly lecture distribution and assigned curriculum across all 8 rooms.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              {ACADEMY_ROOMS.map((roomName, idx) => {
+                const roomSlots = timetable.filter((s) => s.room === roomName);
+                const distinctClasses = Array.from(new Set(roomSlots.map((s) => `Cl-${s.classLevel}`)));
+                const weeklyHours = (roomSlots.length * 1.5).toFixed(1);
+                const isHeavyLoad = roomSlots.length >= 10;
+
+                return (
+                  <div
+                    key={roomName}
+                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-purple-300 hover:shadow-xs transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                          {roomName}
+                        </span>
+                        <span className={`w-2 h-2 rounded-full ${roomSlots.length > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] text-slate-500 font-semibold">Weekly Load</div>
+                        <div className="text-sm font-black text-slate-900">{roomSlots.length} <span className="text-[10px] font-normal text-slate-500">slots ({weeklyHours}h)</span></div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200/60">
+                      <span className="text-[9px] text-slate-400 font-bold block uppercase">Classes</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {distinctClasses.slice(0, 3).map((cl) => (
+                          <span key={cl} className="text-[9px] font-bold bg-white text-slate-700 px-1 py-0.2 rounded border border-slate-200">
+                            {cl}
+                          </span>
+                        ))}
+                        {distinctClasses.length > 3 && (
+                          <span className="text-[8px] text-slate-500 font-bold">+{distinctClasses.length - 3}</span>
+                        )}
+                        {distinctClasses.length === 0 && (
+                          <span className="text-[9px] text-slate-400 italic">Standby</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Day & Shift Concurrency Inspector */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-purple-600" />
+                  Live Time-Slot Room Allocation Matrix
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Select day to inspect concurrent room utilization in each 1 hr 30 mins period.
+                </p>
+              </div>
+
+              {/* Day Selector */}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl">
+                {daysOfWeek.map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => setSelectedRoomDay(day)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      selectedRoomDay === day
+                        ? 'bg-purple-700 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Slot Room Utilization Rows */}
+            {(() => {
+              const daySlots = timetable.filter((s) => s.day === selectedRoomDay);
+              const distinctTimeSlots = Array.from(new Set(daySlots.map((s) => s.timeSlot))).sort();
+
+              if (distinctTimeSlots.length === 0) {
+                return (
+                  <div className="p-10 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+                    <Building className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p>No active room allocations scheduled for {selectedRoomDay}.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-4">
+                  {distinctTimeSlots.map((timeSlot) => {
+                    const slotsInThisTime = daySlots.filter((s) => s.timeSlot === timeSlot);
+                    const occupiedRooms = new Map<string, TimetableSlot>(slotsInThisTime.map((s) => [s.room, s]));
+                    const concurrentCount = occupiedRooms.size;
+                    const isAtMaxLimit = concurrentCount >= MAX_CONCURRENT_ROOMS;
+                    const isOverLimit = concurrentCount > MAX_CONCURRENT_ROOMS;
+
+                    return (
+                      <div
+                        key={timeSlot}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isOverLimit
+                            ? 'bg-rose-50/60 border-rose-300'
+                            : isAtMaxLimit
+                            ? 'bg-amber-50/50 border-amber-200'
+                            : 'bg-slate-50/70 border-slate-200'
+                        }`}
+                      >
+                        {/* Header for Time Slot */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200/70">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex items-center gap-1.5 bg-white border border-slate-300 px-2.5 py-1 rounded-lg font-mono font-bold text-xs text-slate-900 shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                              <span>{timeSlot}</span>
+                            </div>
+                            <span className="text-xs text-slate-500 font-semibold">
+                              {slotsInThisTime[0]?.batch.split('(')[0]}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Concurrency Counter */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-bold text-slate-600">Active Rooms:</span>
+                              <span
+                                className={`text-xs font-black px-2 py-0.5 rounded-full border ${
+                                  isOverLimit
+                                    ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                                    : isAtMaxLimit
+                                    ? 'bg-amber-500 text-white border-amber-600'
+                                    : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                }`}
+                              >
+                                {concurrentCount} / {MAX_CONCURRENT_ROOMS} Rooms Allocated
+                              </span>
+                            </div>
+
+                            {isAtMaxLimit && (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                                Maximum Allocation Cap Reached
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 8 Rooms Visual Grid for this Slot */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                          {ACADEMY_ROOMS.map((roomName) => {
+                            const activeSlot = occupiedRooms.get(roomName);
+                            const subject = activeSlot ? subjects.find((s) => s.id === activeSlot.subjectId) : null;
+                            const teacher = activeSlot ? faculty.find((f) => f.id === activeSlot.facultyId) : null;
+
+                            if (activeSlot) {
+                              return (
+                                <div
+                                  key={roomName}
+                                  className="p-2.5 bg-white rounded-lg border-2 border-purple-500 shadow-xs flex flex-col justify-between space-y-1.5"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-black text-[11px] text-purple-900 bg-purple-100 px-1.5 py-0.5 rounded">
+                                      {roomName}
+                                    </span>
+                                    <span className="text-[9px] font-bold bg-purple-700 text-white px-1.5 py-0.2 rounded">
+                                      Class {activeSlot.classLevel}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] font-bold text-slate-900 truncate" title={subject?.name}>
+                                    {subject?.name || activeSlot.subjectId}
+                                  </div>
+                                  <div className="text-[10px] text-slate-600 truncate flex items-center gap-1">
+                                    <UserCheck className="w-3 h-3 text-purple-600 shrink-0" />
+                                    <span className="truncate">{teacher?.name.split(' ')[0]}</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div
+                                key={roomName}
+                                className="p-2.5 bg-white/60 rounded-lg border border-dashed border-slate-300 text-slate-400 flex flex-col justify-between"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-[10px] text-slate-500">{roomName}</span>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                </div>
+                                <div className="text-[10px] text-slate-400 italic mt-2">Standby / Free</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: MASTER SCHEDULE GRID (DAY-WISE SLOT MANAGER) */}
       {activeTab === 'timetable' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -1336,15 +1686,61 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Room / Lab No. *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Room 101, Physics Lab"
-                    value={slotFormData.room || ''}
-                    onChange={(e) => setSlotFormData({ ...slotFormData, room: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Room Assignment (8 Rooms, Max 5 Concurrent) *
+                  </label>
+                  {(() => {
+                    const currentDay = slotFormData.day || 'Monday';
+                    const currentTime = slotFormData.timeSlot || '04:00 PM - 05:30 PM';
+                    const activeSlots = timetable.filter(
+                      (s) =>
+                        s.day === currentDay &&
+                        s.timeSlot === currentTime &&
+                        (!editingTimetableSlot || s.id !== editingTimetableSlot.id)
+                    );
+                    const occupiedMap = new Map<string, TimetableSlot>(activeSlots.map((s) => [s.room, s]));
+                    const isSelectedRoomOccupied = occupiedMap.has(slotFormData.room || '');
+                    const currentOccupiedCount = occupiedMap.size;
+                    const willExceed = !isSelectedRoomOccupied && currentOccupiedCount >= MAX_CONCURRENT_ROOMS;
+
+                    return (
+                      <div className="space-y-1.5">
+                        <select
+                          required
+                          value={slotFormData.room || 'ROOM-1'}
+                          onChange={(e) => setSlotFormData({ ...slotFormData, room: e.target.value })}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 bg-white ${
+                            willExceed
+                              ? 'border-rose-300 focus:ring-rose-500 bg-rose-50/40'
+                              : isSelectedRoomOccupied
+                              ? 'border-amber-300 focus:ring-amber-500 bg-amber-50/40'
+                              : 'border-slate-300 focus:ring-slate-900'
+                          }`}
+                        >
+                          {ACADEMY_ROOMS.map((rm) => {
+                            const occ = occupiedMap.get(rm);
+                            return (
+                              <option key={rm} value={rm}>
+                                {rm} {occ ? `(In Use: Cl-${occ.classLevel})` : '(Available)'}
+                              </option>
+                            );
+                          })}
+                        </select>
+
+                        <div className="flex items-center justify-between text-[10px] text-slate-500">
+                          <span className="font-semibold">
+                            Slot Concurrency: <strong className={currentOccupiedCount >= 5 ? 'text-amber-700' : 'text-emerald-700'}>{currentOccupiedCount} / {MAX_CONCURRENT_ROOMS} Active</strong>
+                          </span>
+                          {willExceed && (
+                            <span className="text-rose-600 font-bold">Max 5 room limit reached</span>
+                          )}
+                          {isSelectedRoomOccupied && (
+                            <span className="text-amber-700 font-bold">Room already in use</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

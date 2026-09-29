@@ -43,6 +43,21 @@ export const STANDARD_SUBJECT_CODES: Record<StandardSubjectName, string> = {
   'Computer Application': 'CA',
 };
 
+export const ACADEMY_ROOMS = [
+  'ROOM-1',
+  'ROOM-2',
+  'ROOM-3',
+  'ROOM-4',
+  'ROOM-5',
+  'ROOM-6',
+  'ROOM-7',
+  'ROOM-8',
+] as const;
+
+export type AcademyRoom = (typeof ACADEMY_ROOMS)[number];
+
+export const MAX_CONCURRENT_ROOMS = 5;
+
 export const STREAMS_FOR_CLASS: Record<ClassLevel, string[]> = {
   '1': ['General'],
   '2': ['General'],
