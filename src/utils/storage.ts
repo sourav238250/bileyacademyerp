@@ -239,6 +239,7 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
+        fac.id === 'FAC-08' || fac.name === 'Mrs. Tanusree Maiti' || fac.name === 'Mr. Sanjay Dinda' ||
         fac.id === 'FAC-03' || fac.name === 'Mr. Soumyadip Dinda' || fac.name === 'Dr. Debabrata Roy' ||
         fac.id === 'FAC-11' || fac.name === 'Mrs. Madhumita Maity Dinda' ||
         fac.id === 'FAC-12' || fac.name === 'Mr. Subhadip Dinda' ||
@@ -247,6 +248,12 @@ export function loadInitialState(): AppStateData {
         return {
           ...fac,
           ...initFac,
+          name: initFac.name,
+          designation: initFac.designation,
+          qualification: initFac.qualification,
+          experienceYears: initFac.experienceYears,
+          email: initFac.email,
+          bio: initFac.bio,
           assignedSubjectIds: initFac.assignedSubjectIds,
           maxWeeklyHours: initFac.maxWeeklyHours,
         };
@@ -330,21 +337,33 @@ export function loadInitialState(): AppStateData {
   });
 
   const loadedTimetable = loadFromStorage<TimetableSlot[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
-  const timetableMap = new Set(loadedTimetable.map((t) => t.id));
-  const mergedTimetable: TimetableSlot[] = loadedTimetable.map((slot) => {
-    const initSlot = INITIAL_TIMETABLE.find((t) => t.id === slot.id);
-    if (initSlot && standardClassLevels.includes(slot.classLevel)) {
-      return initSlot;
-    }
-    if (slot.batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)) {
-      return { ...slot, batch: 'Evening Batch (4:00 PM - 8:30 PM)' as BatchShift };
-    }
-    return slot;
-  });
-  for (const initT of INITIAL_TIMETABLE) {
-    if (!timetableMap.has(initT.id)) {
-      mergedTimetable.push(initT);
-      timetableMap.add(initT.id);
+  // If stored timetable is legacy or incomplete (< 100 slots), sync with pristine INITIAL_TIMETABLE
+  let mergedTimetable: TimetableSlot[] = [];
+  if (loadedTimetable.length < 100) {
+    mergedTimetable = [...INITIAL_TIMETABLE];
+  } else {
+    const sanitizedLoadedTimetable = loadedTimetable.filter((slot) => {
+      if (standardClassLevels.includes(slot.classLevel)) {
+        return INITIAL_TIMETABLE.some((init) => init.id === slot.id);
+      }
+      return true;
+    });
+    const timetableMap = new Set(sanitizedLoadedTimetable.map((t) => t.id));
+    mergedTimetable = sanitizedLoadedTimetable.map((slot) => {
+      const initSlot = INITIAL_TIMETABLE.find((t) => t.id === slot.id);
+      if (initSlot && standardClassLevels.includes(slot.classLevel)) {
+        return initSlot;
+      }
+      if (slot.batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)) {
+        return { ...slot, batch: 'Evening Batch (4:00 PM - 8:30 PM)' as BatchShift };
+      }
+      return slot;
+    });
+    for (const initT of INITIAL_TIMETABLE) {
+      if (!timetableMap.has(initT.id)) {
+        mergedTimetable.push(initT);
+        timetableMap.add(initT.id);
+      }
     }
   }
 
@@ -414,6 +433,15 @@ export function resetToInitialMockData(): AppStateData {
   localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS);
   localStorage.removeItem(STORAGE_KEYS.AUTH_CONFIG);
   return loadInitialState();
+}
+
+export function resetAllDisbursementsToRe1(disbursements: PaymentDisbursement[]): PaymentDisbursement[] {
+  const updated = disbursements.map((d) => ({
+    ...d,
+    amount: 1,
+  }));
+  saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, updated);
+  return updated;
 }
 
 export interface BackupPayload {

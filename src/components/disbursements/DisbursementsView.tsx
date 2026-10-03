@@ -47,6 +47,8 @@ import {
   AlertCircle,
   BarChart3,
   RefreshCw,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 
 interface DisbursementsViewProps {
@@ -58,6 +60,8 @@ interface DisbursementsViewProps {
   onAddDisbursement: (disbursement: PaymentDisbursement) => void;
   onUpdateDisbursement: (disbursement: PaymentDisbursement) => void;
   onDeleteDisbursement: (id: string) => void;
+  onResetAllDisbursementsToRe1?: () => void;
+  onViewVoucher?: (disbursement: PaymentDisbursement) => void;
   onOpenAuthSettings?: () => void;
 }
 
@@ -70,6 +74,8 @@ export const DisbursementsView: React.FC<DisbursementsViewProps> = ({
   onAddDisbursement,
   onUpdateDisbursement,
   onDeleteDisbursement,
+  onResetAllDisbursementsToRe1,
+  onViewVoucher,
   onOpenAuthSettings,
 }) => {
   // Extract unique months for filter
@@ -106,9 +112,28 @@ export const DisbursementsView: React.FC<DisbursementsViewProps> = ({
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isResetSuccess, setIsResetSuccess] = useState<boolean>(false);
   const [editingDisbursement, setEditingDisbursement] = useState<PaymentDisbursement | null>(null);
   const [activeVoucherDisbursement, setActiveVoucherDisbursement] = useState<PaymentDisbursement | null>(null);
   const [quickLedgerSelection, setQuickLedgerSelection] = useState<DisbursementLedgerCategory | undefined>(undefined);
+
+  // Command to reset all disbursements to Rs 1
+  const handleResetCommand = () => {
+    const isConfirmed = window.confirm(
+      'Reset All Payment Disbursements to ₹1 (Rs 1)?\n\nThis will update every disbursement voucher across all 8 ledgers (Salary, Vendors, Contractors, Assets, Grocery, Utilities, Marketing, and Misc) with amount = ₹1.'
+    );
+    if (isConfirmed) {
+      if (onResetAllDisbursementsToRe1) {
+        onResetAllDisbursementsToRe1();
+      } else {
+        disbursements.forEach((d) => {
+          onUpdateDisbursement({ ...d, amount: 1 });
+        });
+      }
+      setIsResetSuccess(true);
+      setTimeout(() => setIsResetSuccess(false), 5000);
+    }
+  };
 
   // Permissions
   const canCreateDisbursement = hasPermission(currentAdmin || null, 'DISBURSEMENT_CREATE');
@@ -248,6 +273,17 @@ export const DisbursementsView: React.FC<DisbursementsViewProps> = ({
 
         {/* Action Buttons with Export Ledger PDF/CSV */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Reset All Disbursements to Rs 1 Command Button */}
+          <button
+            id="reset-all-disbursements-to-re1-btn"
+            onClick={handleResetCommand}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+            title="Reset all payment disbursement voucher amounts to ₹1 (Rs 1)"
+          >
+            <RotateCcw className="w-4 h-4 text-rose-600" />
+            <span>Reset All to ₹1</span>
+          </button>
+
           {/* Primary Export Monthly Ledger Button */}
           <button
             id="export-monthly-ledger-modal-btn"
@@ -293,6 +329,29 @@ export const DisbursementsView: React.FC<DisbursementsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Reset to Rs 1 Success Banner */}
+      {isResetSuccess && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl flex items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div>
+              <p className="font-bold text-xs sm:text-sm">
+                Command Executed: All Payment Disbursements Reset to ₹1
+              </p>
+              <p className="text-[11px] text-emerald-700 mt-0.5">
+                All payment disbursement vouchers across all 8 ledgers have been updated with amount = ₹1.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsResetSuccess(false)}
+            className="p-1 hover:bg-emerald-100 rounded-lg text-emerald-700 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Primary Financial Overview Cards (P&L Metric Deck) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

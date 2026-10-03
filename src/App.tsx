@@ -21,6 +21,7 @@ import {
   loadInitialState,
   saveToStorage,
   resetToInitialMockData,
+  resetAllDisbursementsToRe1,
   loadFromStorage,
   saveItemToStorage,
   AppStateData,
@@ -218,6 +219,11 @@ export default function App() {
 
   const handleDeleteDisbursement = (disbursementId: string) => {
     setDisbursements((prev) => prev.filter((d) => d.id !== disbursementId));
+  };
+
+  const handleResetAllDisbursementsToRe1 = () => {
+    const updated = resetAllDisbursementsToRe1(disbursements);
+    setDisbursements(updated);
   };
 
   // Investors Handlers
@@ -879,6 +885,7 @@ export default function App() {
               onAddDisbursement={handleAddDisbursement}
               onUpdateDisbursement={handleUpdateDisbursement}
               onDeleteDisbursement={handleDeleteDisbursement}
+              onResetAllDisbursementsToRe1={handleResetAllDisbursementsToRe1}
               onViewVoucher={(disb) => setSelectedVoucherDisbursement(disb)}
               currentAdmin={currentAdmin}
               onOpenAdminLogin={() => {

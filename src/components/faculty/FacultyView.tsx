@@ -577,12 +577,27 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                       {selectedClassRoutine}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">
-                        Weekly Routine for Class {selectedClassRoutine}
-                        {(selectedClassRoutine === '11' || selectedClassRoutine === '12') && ` (${selectedStreamRoutine})`}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                          Weekly Routine for Class {selectedClassRoutine}
+                          {(selectedClassRoutine === '11' || selectedClassRoutine === '12') && ` (${selectedStreamRoutine})`}
+                        </h4>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          Number(selectedClassRoutine) <= 5
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : Number(selectedClassRoutine) <= 8
+                            ? 'bg-blue-100 text-blue-900 border-blue-300'
+                            : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                        }`}>
+                          {Number(selectedClassRoutine) <= 5
+                            ? 'Primary: Mon, Wed & Fri'
+                            : Number(selectedClassRoutine) <= 8
+                            ? 'Upper Primary: Tue, Thu & Sat'
+                            : 'Board Special: Mon to Sun (7 Days)'}
+                        </span>
+                      </div>
                       <p className="text-xs text-purple-900 font-medium">
-                        {classSlots.length} Total Scheduled Lecture Periods Across Week
+                        {classSlots.length} Total Scheduled Lecture Periods (1 hr 30 mins each)
                       </p>
                     </div>
                   </div>
