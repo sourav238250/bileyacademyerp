@@ -12,6 +12,11 @@ import {
 } from '../../types';
 import { CLASS_LEVELS } from '../../utils/academicUtils';
 import {
+  convertTextBilingual,
+  translateEnglishToBengali,
+  translateBengaliToEnglish,
+} from '../../utils/translationUtils';
+import {
   X,
   FileCheck,
   Plus,
@@ -25,6 +30,8 @@ import {
   Upload,
   FileText,
   AlertCircle,
+  Languages,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface AssignmentModalProps {
@@ -198,6 +205,26 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     const updated = [...customQuestions];
     updated[index] = { ...updated[index], [field]: value };
     setCustomQuestions(updated);
+  };
+
+  const handleTranslateInstructions = () => {
+    if (!instructions.trim()) return;
+    const res = convertTextBilingual(instructions);
+    setInstructions(res.convertedText);
+  };
+
+  const handleTranslateCustomQuestionText = (index: number) => {
+    const cq = customQuestions[index];
+    if (!cq || !cq.questionText.trim()) return;
+    const res = convertTextBilingual(cq.questionText);
+    handleUpdateCustomQuestion(index, 'questionText', res.convertedText);
+  };
+
+  const handleTranslateCustomQuestionAnswer = (index: number) => {
+    const cq = customQuestions[index];
+    if (!cq || !cq.correctAnswer?.trim()) return;
+    const res = convertTextBilingual(cq.correctAnswer);
+    handleUpdateCustomQuestion(index, 'correctAnswer', res.convertedText);
   };
 
   const handleRemoveCustomQuestion = (index: number) => {
@@ -618,6 +645,17 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                     <button
                       type="button"
+                      onClick={() => handleTranslateCustomQuestionText(idx)}
+                      disabled={!cq.questionText.trim()}
+                      className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                      title="Convert custom question English ⇄ বাংলা"
+                    >
+                      <ArrowRightLeft className="w-2.5 h-2.5" />
+                      <span>English ⇄ বাংলা</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleRemoveCustomQuestion(idx)}
                       className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded cursor-pointer"
                     >
@@ -634,13 +672,25 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
                 />
 
-                <input
-                  type="text"
-                  placeholder="Optional correct answer / solution note..."
-                  value={cq.correctAnswer || ''}
-                  onChange={(e) => handleUpdateCustomQuestion(idx, 'correctAnswer', e.target.value)}
-                  className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Optional correct answer / solution note..."
+                    value={cq.correctAnswer || ''}
+                    onChange={(e) => handleUpdateCustomQuestion(idx, 'correctAnswer', e.target.value)}
+                    className="flex-1 px-2.5 py-1 bg-white border border-slate-200 rounded text-[11px]"
+                  />
+                  {cq.correctAnswer && (
+                    <button
+                      type="button"
+                      onClick={() => handleTranslateCustomQuestionAnswer(idx)}
+                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowRightLeft className="w-2.5 h-2.5" />
+                      <span>Key ⇄ বাংলা</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -694,7 +744,18 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
           {/* General Instructions */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">General Instructions (Printed on Top)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-700 font-bold">General Instructions (Printed on Top)</label>
+              <button
+                type="button"
+                onClick={handleTranslateInstructions}
+                disabled={!instructions.trim()}
+                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer disabled:opacity-40"
+              >
+                <ArrowRightLeft className="w-2.5 h-2.5" />
+                <span>Translate Instructions ⇄ বাংলা</span>
+              </button>
+            </div>
             <textarea
               rows={2}
               value={instructions}

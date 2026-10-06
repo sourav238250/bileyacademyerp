@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { AssignmentSet, QuestionBankItem } from '../types';
+import { getConvertedQuestionItem } from './translationUtils';
 
 export interface PDFExportOptions {
   includeAnswers?: boolean;
@@ -9,6 +10,7 @@ export interface PDFExportOptions {
   watermarkText?: string;
   instituteTitle?: string;
   instituteSubtitle?: string;
+  languageMode?: 'original' | 'en' | 'bn' | 'bilingual';
 }
 
 export function generateAssignmentPDF(
@@ -23,6 +25,7 @@ export function generateAssignmentPDF(
     includeStudentHeader = true,
     instituteTitle = 'BILEY ACADEMY OF ADVANCED STUDIES',
     instituteSubtitle = 'Class 1 to 12 Academic Foundation & Board Coaching Institute',
+    languageMode = 'original',
   } = options;
 
   const doc = new jsPDF({
@@ -229,28 +232,34 @@ export function generateAssignmentPDF(
   }
 
   const combinedQuestions: PrintableQuestion[] = [
-    ...linkedQuestions.map((q, idx) => ({
-      index: idx + 1,
-      text: q.questionText,
-      type: q.questionType,
-      marks: q.marks,
-      difficulty: q.difficulty,
-      topicTags: q.topicTags,
-      options: q.options,
-      correctAnswer: q.correctAnswer,
-      explanation: q.answerExplanation,
-    })),
-    ...customQuestions.map((cq, idx) => ({
-      index: linkedQuestions.length + idx + 1,
-      text: cq.questionText,
-      type: cq.questionType,
-      marks: cq.marks,
-      difficulty: cq.difficulty,
-      topicTags: cq.topicTags,
-      options: cq.options,
-      correctAnswer: cq.correctAnswer,
-      explanation: cq.answerExplanation,
-    })),
+    ...linkedQuestions.map((q, idx) => {
+      const conv = getConvertedQuestionItem(q, languageMode);
+      return {
+        index: idx + 1,
+        text: conv.questionText,
+        type: q.questionType,
+        marks: q.marks,
+        difficulty: q.difficulty,
+        topicTags: q.topicTags,
+        options: conv.options,
+        correctAnswer: conv.correctAnswer,
+        explanation: conv.answerExplanation,
+      };
+    }),
+    ...customQuestions.map((cq, idx) => {
+      const conv = getConvertedQuestionItem(cq, languageMode);
+      return {
+        index: linkedQuestions.length + idx + 1,
+        text: conv.questionText,
+        type: cq.questionType,
+        marks: cq.marks,
+        difficulty: cq.difficulty,
+        topicTags: cq.topicTags,
+        options: conv.options,
+        correctAnswer: conv.correctAnswer,
+        explanation: conv.answerExplanation,
+      };
+    }),
   ];
 
   // Render Questions Section

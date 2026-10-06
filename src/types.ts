@@ -476,6 +476,8 @@ export type QuestionType =
   | 'Fill in the Blanks'
   | 'True / False';
 
+export type QuestionLanguageMode = 'en' | 'bn' | 'bilingual' | 'original';
+
 export interface QuestionBankItem {
   id: string; // e.g. "QB-10-MATH-001"
   code: string;
@@ -491,6 +493,15 @@ export interface QuestionBankItem {
   options?: string[]; // For MCQ (e.g. ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"])
   correctAnswer?: string; // e.g. "Option C: 120 N" or "x = 4, y = -2"
   answerExplanation?: string; // Model answer / detailed step-by-step solution
+  // Bilingual / Language Conversion Fields
+  questionTextBn?: string;
+  optionsBn?: string[];
+  correctAnswerBn?: string;
+  answerExplanationBn?: string;
+  questionTextEn?: string;
+  optionsEn?: string[];
+  correctAnswerEn?: string;
+  answerExplanationEn?: string;
   marks: number;
   authorFacultyId?: string;
   authorFacultyName?: string;
@@ -516,6 +527,15 @@ export interface CustomAssignmentQuestion {
   options?: string[];
   correctAnswer?: string;
   answerExplanation?: string;
+  // Bilingual / Language Conversion Fields
+  questionTextBn?: string;
+  optionsBn?: string[];
+  correctAnswerBn?: string;
+  answerExplanationBn?: string;
+  questionTextEn?: string;
+  optionsEn?: string[];
+  correctAnswerEn?: string;
+  answerExplanationEn?: string;
 }
 
 export interface AssignmentSet {

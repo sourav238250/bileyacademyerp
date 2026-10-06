@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AssignmentSet, QuestionBankItem } from '../../types';
 import { downloadAssignmentPDF, PDFExportOptions } from '../../utils/pdfGenerator';
+import { getConvertedQuestionItem } from '../../utils/translationUtils';
 import {
   X,
   Printer,
@@ -13,6 +14,8 @@ import {
   Tag,
   ShieldCheck,
   FileCheck,
+  Languages,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface PrintPreviewModalProps {
@@ -32,6 +35,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   const [includeExplanations, setIncludeExplanations] = useState<boolean>(false);
   const [includeMarkingScheme, setIncludeMarkingScheme] = useState<boolean>(true);
   const [includeStudentHeader, setIncludeStudentHeader] = useState<boolean>(true);
+  const [languageMode, setLanguageMode] = useState<'original' | 'en' | 'bn' | 'bilingual'>('original');
 
   if (!isOpen) return null;
 
@@ -47,6 +51,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
       includeExplanations,
       includeMarkingScheme,
       includeStudentHeader,
+      languageMode,
     };
     downloadAssignmentPDF(assignment, allQuestions, opts);
   };
@@ -105,9 +110,55 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
         {/* Options Customizer Bar */}
         <div className="px-6 py-3 bg-slate-100 border-b border-slate-200 text-xs flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-1.5 font-bold text-slate-700">
-            <Settings className="w-3.5 h-3.5 text-slate-500" />
-            <span>PDF Print Configuration:</span>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+              <Settings className="w-3.5 h-3.5 text-slate-500" />
+              <span>PDF Print Configuration:</span>
+            </div>
+
+            {/* Language Selection */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-xs">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 px-1">
+                <Languages className="w-3 h-3 text-blue-600" />
+                <span>Lang:</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setLanguageMode('original')}
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  languageMode === 'original' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Original
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguageMode('en')}
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  languageMode === 'en' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-blue-700'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguageMode('bn')}
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  languageMode === 'bn' ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:text-emerald-700'
+                }`}
+              >
+                বাংলা
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguageMode('bilingual')}
+                className={`px-1.5 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  languageMode === 'bilingual' ? 'bg-amber-500 text-slate-950' : 'text-slate-600 hover:text-amber-800'
+                }`}
+              >
+                Bilingual
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -236,80 +287,86 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             <div className="border-t-2 border-slate-900 pt-4 space-y-5">
               
               {/* Linked Bank Questions */}
-              {linkedQuestions.map((q, idx) => (
-                <div key={q.id} className="space-y-2 pb-4 border-b border-slate-100 last:border-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2">
-                      <span className="font-black text-slate-950 text-sm">Q{idx + 1}.</span>
-                      <div>
-                        <div className="text-[10px] text-slate-400 font-semibold mb-0.5">
-                          [{q.questionType} • {q.difficulty}{q.topicTags?.length ? ` • ${q.topicTags.join(', ')}` : ''}]
+              {linkedQuestions.map((q, idx) => {
+                const conv = getConvertedQuestionItem(q, languageMode);
+                return (
+                  <div key={q.id} className="space-y-2 pb-4 border-b border-slate-100 last:border-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2">
+                        <span className="font-black text-slate-950 text-sm">Q{idx + 1}.</span>
+                        <div>
+                          <div className="text-[10px] text-slate-400 font-semibold mb-0.5">
+                            [{q.questionType} • {q.difficulty}{q.topicTags?.length ? ` • ${q.topicTags.join(', ')}` : ''}]
+                          </div>
+                          <p className="text-slate-900 font-medium text-xs sm:text-[13px] leading-relaxed whitespace-pre-line">
+                            {conv.questionText}
+                          </p>
                         </div>
-                        <p className="text-slate-900 font-medium text-xs sm:text-[13px] leading-relaxed">
-                          {q.questionText}
-                        </p>
                       </div>
+
+                      {includeMarkingScheme && (
+                        <span className="text-xs font-bold text-emerald-700 shrink-0">
+                          [{q.marks} Mark{q.marks > 1 ? 's' : ''}]
+                        </span>
+                      )}
                     </div>
 
-                    {includeMarkingScheme && (
-                      <span className="text-xs font-bold text-emerald-700 shrink-0">
-                        [{q.marks} Mark{q.marks > 1 ? 's' : ''}]
-                      </span>
+                    {/* MCQ Options */}
+                    {conv.options && conv.options.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6 pt-1">
+                        {conv.options.map((opt, oIdx) => (
+                          <div key={oIdx} className="p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
+                            {opt}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Inline Answer Key (if enabled) */}
+                    {includeAnswers && conv.correctAnswer && (
+                      <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900">
+                        <strong>{languageMode === 'bn' ? 'সঠিক উত্তর:' : 'Answer:'}</strong> {conv.correctAnswer}
+                      </div>
                     )}
                   </div>
-
-                  {/* MCQ Options */}
-                  {q.options && q.options.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6 pt-1">
-                      {q.options.map((opt, oIdx) => (
-                        <div key={oIdx} className="p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
-                          {opt}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Inline Answer Key (if enabled) */}
-                  {includeAnswers && q.correctAnswer && (
-                    <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900">
-                      <strong>Answer:</strong> {q.correctAnswer}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
               {/* Custom Questions */}
-              {customQuestions.map((cq, idx) => (
-                <div key={cq.id} className="space-y-2 pb-4 border-b border-slate-100 last:border-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2">
-                      <span className="font-black text-slate-950 text-sm">
-                        Q{linkedQuestions.length + idx + 1}.
-                      </span>
-                      <div>
-                        <div className="text-[10px] text-slate-400 font-semibold mb-0.5">
-                          [{cq.questionType} • {cq.difficulty}]
+              {customQuestions.map((cq, idx) => {
+                const conv = getConvertedQuestionItem(cq, languageMode);
+                return (
+                  <div key={cq.id} className="space-y-2 pb-4 border-b border-slate-100 last:border-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2">
+                        <span className="font-black text-slate-950 text-sm">
+                          Q{linkedQuestions.length + idx + 1}.
+                        </span>
+                        <div>
+                          <div className="text-[10px] text-slate-400 font-semibold mb-0.5">
+                            [{cq.questionType} • {cq.difficulty}]
+                          </div>
+                          <p className="text-slate-900 font-medium text-xs sm:text-[13px] leading-relaxed whitespace-pre-line">
+                            {conv.questionText}
+                          </p>
                         </div>
-                        <p className="text-slate-900 font-medium text-xs sm:text-[13px] leading-relaxed">
-                          {cq.questionText}
-                        </p>
                       </div>
+
+                      {includeMarkingScheme && (
+                        <span className="text-xs font-bold text-emerald-700 shrink-0">
+                          [{cq.marks} Mark{cq.marks > 1 ? 's' : ''}]
+                        </span>
+                      )}
                     </div>
 
-                    {includeMarkingScheme && (
-                      <span className="text-xs font-bold text-emerald-700 shrink-0">
-                        [{cq.marks} Mark{cq.marks > 1 ? 's' : ''}]
-                      </span>
+                    {includeAnswers && conv.correctAnswer && (
+                      <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900">
+                        <strong>{languageMode === 'bn' ? 'সঠিক উত্তর:' : 'Answer:'}</strong> {conv.correctAnswer}
+                      </div>
                     )}
                   </div>
-
-                  {includeAnswers && cq.correctAnswer && (
-                    <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900">
-                      <strong>Answer:</strong> {cq.correctAnswer}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
             </div>
 
@@ -317,43 +374,65 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             {(includeAnswers || includeExplanations) && (
               <div className="pt-6 border-t-2 border-dashed border-slate-300 space-y-4">
                 <div className="p-3 bg-slate-900 text-amber-300 rounded-lg text-center font-black text-xs uppercase tracking-wider">
-                  Official Solutions & Step-by-Step Model Answers
+                  {languageMode === 'bn'
+                    ? 'অফিসিয়াল সমাধান ও ধাপে ধাপে মডেল উত্তরপত্র'
+                    : 'Official Solutions & Step-by-Step Model Answers'}
                 </div>
 
                 <div className="space-y-4">
-                  {linkedQuestions.map((q, idx) => (
-                    <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
-                      <div className="flex items-center justify-between font-bold text-slate-900">
-                        <span>Solution Q{idx + 1} ({q.questionType})</span>
-                        {q.correctAnswer && (
-                          <span className="text-emerald-700 text-[11px]">Key: {q.correctAnswer}</span>
+                  {linkedQuestions.map((q, idx) => {
+                    const conv = getConvertedQuestionItem(q, languageMode);
+                    return (
+                      <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                        <div className="flex items-center justify-between font-bold text-slate-900">
+                          <span>
+                            {languageMode === 'bn' ? `প্রশ্ন ${idx + 1} সমাধান:` : `Solution Q${idx + 1}`} ({q.questionType})
+                          </span>
+                          {conv.correctAnswer && (
+                            <span className="text-emerald-700 text-[11px] font-bold">
+                              {languageMode === 'bn' ? 'উত্তর: ' : 'Key: '}
+                              {conv.correctAnswer}
+                            </span>
+                          )}
+                        </div>
+                        {conv.answerExplanation ? (
+                          <p className="text-slate-700 whitespace-pre-line text-[11px] leading-relaxed">
+                            {conv.answerExplanation}
+                          </p>
+                        ) : (
+                          <p className="text-slate-400 italic text-[10px]">
+                            {languageMode === 'bn' ? 'সরাসরি উত্তরপত্র।' : 'Direct answer without step notes.'}
+                          </p>
                         )}
                       </div>
-                      {q.answerExplanation ? (
-                        <p className="text-slate-700 whitespace-pre-line text-[11px] leading-relaxed">
-                          {q.answerExplanation}
-                        </p>
-                      ) : (
-                        <p className="text-slate-400 italic text-[10px]">Direct answer without step notes.</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
 
-                  {customQuestions.map((cq, idx) => (
-                    <div key={cq.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
-                      <div className="flex items-center justify-between font-bold text-slate-900">
-                        <span>Solution Q{linkedQuestions.length + idx + 1}</span>
-                        {cq.correctAnswer && (
-                          <span className="text-emerald-700 text-[11px]">Key: {cq.correctAnswer}</span>
+                  {customQuestions.map((cq, idx) => {
+                    const conv = getConvertedQuestionItem(cq, languageMode);
+                    return (
+                      <div key={cq.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                        <div className="flex items-center justify-between font-bold text-slate-900">
+                          <span>
+                            {languageMode === 'bn'
+                              ? `প্রশ্ন ${linkedQuestions.length + idx + 1} সমাধান:`
+                              : `Solution Q${linkedQuestions.length + idx + 1}`}
+                          </span>
+                          {conv.correctAnswer && (
+                            <span className="text-emerald-700 text-[11px] font-bold">
+                              {languageMode === 'bn' ? 'উত্তর: ' : 'Key: '}
+                              {conv.correctAnswer}
+                            </span>
+                          )}
+                        </div>
+                        {conv.answerExplanation && (
+                          <p className="text-slate-700 whitespace-pre-line text-[11px] leading-relaxed">
+                            {conv.answerExplanation}
+                          </p>
                         )}
                       </div>
-                      {cq.answerExplanation && (
-                        <p className="text-slate-700 whitespace-pre-line text-[11px] leading-relaxed">
-                          {cq.answerExplanation}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

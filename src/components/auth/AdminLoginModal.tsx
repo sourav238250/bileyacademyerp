@@ -102,8 +102,36 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       onLoginSuccess(adminProfile);
       if (onClose) onClose();
     } catch (err: any) {
-      console.error('Google Sign-in error:', err);
-      setErrorMessage(err?.message || 'Google Sign-in failed. Please try again or use standard credentials.');
+      const code = err?.code || '';
+      const message = err?.message || '';
+
+      // User closed or dismissed the popup window voluntarily - do not display an error
+      if (
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        message.includes('popup-closed-by-user') ||
+        message.includes('cancelled-popup-request')
+      ) {
+        setErrorMessage('');
+        return;
+      }
+
+      // Popup blocked by browser
+      if (code === 'auth/popup-blocked' || message.includes('popup-blocked')) {
+        setErrorMessage('Pop-up was blocked by your browser. Please allow pop-ups for this site or log in with your credentials below.');
+        return;
+      }
+
+      // Unauthorized domain in Firebase console
+      if (code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain')) {
+        setErrorMessage('This preview domain is not configured for Google Sign-in. Please log in using standard credentials below.');
+        return;
+      }
+
+      console.warn('Google Sign-in warning:', err);
+      setErrorMessage(
+        err?.message ? `Google Sign-in: ${err.message}` : 'Google Sign-in could not be completed. Please try again or use standard credentials.'
+      );
     } finally {
       setIsGoogleLoading(false);
     }

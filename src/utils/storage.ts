@@ -376,6 +376,11 @@ export function loadInitialState(): AppStateData {
     return att;
   });
 
+  const loadedDisbursements = loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS);
+  // If disbursements were previously reset to Rs 1 during button testing, restore normal initial amounts
+  const isLegacyRe1Test = loadedDisbursements.length > 0 && loadedDisbursements.every((d) => d.amount === 1);
+  const sanitizedDisbursements = isLegacyRe1Test ? INITIAL_DISBURSEMENTS : loadedDisbursements;
+
   return {
     students: sanitizedStudents,
     faculty: mergedFaculty,
@@ -383,7 +388,7 @@ export function loadInitialState(): AppStateData {
     exams: sanitizedExams,
     results: sanitizedResults,
     deposits: loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS),
-    disbursements: loadFromStorage<PaymentDisbursement[]>(STORAGE_KEYS.DISBURSEMENTS, INITIAL_DISBURSEMENTS),
+    disbursements: sanitizedDisbursements,
     investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
     investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),
     timetable: mergedTimetable,
@@ -395,56 +400,47 @@ export function loadInitialState(): AppStateData {
 }
 
 export function saveToStorage(data: AppStateData): void {
-  saveItemToStorage(STORAGE_KEYS.STUDENTS, data.students);
-  saveItemToStorage(STORAGE_KEYS.FACULTY, data.faculty);
-  saveItemToStorage(STORAGE_KEYS.SUBJECTS, data.subjects);
-  saveItemToStorage(STORAGE_KEYS.EXAMS, data.exams);
-  saveItemToStorage(STORAGE_KEYS.RESULTS, data.results);
-  saveItemToStorage(STORAGE_KEYS.DEPOSITS, data.deposits);
-  saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, data.disbursements);
-  if (data.investors) {
-    saveItemToStorage(STORAGE_KEYS.INVESTORS, data.investors);
+    saveItemToStorage(STORAGE_KEYS.STUDENTS, data.students);
+    saveItemToStorage(STORAGE_KEYS.FACULTY, data.faculty);
+    saveItemToStorage(STORAGE_KEYS.SUBJECTS, data.subjects);
+    saveItemToStorage(STORAGE_KEYS.EXAMS, data.exams);
+    saveItemToStorage(STORAGE_KEYS.RESULTS, data.results);
+    saveItemToStorage(STORAGE_KEYS.DEPOSITS, data.deposits);
+    saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, data.disbursements);
+    if (data.investors) {
+      saveItemToStorage(STORAGE_KEYS.INVESTORS, data.investors);
+    }
+    if (data.investorTransactions) {
+      saveItemToStorage(STORAGE_KEYS.INVESTOR_TRANSACTIONS, data.investorTransactions);
+    }
+    saveItemToStorage(STORAGE_KEYS.TIMETABLE, data.timetable);
+    saveItemToStorage(STORAGE_KEYS.ATTENDANCE, data.attendance);
+    saveItemToStorage(STORAGE_KEYS.QUESTION_BANK, data.questionBank);
+    saveItemToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
+    if (data.authConfig) {
+      saveItemToStorage(STORAGE_KEYS.AUTH_CONFIG, data.authConfig);
+    }
   }
-  if (data.investorTransactions) {
-    saveItemToStorage(STORAGE_KEYS.INVESTOR_TRANSACTIONS, data.investorTransactions);
+
+  export function resetToInitialMockData(): AppStateData {
+    localStorage.removeItem(STORAGE_KEYS.STUDENTS);
+    localStorage.removeItem(STORAGE_KEYS.FACULTY);
+    localStorage.removeItem(STORAGE_KEYS.SUBJECTS);
+    localStorage.removeItem(STORAGE_KEYS.EXAMS);
+    localStorage.removeItem(STORAGE_KEYS.RESULTS);
+    localStorage.removeItem(STORAGE_KEYS.DEPOSITS);
+    localStorage.removeItem(STORAGE_KEYS.DISBURSEMENTS);
+    localStorage.removeItem(STORAGE_KEYS.INVESTORS);
+    localStorage.removeItem(STORAGE_KEYS.INVESTOR_TRANSACTIONS);
+    localStorage.removeItem(STORAGE_KEYS.TIMETABLE);
+    localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
+    localStorage.removeItem(STORAGE_KEYS.QUESTION_BANK);
+    localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS);
+    localStorage.removeItem(STORAGE_KEYS.AUTH_CONFIG);
+    return loadInitialState();
   }
-  saveItemToStorage(STORAGE_KEYS.TIMETABLE, data.timetable);
-  saveItemToStorage(STORAGE_KEYS.ATTENDANCE, data.attendance);
-  saveItemToStorage(STORAGE_KEYS.QUESTION_BANK, data.questionBank);
-  saveItemToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
-  if (data.authConfig) {
-    saveItemToStorage(STORAGE_KEYS.AUTH_CONFIG, data.authConfig);
-  }
-}
 
-export function resetToInitialMockData(): AppStateData {
-  localStorage.removeItem(STORAGE_KEYS.STUDENTS);
-  localStorage.removeItem(STORAGE_KEYS.FACULTY);
-  localStorage.removeItem(STORAGE_KEYS.SUBJECTS);
-  localStorage.removeItem(STORAGE_KEYS.EXAMS);
-  localStorage.removeItem(STORAGE_KEYS.RESULTS);
-  localStorage.removeItem(STORAGE_KEYS.DEPOSITS);
-  localStorage.removeItem(STORAGE_KEYS.DISBURSEMENTS);
-  localStorage.removeItem(STORAGE_KEYS.INVESTORS);
-  localStorage.removeItem(STORAGE_KEYS.INVESTOR_TRANSACTIONS);
-  localStorage.removeItem(STORAGE_KEYS.TIMETABLE);
-  localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
-  localStorage.removeItem(STORAGE_KEYS.QUESTION_BANK);
-  localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS);
-  localStorage.removeItem(STORAGE_KEYS.AUTH_CONFIG);
-  return loadInitialState();
-}
-
-export function resetAllDisbursementsToRe1(disbursements: PaymentDisbursement[]): PaymentDisbursement[] {
-  const updated = disbursements.map((d) => ({
-    ...d,
-    amount: 1,
-  }));
-  saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, updated);
-  return updated;
-}
-
-export interface BackupPayload {
+  export interface BackupPayload {
   version: string;
   institution: string;
   curriculum: string;

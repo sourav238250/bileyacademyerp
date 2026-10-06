@@ -10,6 +10,11 @@ import {
 } from '../../types';
 import { CLASS_LEVELS } from '../../utils/academicUtils';
 import {
+  convertTextBilingual,
+  translateEnglishToBengali,
+  translateBengaliToEnglish,
+} from '../../utils/translationUtils';
+import {
   X,
   BookOpen,
   Tag,
@@ -19,6 +24,8 @@ import {
   Trash2,
   Sparkles,
   Award,
+  Languages,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface QuestionModalProps {
@@ -169,6 +176,57 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
     const updated = [...options];
     updated[index] = val;
     setOptions(updated);
+  };
+
+  const handleTranslateQuestionText = () => {
+    if (!questionText.trim()) return;
+    const res = convertTextBilingual(questionText);
+    setQuestionText(res.convertedText);
+  };
+
+  const handleTranslateOptions = () => {
+    const updated = options.map((opt) => {
+      const res = convertTextBilingual(opt);
+      return res.convertedText;
+    });
+    setOptions(updated);
+  };
+
+  const handleTranslateCorrectAnswer = () => {
+    if (!correctAnswer.trim()) return;
+    const res = convertTextBilingual(correctAnswer);
+    setCorrectAnswer(res.convertedText);
+  };
+
+  const handleTranslateExplanation = () => {
+    if (!answerExplanation.trim()) return;
+    const res = convertTextBilingual(answerExplanation);
+    setAnswerExplanation(res.convertedText);
+  };
+
+  const handleTranslateAllFields = (targetLang?: 'bn' | 'en') => {
+    if (questionText.trim()) {
+      if (targetLang === 'bn') setQuestionText(translateEnglishToBengali(questionText));
+      else if (targetLang === 'en') setQuestionText(translateBengaliToEnglish(questionText));
+      else setQuestionText(convertTextBilingual(questionText).convertedText);
+    }
+    if (options && options.length > 0) {
+      setOptions(options.map((opt) => {
+        if (targetLang === 'bn') return translateEnglishToBengali(opt);
+        if (targetLang === 'en') return translateBengaliToEnglish(opt);
+        return convertTextBilingual(opt).convertedText;
+      }));
+    }
+    if (correctAnswer.trim()) {
+      if (targetLang === 'bn') setCorrectAnswer(translateEnglishToBengali(correctAnswer));
+      else if (targetLang === 'en') setCorrectAnswer(translateBengaliToEnglish(correctAnswer));
+      else setCorrectAnswer(convertTextBilingual(correctAnswer).convertedText);
+    }
+    if (answerExplanation.trim()) {
+      if (targetLang === 'bn') setAnswerExplanation(translateEnglishToBengali(answerExplanation));
+      else if (targetLang === 'en') setAnswerExplanation(translateBengaliToEnglish(answerExplanation));
+      else setAnswerExplanation(convertTextBilingual(answerExplanation).convertedText);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -431,11 +489,57 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
             </div>
           </div>
 
+          {/* Translation Control Banner */}
+          <div className="p-3 bg-gradient-to-r from-blue-50 via-amber-50 to-emerald-50 rounded-xl border border-blue-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Languages className="w-4 h-4 text-blue-700 shrink-0" />
+              <div>
+                <span className="font-bold text-xs text-blue-950">
+                  English ⇄ Bengali Translation Toolkit
+                </span>
+                <p className="text-[10px] text-slate-500">
+                  Instantly translate question, options, answer key, and solutions
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleTranslateAllFields('bn')}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs cursor-pointer"
+                title="Convert entire question and answer to academic Bengali"
+              >
+                <span>Translate All to বাংলা</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTranslateAllFields('en')}
+                className="px-2.5 py-1 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs cursor-pointer"
+                title="Convert entire question and answer to English"
+              >
+                <span>Translate All to English</span>
+              </button>
+            </div>
+          </div>
+
           {/* Row 4: Question Text */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">
-              Question Statement / Problem *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-700 font-bold">
+                Question Statement / Problem *
+              </label>
+              <button
+                type="button"
+                onClick={handleTranslateQuestionText}
+                disabled={!questionText.trim()}
+                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                title="Convert this question text between English and Bengali"
+              >
+                <ArrowRightLeft className="w-2.5 h-2.5" />
+                <span>English ⇄ বাংলা</span>
+              </button>
+            </div>
             <textarea
               required
               rows={4}
@@ -449,9 +553,19 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
           {/* MCQ Options if Multiple Choice */}
           {questionType === 'Multiple Choice (MCQ)' && (
             <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2.5">
-              <label className="block text-blue-950 font-bold text-xs">
-                MCQ Options (4 Choices)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-blue-950 font-bold text-xs">
+                  MCQ Options (4 Choices)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleTranslateOptions}
+                  className="px-2 py-0.5 bg-white hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                >
+                  <ArrowRightLeft className="w-2.5 h-2.5" />
+                  <span>Translate Options ⇄ বাংলা</span>
+                </button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
@@ -473,9 +587,20 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
 
           {/* Row 5: Correct Answer Key */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">
-              Correct Answer / Final Key
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-700 font-bold">
+                Correct Answer / Final Key
+              </label>
+              <button
+                type="button"
+                onClick={handleTranslateCorrectAnswer}
+                disabled={!correctAnswer.trim()}
+                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer disabled:opacity-40"
+              >
+                <ArrowRightLeft className="w-2.5 h-2.5" />
+                <span>Translate Key ⇄ বাংলা</span>
+              </button>
+            </div>
             <input
               type="text"
               placeholder="e.g. Option B) 120 N   or   x = 5, y = -2"
@@ -487,10 +612,21 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
 
           {/* Row 6: Detailed Step-by-Step Model Solution / Explanation */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1 flex items-center justify-between">
-              <span>Model Answer & Step-by-Step Solution (For Faculty & Students)</span>
-              <span className="text-[10px] text-slate-400 font-normal">Shown in Answer Key / PDF</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-700 font-bold flex items-center gap-1">
+                <span>Model Answer & Step-by-Step Solution</span>
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">(Shown in Answer Key / PDF)</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleTranslateExplanation}
+                disabled={!answerExplanation.trim()}
+                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer disabled:opacity-40"
+              >
+                <ArrowRightLeft className="w-2.5 h-2.5" />
+                <span>Translate Solution ⇄ বাংলা</span>
+              </button>
+            </div>
             <textarea
               rows={4}
               placeholder="Provide complete derivation steps, formula applications, working notes, and explanations..."

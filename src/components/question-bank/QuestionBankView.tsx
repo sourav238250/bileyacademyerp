@@ -17,6 +17,11 @@ import { AssignmentModal } from './AssignmentModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
 import { generateQuestionBankPDF } from '../../utils/pdfGenerator';
 import {
+  getConvertedQuestionItem,
+  convertTextBilingual,
+  detectLanguage,
+} from '../../utils/translationUtils';
+import {
   BookOpen,
   Plus,
   Search,
@@ -44,6 +49,9 @@ import {
   X,
   ExternalLink,
   Lock,
+  Languages,
+  Globe,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface QuestionBankViewProps {
@@ -99,6 +107,46 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   // Expanded cards state
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
   const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
+  const [expandedAssignmentPreviewId, setExpandedAssignmentPreviewId] = useState<string | null>(null);
+
+  // Language & Translation State (English <-> Bengali)
+  const [globalLanguageMode, setGlobalLanguageMode] = useState<'original' | 'en' | 'bn' | 'bilingual'>('original');
+  const [questionLangOverrides, setQuestionLangOverrides] = useState<Record<string, 'original' | 'en' | 'bn' | 'bilingual'>>({});
+  const [assignmentLangOverrides, setAssignmentLangOverrides] = useState<Record<string, 'original' | 'en' | 'bn' | 'bilingual'>>({});
+  const [assignmentItemLangOverrides, setAssignmentItemLangOverrides] = useState<Record<string, 'original' | 'en' | 'bn' | 'bilingual'>>({});
+
+  const handleToggleQuestionLang = (questionId: string, currentTarget?: 'original' | 'en' | 'bn' | 'bilingual') => {
+    setQuestionLangOverrides((prev) => {
+      const current = currentTarget || prev[questionId] || globalLanguageMode;
+      // Cycle: original -> bn -> en -> bilingual -> original
+      let next: 'original' | 'en' | 'bn' | 'bilingual' = 'bn';
+      if (current === 'original') next = 'bn';
+      else if (current === 'bn') next = 'en';
+      else if (current === 'en') next = 'bilingual';
+      else next = 'original';
+      return { ...prev, [questionId]: next };
+    });
+  };
+
+  const handleSetQuestionLang = (questionId: string, lang: 'original' | 'en' | 'bn' | 'bilingual') => {
+    setQuestionLangOverrides((prev) => ({ ...prev, [questionId]: lang }));
+  };
+
+  const handleSetAssignmentItemLang = (key: string, lang: 'original' | 'en' | 'bn' | 'bilingual') => {
+    setAssignmentItemLangOverrides((prev) => ({ ...prev, [key]: lang }));
+  };
+
+  const handleToggleAssignmentItemLang = (key: string, currentTarget?: 'original' | 'en' | 'bn' | 'bilingual') => {
+    setAssignmentItemLangOverrides((prev) => {
+      const current = currentTarget || prev[key] || globalLanguageMode;
+      let next: 'original' | 'en' | 'bn' | 'bilingual' = 'bn';
+      if (current === 'original') next = 'bn';
+      else if (current === 'bn') next = 'en';
+      else if (current === 'en') next = 'bilingual';
+      else next = 'original';
+      return { ...prev, [key]: next };
+    });
+  };
 
   // Modals state
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState<boolean>(false);
@@ -602,6 +650,67 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
         </div>
 
+        {/* Row 3: Global English <-> Bengali Translation Bar */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-blue-50/60 via-amber-50/40 to-emerald-50/40 p-2.5 rounded-xl border border-blue-100">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <Languages className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <span className="font-bold text-xs text-slate-900">
+                English ⇄ Bengali Translation Matrix:
+              </span>
+              <span className="text-[11px] text-slate-500 ml-1.5 hidden sm:inline">
+                Translate all questions, options, answer keys & step-by-step solutions
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              onClick={() => setGlobalLanguageMode('original')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                globalLanguageMode === 'original'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              Original
+            </button>
+            <button
+              onClick={() => setGlobalLanguageMode('en')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                globalLanguageMode === 'en'
+                  ? 'bg-blue-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+              }`}
+            >
+              <span>English (EN)</span>
+            </button>
+            <button
+              onClick={() => setGlobalLanguageMode('bn')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                globalLanguageMode === 'bn'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <span>বাংলা (Bengali)</span>
+            </button>
+            <button
+              onClick={() => setGlobalLanguageMode('bilingual')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                globalLanguageMode === 'bilingual'
+                  ? 'bg-amber-600 text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-amber-800 hover:bg-amber-50'
+              }`}
+            >
+              <ArrowRightLeft className="w-3 h-3" />
+              <span>Bilingual (Dual)</span>
+            </button>
+          </div>
+        </div>
+
       </div>
 
       {/* =========================================================================
@@ -663,6 +772,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               {filteredQuestions.map((q) => {
                 const isSelected = selectedQuestionIdsForSet.includes(q.id);
                 const isExpanded = expandedQuestionId === q.id;
+                const effectiveLang = questionLangOverrides[q.id] || globalLanguageMode;
+                const converted = getConvertedQuestionItem(q, effectiveLang);
+                const detectedOriginalLang = detectLanguage(q.questionText);
 
                 return (
                   <div
@@ -686,59 +798,127 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
                         <div className="space-y-2 flex-1 min-w-0">
                           
-                          {/* Badges Row */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono font-bold text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                              {q.code}
-                            </span>
+                          {/* Badges Row & Language Switcher */}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono font-bold text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {q.code}
+                              </span>
 
-                            <span className="font-bold text-xs px-2.5 py-0.5 bg-slate-900 text-white rounded-md">
-                              Class {q.classLevel}
-                            </span>
+                              <span className="font-bold text-xs px-2.5 py-0.5 bg-slate-900 text-white rounded-md">
+                                Class {q.classLevel}
+                              </span>
 
-                            <span className="font-bold text-xs px-2.5 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded-md">
-                              {q.subjectName}
-                            </span>
+                              <span className="font-bold text-xs px-2.5 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded-md">
+                                {q.subjectName}
+                              </span>
 
-                            <span className="text-slate-400 text-xs">•</span>
-                            <span className="font-medium text-slate-700 text-xs truncate max-w-xs">
-                              {q.chapterName}
-                            </span>
+                              <span className="text-slate-400 text-xs">•</span>
+                              <span className="font-medium text-slate-700 text-xs truncate max-w-xs">
+                                {q.chapterName}
+                              </span>
 
-                            {/* DIFFICULTY BADGE (Explicit Feature) */}
-                            <span
-                              className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${
-                                q.difficulty === 'Easy'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : q.difficulty === 'Medium'
-                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                  : 'bg-rose-50 text-rose-800 border-rose-300'
-                              }`}
-                            >
-                              {q.difficulty}
-                            </span>
+                              {/* DIFFICULTY BADGE */}
+                              <span
+                                className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${
+                                  q.difficulty === 'Easy'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : q.difficulty === 'Medium'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                    : 'bg-rose-50 text-rose-800 border-rose-300'
+                                }`}
+                              >
+                                {q.difficulty}
+                              </span>
 
-                            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                              {q.questionType}
-                            </span>
+                              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                {q.questionType}
+                              </span>
 
-                            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-auto">
-                              {q.marks} Mark{q.marks > 1 ? 's' : ''}
-                            </span>
+                              <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                {q.marks} Mark{q.marks > 1 ? 's' : ''}
+                              </span>
+                            </div>
+
+                            {/* PER-QUESTION LANGUAGE SWITCHER PILL */}
+                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[11px]">
+                              <button
+                                type="button"
+                                onClick={() => handleSetQuestionLang(q.id, 'original')}
+                                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                                  effectiveLang === 'original'
+                                    ? 'bg-slate-900 text-white shadow-2xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                                title="Original Source Language"
+                              >
+                                Orig ({detectedOriginalLang.toUpperCase()})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSetQuestionLang(q.id, 'en')}
+                                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                                  effectiveLang === 'en'
+                                    ? 'bg-blue-600 text-white shadow-2xs'
+                                    : 'text-slate-600 hover:text-blue-700'
+                                }`}
+                                title="Convert to English"
+                              >
+                                English
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSetQuestionLang(q.id, 'bn')}
+                                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                                  effectiveLang === 'bn'
+                                    ? 'bg-emerald-700 text-white shadow-2xs'
+                                    : 'text-slate-600 hover:text-emerald-700'
+                                }`}
+                                title="বাংলায় রূপান্তর করো (Convert to Bengali)"
+                              >
+                                বাংলা
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSetQuestionLang(q.id, 'bilingual')}
+                                className={`px-1.5 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                                  effectiveLang === 'bilingual'
+                                    ? 'bg-amber-500 text-slate-950 shadow-2xs'
+                                    : 'text-slate-600 hover:text-amber-800'
+                                }`}
+                                title="Dual Bilingual View"
+                              >
+                                Dual
+                              </button>
+                            </div>
                           </div>
 
-                          {/* Question Statement */}
-                          <p className="text-slate-900 text-xs sm:text-sm font-medium leading-relaxed pt-1">
-                            {q.questionText}
+                          {/* Language Active Indicator Notice */}
+                          {effectiveLang !== 'original' && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 bg-blue-50/70 border border-blue-200 px-2 py-0.5 rounded-md w-fit">
+                              <Languages className="w-3 h-3 text-blue-600" />
+                              <span>
+                                {effectiveLang === 'bn'
+                                  ? 'বাংলা অনুবাদ সক্রিয় (Bengali Academic Translation Active)'
+                                  : effectiveLang === 'en'
+                                  ? 'English Academic Translation Active'
+                                  : 'উভভাষিক প্রদর্শন সক্রিয় (Bilingual Dual View Active)'}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Question Statement (Converted) */}
+                          <p className="text-slate-900 text-xs sm:text-sm font-medium leading-relaxed pt-1 whitespace-pre-line">
+                            {converted.questionText}
                           </p>
 
-                          {/* MCQ Options Display if available */}
-                          {q.options && q.options.length > 0 && (
+                          {/* MCQ Options Display if available (Converted) */}
+                          {converted.options && converted.options.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                              {q.options.map((opt, oIdx) => (
+                              {converted.options.map((opt, oIdx) => (
                                 <div
                                   key={oIdx}
-                                  className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700"
+                                  className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium"
                                 >
                                   {opt}
                                 </div>
@@ -766,24 +946,43 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                             </div>
                           )}
 
-                          {/* Expandable Model Solution & Answer Key */}
+                          {/* Expandable Model Solution & Answer Key (Converted) */}
                           {isExpanded && (
                             <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-fade-in text-xs">
                               
-                              {q.correctAnswer && (
+                              <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                                <span className="font-bold text-slate-700 flex items-center gap-1.5 text-xs">
+                                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                  <span>Answer Key & Step-by-Step Model Solution</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleQuestionLang(q.id, effectiveLang)}
+                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 text-blue-700 border border-slate-300 rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                                >
+                                  <ArrowRightLeft className="w-2.5 h-2.5" />
+                                  <span>Switch Language ({effectiveLang === 'bn' ? 'English' : 'বাংলা'})</span>
+                                </button>
+                              </div>
+
+                              {converted.correctAnswer && (
                                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
-                                  <span className="font-bold text-emerald-900">Official Final Key:</span>
-                                  <span className="font-black text-emerald-800">{q.correctAnswer}</span>
+                                  <span className="font-bold text-emerald-900">
+                                    {effectiveLang === 'bn' ? 'চূড়ান্ত সঠিক উত্তর (Official Key):' : 'Official Final Key:'}
+                                  </span>
+                                  <span className="font-black text-emerald-800">{converted.correctAnswer}</span>
                                 </div>
                               )}
 
-                              {q.answerExplanation ? (
+                              {converted.answerExplanation ? (
                                 <div className="space-y-1">
                                   <span className="font-bold text-slate-800 block">
-                                    Step-by-Step Model Solution / Faculty Notes:
+                                    {effectiveLang === 'bn'
+                                      ? 'ধাপে ধাপে সমাধান ও শিক্ষক নির্দেশিকা (Model Solution):'
+                                      : 'Step-by-Step Model Solution / Faculty Notes:'}
                                   </span>
                                   <p className="text-slate-700 whitespace-pre-line leading-relaxed font-sans">
-                                    {q.answerExplanation}
+                                    {converted.answerExplanation}
                                   </p>
                                 </div>
                               ) : (
@@ -993,6 +1192,224 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                         <span>Due: {a.dueDate || 'Open Submission'}</span>
                       </span>
                       <span>By: {a.createdBy || 'Faculty'}</span>
+                    </div>
+
+                    {/* View Questions & Answer Key Toggle with English <-> Bengali Translation */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAssignmentPreviewId(expandedAssignmentPreviewId === a.id ? null : a.id)}
+                        className={`w-full py-1.5 px-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer border ${
+                          expandedAssignmentPreviewId === a.id
+                            ? 'bg-blue-50 text-blue-900 border-blue-300 shadow-2xs'
+                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Languages className="w-3.5 h-3.5 text-blue-600" />
+                          <span>View Questions & Solutions ({totalQuestionsInSet}) • English ⇄ বাংলা</span>
+                        </span>
+                        {expandedAssignmentPreviewId === a.id ? (
+                          <ChevronUp className="w-4 h-4 text-blue-700" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+
+                      {/* Expanded Question & Answer List with Conversion Options */}
+                      {expandedAssignmentPreviewId === a.id && (
+                        <div className="mt-3 p-3 bg-slate-50/90 rounded-xl border border-blue-200 space-y-3 animate-fade-in text-xs max-h-96 overflow-y-auto">
+                          
+                          {/* Assignment Global Translate Quick Bar */}
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200 text-[11px]">
+                            <span className="font-bold text-slate-700 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-amber-500" />
+                              <span>Set Questions & Key:</span>
+                            </span>
+
+                            <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Set all questions in this assignment to Bengali
+                                  const updates: Record<string, 'original' | 'en' | 'bn' | 'bilingual'> = {};
+                                  linkedQuestions.forEach((q, i) => { updates[`${a.id}-link-${q.id}`] = 'bn'; });
+                                  customQuestions.forEach((cq, i) => { updates[`${a.id}-custom-${cq.id}`] = 'bn'; });
+                                  setAssignmentItemLangOverrides((prev) => ({ ...prev, ...updates }));
+                                }}
+                                className="px-2 py-0.5 text-emerald-800 hover:bg-emerald-50 rounded font-bold text-[10px] cursor-pointer"
+                              >
+                                All বাংলা
+                              </button>
+                              <span className="text-slate-300">|</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Set all questions in this assignment to English
+                                  const updates: Record<string, 'original' | 'en' | 'bn' | 'bilingual'> = {};
+                                  linkedQuestions.forEach((q, i) => { updates[`${a.id}-link-${q.id}`] = 'en'; });
+                                  customQuestions.forEach((cq, i) => { updates[`${a.id}-custom-${cq.id}`] = 'en'; });
+                                  setAssignmentItemLangOverrides((prev) => ({ ...prev, ...updates }));
+                                }}
+                                className="px-2 py-0.5 text-blue-800 hover:bg-blue-50 rounded font-bold text-[10px] cursor-pointer"
+                              >
+                                All English
+                              </button>
+                              <span className="text-slate-300">|</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Reset all questions in this assignment to Original
+                                  const updates: Record<string, 'original' | 'en' | 'bn' | 'bilingual'> = {};
+                                  linkedQuestions.forEach((q, i) => { updates[`${a.id}-link-${q.id}`] = 'original'; });
+                                  customQuestions.forEach((cq, i) => { updates[`${a.id}-custom-${cq.id}`] = 'original'; });
+                                  setAssignmentItemLangOverrides((prev) => ({ ...prev, ...updates }));
+                                }}
+                                className="px-1.5 py-0.5 text-slate-600 hover:bg-slate-100 rounded font-bold text-[10px] cursor-pointer"
+                              >
+                                Reset
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Render Linked Questions */}
+                          {linkedQuestions.map((q, idx) => {
+                            const itemKey = `${a.id}-link-${q.id}`;
+                            const itemLang = assignmentItemLangOverrides[itemKey] || globalLanguageMode;
+                            const conv = getConvertedQuestionItem(q, itemLang);
+
+                            return (
+                              <div key={q.id} className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-1.5 shadow-2xs">
+                                <div className="flex items-center justify-between gap-1 text-[10px]">
+                                  <span className="font-bold text-slate-800">
+                                    Q{idx + 1}. [{q.code}] ({q.marks}M)
+                                  </span>
+
+                                  {/* Item Language Pill */}
+                                  <div className="flex items-center gap-1 bg-slate-100 px-1 py-0.5 rounded text-[10px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'original')}
+                                      className={`px-1.5 py-0.2 rounded font-bold ${itemLang === 'original' ? 'bg-slate-800 text-white' : 'text-slate-600'}`}
+                                    >
+                                      Orig
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'en')}
+                                      className={`px-1.5 py-0.2 rounded font-bold ${itemLang === 'en' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
+                                    >
+                                      EN
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'bn')}
+                                      className={`px-1.5 py-0.2 rounded font-bold ${itemLang === 'bn' ? 'bg-emerald-700 text-white' : 'text-slate-600'}`}
+                                    >
+                                      বাংলা
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'bilingual')}
+                                      className={`px-1 py-0.2 rounded font-bold ${itemLang === 'bilingual' ? 'bg-amber-500 text-slate-950' : 'text-slate-600'}`}
+                                    >
+                                      Dual
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <p className="text-slate-900 text-xs font-medium whitespace-pre-line">
+                                  {conv.questionText}
+                                </p>
+
+                                {conv.options && conv.options.length > 0 && (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1">
+                                    {conv.options.map((opt, oi) => (
+                                      <div key={oi} className="p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
+                                        {opt}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {conv.correctAnswer && (
+                                  <div className="mt-1 p-1.5 bg-emerald-50 border border-emerald-200 rounded text-[11px] flex items-center justify-between text-emerald-900">
+                                    <span className="font-bold">{itemLang === 'bn' ? 'সঠিক উত্তর:' : 'Correct Key:'}</span>
+                                    <span className="font-black">{conv.correctAnswer}</span>
+                                  </div>
+                                )}
+
+                                {conv.answerExplanation && (
+                                  <p className="text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded border border-slate-100 whitespace-pre-line">
+                                    <strong>{itemLang === 'bn' ? 'ব্যাখ্যা/সমাধান:' : 'Solution:'}</strong> {conv.answerExplanation}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Render Custom Questions */}
+                          {customQuestions.map((cq, idx) => {
+                            const itemKey = `${a.id}-custom-${cq.id}`;
+                            const itemLang = assignmentItemLangOverrides[itemKey] || globalLanguageMode;
+                            const conv = getConvertedQuestionItem(cq, itemLang);
+
+                            return (
+                              <div key={cq.id} className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-1.5 shadow-2xs">
+                                <div className="flex items-center justify-between gap-1 text-[10px]">
+                                  <span className="font-bold text-slate-800">
+                                    Q{linkedQuestions.length + idx + 1}. [Custom] ({cq.marks}M)
+                                  </span>
+
+                                  {/* Item Language Pill */}
+                                  <div className="flex items-center gap-1 bg-slate-100 px-1 py-0.5 rounded text-[10px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'original')}
+                                      className={`px-1.5 py-0.2 rounded font-bold ${itemLang === 'original' ? 'bg-slate-800 text-white' : 'text-slate-600'}`}
+                                    >
+                                      Orig
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'en')}
+                                      className={`px-1.5 py-0.2 rounded font-bold ${itemLang === 'en' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
+                                    >
+                                      EN
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'bn')}
+                                      className={`px-1.5 py-0.2 rounded font-bold ${itemLang === 'bn' ? 'bg-emerald-700 text-white' : 'text-slate-600'}`}
+                                    >
+                                      বাংলা
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetAssignmentItemLang(itemKey, 'bilingual')}
+                                      className={`px-1 py-0.2 rounded font-bold ${itemLang === 'bilingual' ? 'bg-amber-500 text-slate-950' : 'text-slate-600'}`}
+                                    >
+                                      Dual
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <p className="text-slate-900 text-xs font-medium whitespace-pre-line">
+                                  {conv.questionText}
+                                </p>
+
+                                {conv.correctAnswer && (
+                                  <div className="mt-1 p-1.5 bg-emerald-50 border border-emerald-200 rounded text-[11px] flex items-center justify-between text-emerald-900">
+                                    <span className="font-bold">{itemLang === 'bn' ? 'সঠিক উত্তর:' : 'Correct Key:'}</span>
+                                    <span className="font-black">{conv.correctAnswer}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                        </div>
+                      )}
                     </div>
 
                     {/* Action Buttons: Formatted PDF & Print & Edit */}

@@ -108,8 +108,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
       return adminProfile;
     } catch (err: any) {
-      console.error('Google Sign-in failed:', err);
       setIsLoading(false);
+      const code = err?.code || '';
+      const message = err?.message || '';
+
+      // User closed or cancelled popup window
+      if (
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        message.includes('popup-closed-by-user') ||
+        message.includes('cancelled-popup-request')
+      ) {
+        return null;
+      }
+
+      console.warn('Google Sign-in notice:', err);
       throw err;
     }
   };
