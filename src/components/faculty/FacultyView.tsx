@@ -608,10 +608,10 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                       <strong className="text-slate-800">
                         {selectedClassRoutine === '12' || selectedClassRoutine === '11'
                           ? 'Dr. Anirban Mukherjee / Mr. Buddhadev Chakraborty'
-                          : Number(selectedClassRoutine) >= 8
+                          : Number(selectedClassRoutine) >= 9
                           ? 'Mr. Buddhadev Chakraborty / Mr. Soumyadip Dinda'
                           : Number(selectedClassRoutine) >= 6
-                          ? 'Mrs. Rupa Chakraborty / Mr. Buddhadev Chakraborty'
+                          ? 'Mr. Ayan Dinda / Mr. Buddhadev Chakraborty'
                           : 'Mrs. Madhumita Maity Dinda / Monalisa Maity / Mr. Subhadip Dinda'}
                       </strong>
                     </div>

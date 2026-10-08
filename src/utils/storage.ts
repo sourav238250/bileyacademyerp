@@ -206,9 +206,11 @@ export function loadInitialState(): AppStateData {
     const initSub = INITIAL_SUBJECTS.find((s) => s.id === sub.id);
     if (initSub) {
       const isClass1To5 = ['1', '2', '3', '4', '5'].includes(sub.classLevel);
-      const shouldOverrideFaculty = isClass1To5 || [
+      const isClass6To8MathOrSci = ['6', '7', '8'].includes(sub.classLevel) && ['Mathematics', 'Science'].includes(sub.name);
+      const shouldOverrideFaculty = isClass1To5 || isClass6To8MathOrSci || [
         'SUB-08-SCI', 'SUB-09-SCI', 'SUB-10-SCI', 'SUB-11-CHEM', 'SUB-12-CHEM', 'SUB-07-SCI',
-        'SUB-09-MATH', 'SUB-10-MATH', 'SUB-11-MATH', 'SUB-12-MATH'
+        'SUB-09-MATH', 'SUB-10-MATH', 'SUB-11-MATH', 'SUB-12-MATH',
+        'SUB-06-MATH', 'SUB-06-SCI', 'SUB-07-MATH', 'SUB-08-MATH'
       ].includes(sub.id);
       return {
         ...sub,
@@ -239,6 +241,9 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
+        fac.id === 'FAC-02' || fac.name === 'Mr. Pranab Bhattacharjya' || fac.name === 'Mr. Pranab Bhattacharya' || fac.name === 'Prof. Sangeeta Sharma' ||
+        fac.id === 'FAC-10' || fac.name === 'Mrs. Rupa Chakraborty' || fac.name === 'Mr. Ayan Dinda' ||
+        fac.id === 'FAC-09' || fac.name === 'Mr. Soumen Ganguly' || fac.name === 'Mr. Buddhadev Chakraborty' ||
         fac.id === 'FAC-08' || fac.name === 'Mrs. Tanusree Maiti' || fac.name === 'Mr. Sanjay Dinda' ||
         fac.id === 'FAC-03' || fac.name === 'Mr. Soumyadip Dinda' || fac.name === 'Dr. Debabrata Roy' ||
         fac.id === 'FAC-11' || fac.name === 'Mrs. Madhumita Maity Dinda' ||
@@ -259,9 +264,7 @@ export function loadInitialState(): AppStateData {
         };
       }
       if (
-        fac.id === 'FAC-09' || fac.name === 'Mr. Soumen Ganguly' || fac.name === 'Mr. Buddhadev Chakraborty' ||
-        fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh' ||
-        fac.id === 'FAC-02' || fac.name === 'Prof. Sangeeta Sharma'
+        fac.id === 'FAC-05' || fac.name === 'Mr. Rajeshwar Ghosh'
       ) {
         return {
           ...fac,
