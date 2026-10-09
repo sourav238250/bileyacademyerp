@@ -591,6 +591,8 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                         }`}>
                           {Number(selectedClassRoutine) <= 5
                             ? 'Primary: Mon, Wed & Fri'
+                            : selectedClassRoutine === '7' || selectedClassRoutine === '8'
+                            ? 'Upper Primary: Tue, Thu, Sat & Sun'
                             : Number(selectedClassRoutine) <= 8
                             ? 'Upper Primary: Tue, Thu & Sat'
                             : 'Board Special: Mon to Sun (7 Days)'}
@@ -610,8 +612,12 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                           ? 'Dr. Anirban Mukherjee / Mr. Buddhadev Chakraborty'
                           : Number(selectedClassRoutine) >= 9
                           ? 'Mr. Buddhadev Chakraborty / Mr. Soumyadip Dinda'
-                          : Number(selectedClassRoutine) >= 6
+                          : selectedClassRoutine === '8'
                           ? 'Mr. Ayan Dinda / Mr. Buddhadev Chakraborty'
+                          : selectedClassRoutine === '7'
+                          ? 'Mr. Ayan Dinda / Mr. Sourav Dinda'
+                          : selectedClassRoutine === '6'
+                          ? 'Mr. Sourav Dinda / Ms. Sharmila Bose'
                           : 'Mrs. Madhumita Maity Dinda / Monalisa Maity / Mr. Subhadip Dinda'}
                       </strong>
                     </div>

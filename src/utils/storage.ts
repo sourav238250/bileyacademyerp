@@ -241,6 +241,7 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
+        fac.id === 'FAC-05' || fac.name === 'Mr. Sourav Dinda' || fac.name === 'Mr. Rajeshwar Ghosh' ||
         fac.id === 'FAC-02' || fac.name === 'Mr. Pranab Bhattacharjya' || fac.name === 'Mr. Pranab Bhattacharya' || fac.name === 'Prof. Sangeeta Sharma' ||
         fac.id === 'FAC-10' || fac.name === 'Mrs. Rupa Chakraborty' || fac.name === 'Mr. Ayan Dinda' ||
         fac.id === 'FAC-09' || fac.name === 'Mr. Soumen Ganguly' || fac.name === 'Mr. Buddhadev Chakraborty' ||
