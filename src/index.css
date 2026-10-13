@@ -66,7 +66,8 @@
   #receipt-modal-backdrop,
   #report-card-modal-backdrop,
   #id-card-modal-backdrop,
-  #voucher-modal-backdrop {
+  #voucher-modal-backdrop,
+  #routine-modal-backdrop {
     position: static !important;
     background: transparent !important;
     backdrop-filter: none !important;
@@ -84,7 +85,8 @@
   #receipt-modal-card,
   #report-card-modal-card,
   #id-card-modal-card,
-  #voucher-modal-card {
+  #voucher-modal-card,
+  #routine-modal-card {
     position: static !important;
     max-width: 100% !important;
     width: 100% !important;
@@ -103,7 +105,8 @@
   /* Keep printed document content pristine */
   #printable-receipt-content,
   #printable-report-card-content,
-  #printable-voucher-content {
+  #printable-voucher-content,
+  #printable-routine-content {
     display: block !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -127,9 +130,13 @@
   }
 
   /* Table and page break rules */
-  table, tr, td, th, .print-avoid-break {
+  table, tr, td, th, .print-avoid-break, .routine-day-card {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .routine-day-card {
+    margin-bottom: 12px !important;
   }
 
   /* Preserve colors and borders in PDF */
@@ -138,4 +145,5 @@
     print-color-adjust: exact !important;
   }
 }
+
 
