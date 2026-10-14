@@ -27,6 +27,8 @@ import {
   DEFAULT_AUTHORIZATION_CONFIG,
 } from './utils/storage';
 import { firebaseSyncService } from './services/firestoreSync';
+import { backendApi } from './services/backendApi';
+
 
 // Layout components
 import { Header } from './components/Header';
@@ -197,9 +199,32 @@ export default function App() {
     // Save locally for instant offline persistence
     saveToStorage(currentState);
 
-    // Schedule debounced, hash-checked cloud push
+    // Schedule debounced, hash-checked cloud push to Firebase Firestore
     firebaseSyncService.scheduleCloudPush(currentState);
+
+    // Synchronize to Express backend REST API
+    backendApi.pushState(currentState).catch(() => {});
   }, [students, faculty, subjects, exams, results, deposits, disbursements, investors, investorTransactions, timetable, attendance, questionBank, assignments, authConfig, isLoaded]);
+
+  // Full Institutional State Refresh Handler
+  const handleRefreshAllData = () => {
+    const refreshed = loadInitialState();
+    setStudents(refreshed.students);
+    setFaculty(refreshed.faculty);
+    setSubjects(refreshed.subjects);
+    setExams(refreshed.exams);
+    setResults(refreshed.results);
+    setDeposits(refreshed.deposits);
+    setDisbursements(refreshed.disbursements || []);
+    setInvestors(refreshed.investors || []);
+    setInvestorTransactions(refreshed.investorTransactions || []);
+    setTimetable(refreshed.timetable);
+    setAttendance(refreshed.attendance || []);
+    setQuestionBank(refreshed.questionBank || []);
+    setAssignments(refreshed.assignments || []);
+    if (refreshed.authConfig) setAuthConfig(refreshed.authConfig);
+  };
+
 
   // Authorization Config Handler
   const handleSaveAuthConfig = (newConfig: InstitutionalAuthorizationConfig) => {
@@ -523,7 +548,9 @@ export default function App() {
         onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
         onOpenAuthorizationSettings={() => setIsAuthorizationSettingsOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
+        onRefreshData={handleRefreshAllData}
       />
+
 
       {/* Main Navigation Bar */}
       <Navigation

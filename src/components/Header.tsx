@@ -34,7 +34,9 @@ interface HeaderProps {
   onOpenPermissionsMatrix?: () => void;
   onOpenAuthorizationSettings?: () => void;
   onOpenChangePassword?: () => void;
+  onRefreshData?: () => void;
 }
+
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
@@ -50,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPermissionsMatrix,
   onOpenAuthorizationSettings,
   onOpenChangePassword,
+  onRefreshData,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const isStudentPortal = activeTab === 'student-portal';
@@ -115,8 +118,9 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Deposit Fee</span>
             </button>
 
-            {/* Cloud Sync Status Badge */}
-            <FirebaseSyncStatusBadge />
+            {/* Cloud & Backend Sync Status Badge */}
+            <FirebaseSyncStatusBadge onRefreshData={onRefreshData} />
+
 
             {/* Student & Parent Portal Toggle Switch */}
             <button

@@ -159,6 +159,7 @@ const STORAGE_KEYS = {
 
 export function loadFromStorage<T>(key: string, fallback: T): T {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return fallback;
     const item = localStorage.getItem(key);
     if (!item) return fallback;
     return JSON.parse(item);
@@ -170,11 +171,13 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
 
 export function saveItemToStorage<T>(key: string, value: T): void {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
     console.error(`Failed to save ${key} to storage:`, e);
   }
 }
+
 
 export function loadInitialState(): AppStateData {
   const loadedAuthConfig = loadFromStorage<InstitutionalAuthorizationConfig>(STORAGE_KEYS.AUTH_CONFIG, DEFAULT_AUTHORIZATION_CONFIG);
