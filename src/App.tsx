@@ -580,32 +580,48 @@ export default function App() {
       >
         
         {activeTab === 'dashboard' && (
-          <DashboardView
-            students={students}
-            faculty={faculty}
-            subjects={subjects}
-            exams={exams}
-            results={results}
-            deposits={deposits}
-            disbursements={disbursements}
-            investors={investors}
-            investorTransactions={investorTransactions}
-            timetable={timetable}
-            attendance={attendance}
-            authConfig={authConfig}
-            onNavigateTab={setActiveTab}
-            onNavigate={setActiveTab}
-            onOpenAdmissionModal={handleQuickNewAdmission}
-            onOpenFeeDepositModal={handleQuickFeeDeposit}
-            onNavigateToFeeStructure={handleNavigateToFeeStructure}
-            onViewReceipt={(dep) => setSelectedReceiptDeposit(dep)}
-            currentAdmin={currentAdmin}
-            onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-            onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
-            onRestoreData={handleRestoreData}
-            onResetData={handleResetData}
-          />
+          !currentAdmin ? (
+            <AccessDeniedGate
+              sectionName="Executive Management Dashboard"
+              onOpenAdminLogin={() => {
+                setLoginModalSectionTitle('Executive Management Dashboard');
+                setIsAdminLoginModalOpen(true);
+              }}
+              onNavigateToPortal={() => setActiveTab('student-portal')}
+              onNavigateToTab={setActiveTab}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              requiredRoleHint={evaluateSectionAuthorization(null, 'dashboard').requiredRole}
+              onDirectLogin={handleLoginSuccess}
+            />
+          ) : (
+            <DashboardView
+              students={students}
+              faculty={faculty}
+              subjects={subjects}
+              exams={exams}
+              results={results}
+              deposits={deposits}
+              disbursements={disbursements}
+              investors={investors}
+              investorTransactions={investorTransactions}
+              timetable={timetable}
+              attendance={attendance}
+              authConfig={authConfig}
+              onNavigateTab={setActiveTab}
+              onNavigate={setActiveTab}
+              onOpenAdmissionModal={handleQuickNewAdmission}
+              onOpenFeeDepositModal={handleQuickFeeDeposit}
+              onNavigateToFeeStructure={handleNavigateToFeeStructure}
+              onViewReceipt={(dep) => setSelectedReceiptDeposit(dep)}
+              currentAdmin={currentAdmin}
+              onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
+              onOpenPermissionsMatrix={() => setIsPermissionsMatrixOpen(true)}
+              onRestoreData={handleRestoreData}
+              onResetData={handleResetData}
+            />
+          )
         )}
+
 
         {activeTab === 'students' && (
           !currentAdmin ? (

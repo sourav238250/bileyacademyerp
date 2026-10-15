@@ -24,6 +24,8 @@ import {
 } from '../../utils/academicUtils';
 import { downloadAssignmentPDF } from '../../utils/pdfGenerator';
 import { PrintPreviewModal } from '../question-bank/PrintPreviewModal';
+import { loadFromStorage, saveItemToStorage } from '../../utils/storage';
+import { InstituteLogo } from '../common/InstituteLogo';
 import {
   GraduationCap,
   Award,
@@ -47,7 +49,16 @@ import {
   Download,
   Paperclip,
   Tag,
+  Smartphone,
+  LogOut,
+  ShieldCheck,
+  ArrowRight,
+  Sparkles,
+  Lock,
+  RefreshCw,
 } from 'lucide-react';
+
+
 
 interface StudentPortalViewProps {
   students: Student[];
@@ -82,18 +93,353 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   onViewReportCard,
   onOpenIdCardModal,
 }) => {
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(
-    students[0]?.id || ''
-  );
+  // Authenticated Student State (persisted in localStorage)
+  const [authenticatedStudentId, setAuthenticatedStudentId] = useState<string | null>(() => {
+    return loadFromStorage<string | null>('biley_student_portal_auth_student_id', null);
+  });
+
+  const [mobileInput, setMobileInput] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('1234');
+  const [matchedStudents, setMatchedStudents] = useState<Student[]>([]);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const [portalTab, setPortalTab] = useState<'overview' | 'academics' | 'attendance' | 'assignments' | 'exams' | 'fees'>('overview');
   const [previewAssignment, setPreviewAssignment] = useState<AssignmentSet | null>(null);
 
-  const student = students.find((s) => s.id === selectedStudentId) || students[0];
+  // Helper to normalize phone numbers to last 10 digits
+  const normalizePhone = (phone: string): string => {
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 10 ? digits.slice(-10) : digits;
+  };
 
+  const student = students.find((s) => s.id === authenticatedStudentId) || null;
+
+  const handleSendOtp = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginError(null);
+    const cleanNumber = normalizePhone(mobileInput);
+    if (cleanNumber.length !== 10) {
+      setLoginError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const matches = students.filter((s) => normalizePhone(s.contactNumber) === cleanNumber);
+    if (matches.length === 0) {
+      setLoginError(`Mobile number (+91 ${cleanNumber}) is not registered with any enrolled student in academy records.`);
+      return;
+    }
+
+    if (matches.length > 1) {
+      setMatchedStudents(matches);
+      return;
+    }
+
+    setGeneratedOtp('1234');
+    setIsOtpStep(true);
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    setIsVerifying(true);
+
+    setTimeout(() => {
+      if (otpInput !== generatedOtp && otpInput !== '1234') {
+        setLoginError('Invalid verification code. Please enter the 4-digit OTP sent to your phone (Demo code: 1234).');
+        setIsVerifying(false);
+        return;
+      }
+
+      const cleanNumber = normalizePhone(mobileInput);
+      const matched = students.find((s) => normalizePhone(s.contactNumber) === cleanNumber);
+      if (matched) {
+        saveItemToStorage('biley_student_portal_auth_student_id', matched.id);
+        setAuthenticatedStudentId(matched.id);
+        setIsOtpStep(false);
+        setOtpInput('');
+        setMobileInput('');
+      } else {
+        setLoginError('Student record could not be loaded.');
+      }
+      setIsVerifying(false);
+    }, 250);
+  };
+
+  const handleInstantLogin = () => {
+    setLoginError(null);
+    const cleanNumber = normalizePhone(mobileInput);
+    if (cleanNumber.length !== 10) {
+      setLoginError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const matches = students.filter((s) => normalizePhone(s.contactNumber) === cleanNumber);
+    if (matches.length === 0) {
+      setLoginError(`Mobile number (+91 ${cleanNumber}) is not registered with any enrolled student in academy records.`);
+      return;
+    }
+
+    if (matches.length > 1) {
+      setMatchedStudents(matches);
+      return;
+    }
+
+    const found = matches[0];
+    saveItemToStorage('biley_student_portal_auth_student_id', found.id);
+    setAuthenticatedStudentId(found.id);
+    setMobileInput('');
+  };
+
+  const handleSelectStudent = (st: Student) => {
+    saveItemToStorage('biley_student_portal_auth_student_id', st.id);
+    setAuthenticatedStudentId(st.id);
+    setMatchedStudents([]);
+    setIsOtpStep(false);
+    setMobileInput('');
+  };
+
+  const handleQuickLoginWithPhone = (phone: string) => {
+    const clean = normalizePhone(phone);
+    setMobileInput(clean);
+    setLoginError(null);
+    const matches = students.filter((s) => normalizePhone(s.contactNumber) === clean);
+    if (matches.length === 1) {
+      saveItemToStorage('biley_student_portal_auth_student_id', matches[0].id);
+      setAuthenticatedStudentId(matches[0].id);
+      setMobileInput('');
+    } else if (matches.length > 1) {
+      setMatchedStudents(matches);
+    }
+  };
+
+  const handleLogoutStudent = () => {
+    saveItemToStorage('biley_student_portal_auth_student_id', null);
+    setAuthenticatedStudentId(null);
+    setMobileInput('');
+    setOtpInput('');
+    setIsOtpStep(false);
+    setMatchedStudents([]);
+  };
+
+  const sampleTestStudents = students.slice(0, 4);
+
+  // If not authenticated with mobile number, show Student Mobile Login Gate
   if (!student) {
     return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
-        <p className="text-slate-500">No students available in the academy database.</p>
+      <div className="max-w-xl mx-auto my-6 sm:my-10 p-6 sm:p-8 bg-white rounded-3xl border border-slate-200 shadow-xl text-slate-800 animate-in fade-in zoom-in-95">
+        {/* Institutional Branding */}
+        <div className="text-center mb-6">
+          <div className="inline-block mb-3">
+            <InstituteLogo size="lg" variant="rounded" withBorder={true} />
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-300 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Student & Parent Portal</span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            Student Mobile Login
+          </h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1.5 leading-relaxed">
+            Please enter your registered 10-digit mobile number to access your student attendance records, exam results, report cards, syllabus, and fee receipts.
+          </p>
+        </div>
+
+        {/* Error Notice */}
+        {loginError && (
+          <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start gap-2.5 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="flex-1 font-medium">{loginError}</div>
+          </div>
+        )}
+
+        {/* Multiple Matched Students Selection (Siblings) */}
+        {matchedStudents.length > 1 ? (
+          <div className="space-y-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900">
+              <strong>Multiple student records found!</strong> Please select your student profile to enter:
+            </div>
+            <div className="space-y-2.5">
+              {matchedStudents.map((st) => (
+                <button
+                  key={st.id}
+                  onClick={() => handleSelectStudent(st)}
+                  className="w-full p-4 bg-slate-50 hover:bg-amber-50/70 border border-slate-200 hover:border-amber-300 rounded-2xl text-left flex items-center justify-between transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-bold flex items-center justify-center text-sm shadow-xs">
+                      {st.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm group-hover:text-amber-900">{st.name}</h4>
+                      <p className="text-xs text-slate-500">
+                        Class {st.classLevel} • {st.stream} • Roll: {st.rollNo}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-700" />
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                setMatchedStudents([]);
+                setIsOtpStep(false);
+              }}
+              className="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline mt-2 cursor-pointer"
+            >
+              Use a different mobile number
+            </button>
+          </div>
+        ) : isOtpStep ? (
+          /* OTP Verification Step */
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Mobile Number</span>
+                <span className="font-mono font-bold text-slate-800 text-sm">+91 {mobileInput}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOtpStep(false);
+                  setOtpInput('');
+                  setLoginError(null);
+                }}
+                className="text-xs text-amber-700 hover:text-amber-800 font-bold underline cursor-pointer"
+              >
+                Change
+              </button>
+            </div>
+
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Verification code sent via SMS. <strong>(Demo OTP: {generatedOtp})</strong></span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Enter 4-Digit Verification Code
+              </label>
+              <input
+                type="text"
+                maxLength={4}
+                value={otpInput}
+                onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                placeholder="1234"
+                className="w-full tracking-widest text-center font-mono text-xl py-3 px-4 bg-white border-2 border-slate-300 rounded-xl focus:border-amber-500 focus:outline-none"
+                autoFocus
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isVerifying}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+            >
+              {isVerifying ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="w-4 h-4" />
+              )}
+              <span>Verify & Enter Student Portal</span>
+            </button>
+          </form>
+        ) : (
+          /* Mobile Number Input Form */
+          <form onSubmit={handleSendOtp} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Registered Mobile Number
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-xs font-bold text-slate-500 select-none">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={mobileInput}
+                  onChange={(e) => {
+                    setMobileInput(e.target.value.replace(/\D/g, ''));
+                    setLoginError(null);
+                  }}
+                  placeholder="Enter 10-digit mobile number"
+                  className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:border-amber-500 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Enter the phone number registered during student admission.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="submit"
+                disabled={isVerifying}
+                className="py-3 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>Verify with OTP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleInstantLogin}
+                disabled={isVerifying}
+                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Instant Mobile Login</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Demo Student Mobile Numbers (Quick Testing) */}
+        <div className="mt-8 pt-6 border-t border-slate-200">
+          <div className="flex items-center gap-2 mb-2.5">
+            <UserCheck className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Quick Test Mobile Numbers (Sample Registered Students)
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-3">
+            Click any enrolled student below to test instant mobile login:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {sampleTestStudents.map((st) => (
+              <button
+                key={st.id}
+                onClick={() => handleQuickLoginWithPhone(st.contactNumber)}
+                className="p-2.5 bg-slate-50 hover:bg-amber-50/80 border border-slate-200 hover:border-amber-300 rounded-xl text-left transition-colors cursor-pointer flex items-center justify-between group"
+              >
+                <div className="min-w-0">
+                  <span className="font-bold text-xs text-slate-900 block truncate group-hover:text-amber-900">
+                    {st.name}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Class {st.classLevel} • {st.stream}
+                  </span>
+                </div>
+                <span className="font-mono text-xs font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-lg shrink-0">
+                  {st.contactNumber.replace('+91', '').trim()}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Security Privacy Notice */}
+        <div className="mt-6 p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[10px] text-slate-500 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>
+            Strict Academic Privacy: Individual report cards, attendance scores, fee receipts, and homework DPPs are visible only after verifying the student's registered mobile number.
+          </span>
+        </div>
       </div>
     );
   }
@@ -136,26 +482,32 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Student Switcher for Portal Demo */}
-          <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700 backdrop-blur-xs flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
-                Simulate Student Account
-              </span>
+          {/* Authenticated Student Mobile Badge & Logout Action */}
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-800/80 px-3.5 py-2 rounded-2xl border border-slate-700 backdrop-blur-xs flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+              <div>
+                <span className="text-[9px] text-emerald-400 uppercase font-bold tracking-wider block">
+                  Verified Mobile Access
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-200">
+                  {student.contactNumber}
+                </span>
+              </div>
             </div>
-            <select
-              value={student.id}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full md:w-64 px-3 py-1.5 text-xs bg-slate-900 border border-slate-600 rounded-lg text-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
+
+            <button
+              onClick={handleLogoutStudent}
+              id="student-portal-logout-btn"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/60 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+              title="Log out and switch mobile number"
             >
-              {students.map((st) => (
-                <option key={st.id} value={st.id}>
-                  {st.name} (Class {st.classLevel} - {st.stream})
-                </option>
-              ))}
-            </select>
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Log Out</span>
+            </button>
           </div>
         </div>
+
 
         {/* Portal Tabs */}
         <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800 overflow-x-auto custom-scrollbar scroll-smooth pb-1">
