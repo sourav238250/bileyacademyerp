@@ -129,6 +129,8 @@ export const Navigation: React.FC<NavigationProps> = ({
       id: 'student-portal',
       label: 'Student Portal',
       icon: Smartphone,
+      badge: currentAdmin ? 'Staff Access' : undefined,
+      badgeColor: 'bg-emerald-700',
     },
   ];
 

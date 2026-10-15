@@ -10,7 +10,9 @@ import {
   AttendanceRecord,
   AssignmentSet,
   QuestionBankItem,
+  AdminUser,
 } from '../../types';
+
 import {
   formatCurrency,
   computeStudentFeeSummary,
@@ -56,9 +58,10 @@ import {
   Sparkles,
   Lock,
   RefreshCw,
+  Users,
+  Search,
+  Eye,
 } from 'lucide-react';
-
-
 
 interface StudentPortalViewProps {
   students: Student[];
@@ -71,6 +74,8 @@ interface StudentPortalViewProps {
   attendance?: AttendanceRecord[];
   assignments?: AssignmentSet[];
   questionBank?: QuestionBankItem[];
+  currentAdmin?: AdminUser | null;
+  onOpenAdminLogin?: () => void;
   onOpenFeeDepositModal: (studentId: string) => void;
   onViewReceipt: (deposit: FeeDeposit) => void;
   onViewReportCard: (result: ExamResult) => void;
@@ -88,6 +93,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   attendance = [],
   assignments = [],
   questionBank = [],
+  currentAdmin,
+  onOpenAdminLogin,
   onOpenFeeDepositModal,
   onViewReceipt,
   onViewReportCard,
@@ -108,6 +115,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
   const [portalTab, setPortalTab] = useState<'overview' | 'academics' | 'attendance' | 'assignments' | 'exams' | 'fees'>('overview');
   const [previewAssignment, setPreviewAssignment] = useState<AssignmentSet | null>(null);
+
+  // Staff Session Portal State
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [staffClassFilter, setStaffClassFilter] = useState('ALL');
+  const [staffViewMode, setStaffViewMode] = useState<'directory' | 'phone_test'>('directory');
 
   // Helper to normalize phone numbers to last 10 digits
   const normalizePhone = (phone: string): string => {
@@ -226,7 +238,268 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
   const sampleTestStudents = students.slice(0, 4);
 
-  // If not authenticated with mobile number, show Student Mobile Login Gate
+  // When an authenticated Staff session is active and no student is currently chosen:
+  // Render the Staff Student Portal Inspection Directory
+  if (currentAdmin && !student) {
+    const q = staffSearchQuery.toLowerCase().trim();
+    const filteredStaffStudents = students.filter((s) => {
+      const matchesSearch =
+        q === '' ||
+        s.name.toLowerCase().includes(q) ||
+        s.rollNo.toLowerCase().includes(q) ||
+        s.contactNumber.includes(q) ||
+        s.classLevel.toLowerCase().includes(q) ||
+        s.stream.toLowerCase().includes(q) ||
+        s.guardianName.toLowerCase().includes(q);
+      const matchesClass = staffClassFilter === 'ALL' || s.classLevel === staffClassFilter;
+      return matchesSearch && matchesClass;
+    });
+
+    const uniqueClasses = (Array.from(new Set(students.map((s) => String(s.classLevel)))) as string[]).sort(
+      (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10)
+    );
+
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto my-4 animate-in fade-in zoom-in-95">
+        {/* Institutional Staff Access Banner */}
+        <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden border border-slate-800">
+          <div className="absolute right-0 top-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <InstituteLogo size="md" variant="rounded" withBorder={true} withGlow={true} />
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Staff Session Active</span>
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono">
+                    {currentAdmin.email}
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-1">
+                  Student Portal — Staff Inspection Mode
+                </h1>
+                <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                  Logged in as <strong>{currentAdmin.name}</strong> ({currentAdmin.role}). You have direct administrative clearance to inspect any student's portal view, check attendance records, report cards, fee statements, and syllabus assignments.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Dropdown Picker */}
+            <div className="bg-slate-800/90 p-4 rounded-2xl border border-slate-700 min-w-[280px]">
+              <label className="block text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2">
+                Quick Student Selector:
+              </label>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    saveItemToStorage('biley_student_portal_auth_student_id', e.target.value);
+                    setAuthenticatedStudentId(e.target.value);
+                  }
+                }}
+                defaultValue=""
+                className="w-full py-2.5 px-3 bg-slate-900 border border-slate-600 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+              >
+                <option value="" disabled>-- Select student to open portal --</option>
+                {students.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    [Class {st.classLevel}] {st.name} (Roll: {st.rollNo})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter and Search Controls */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Search */}
+            <div className="relative w-full sm:w-96">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={staffSearchQuery}
+                onChange={(e) => setStaffSearchQuery(e.target.value)}
+                placeholder="Search by student name, roll no, mobile, class..."
+                className="w-full pl-9 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+              />
+            </div>
+
+            {/* Mode Toggle: Directory vs Mobile Test */}
+            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+              <button
+                onClick={() => setStaffViewMode('directory')}
+                className={`px-3 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                  staffViewMode === 'directory'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Student Directory ({filteredStaffStudents.length})</span>
+              </button>
+              <button
+                onClick={() => setStaffViewMode('phone_test')}
+                className={`px-3 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                  staffViewMode === 'phone_test'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Simulate Phone Lookup</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Class Filter Pills */}
+          {staffViewMode === 'directory' && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">Class:</span>
+              <button
+                onClick={() => setStaffClassFilter('ALL')}
+                className={`px-3 py-1.5 rounded-lg font-bold text-xs shrink-0 cursor-pointer transition-all ${
+                  staffClassFilter === 'ALL'
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                All Classes ({students.length})
+              </button>
+              {uniqueClasses.map((cl) => (
+                <button
+                  key={cl}
+                  onClick={() => setStaffClassFilter(cl)}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-xs shrink-0 cursor-pointer transition-all ${
+                    staffClassFilter === cl
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Class {cl}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Directory Cards Grid */}
+        {staffViewMode === 'directory' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredStaffStudents.length === 0 ? (
+              <div className="col-span-full p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-500">
+                <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="font-bold text-sm">No students match your search filter</p>
+                <p className="text-xs text-slate-400 mt-1">Try searching for a different student name, roll number, or clear your class filter.</p>
+              </div>
+            ) : (
+              filteredStaffStudents.map((st) => (
+                <div
+                  key={st.id}
+                  className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-md transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-900 font-bold text-lg flex items-center justify-center shrink-0 border border-amber-200">
+                          {st.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 group-hover:text-amber-600 transition-colors">
+                            {st.name}
+                          </h3>
+                          <span className="text-[11px] text-slate-500 block">
+                            Roll: <strong className="text-slate-800">{st.rollNo}</strong> • Class {st.classLevel} ({st.stream})
+                          </span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                        {st.gender}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs space-y-1 text-slate-600">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Mobile:</span>
+                        <span className="font-mono font-bold text-slate-800">{st.contactNumber}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Guardian:</span>
+                        <span className="font-medium text-slate-800 truncate max-w-[150px]">{st.guardianName}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        saveItemToStorage('biley_student_portal_auth_student_id', st.id);
+                        setAuthenticatedStudentId(st.id);
+                      }}
+                      className="flex-1 py-2 px-3 bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Inspect Student Portal</span>
+                    </button>
+                    <button
+                      onClick={() => onOpenFeeDepositModal(st.id)}
+                      title="Deposit Fee"
+                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onOpenIdCardModal(st)}
+                      title="View ID Card"
+                      className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <IdCard className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          /* Phone Lookup Simulator inside Staff Hub */
+          <div className="max-w-xl mx-auto my-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl">
+            <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <Phone className="w-4 h-4 text-amber-600" />
+              <span>Simulate Student Mobile Lookup</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Enter a registered student mobile number to verify and open their portal directly in staff session:
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                maxLength={10}
+                value={mobileInput}
+                onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
+                placeholder="Enter 10-digit mobile number"
+                className="flex-1 px-4 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleInstantLogin}
+                className="px-4 py-2 bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Open Portal
+              </button>
+            </div>
+            {loginError && (
+              <p className="text-xs text-rose-600 font-medium mt-2">{loginError}</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // If not in staff session and not authenticated with mobile number, show Student Mobile Login Gate
   if (!student) {
     return (
       <div className="max-w-xl mx-auto my-6 sm:my-10 p-6 sm:p-8 bg-white rounded-3xl border border-slate-200 shadow-xl text-slate-800 animate-in fade-in zoom-in-95">
@@ -440,6 +713,24 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             Strict Academic Privacy: Individual report cards, attendance scores, fee receipts, and homework DPPs are visible only after verifying the student's registered mobile number.
           </span>
         </div>
+
+        {/* Staff Session Login Gateway */}
+        {onOpenAdminLogin && (
+          <div className="mt-6 pt-5 border-t border-slate-200 text-center">
+            <p className="text-xs text-slate-500 mb-2 font-medium">
+              Are you an academy staff member, director, or teacher?
+            </p>
+            <button
+              type="button"
+              onClick={onOpenAdminLogin}
+              id="student-portal-staff-session-login-btn"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer border border-slate-700"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Log in to Authenticated Staff Session</span>
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -455,7 +746,82 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
   return (
     <div className="space-y-6">
-      
+      {/* Top Administrative Staff Session Bar */}
+      {currentAdmin && (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border-2 border-emerald-500/40 text-white p-4 sm:p-5 rounded-3xl shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  Authenticated Staff Session
+                </span>
+                <span className="text-xs text-slate-300 font-medium">
+                  {currentAdmin.name} ({currentAdmin.role})
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Staff Inspection Mode: Inspecting <strong>{student.name}</strong> (Roll: {student.rollNo}, Class {student.classLevel} {student.stream})
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick Switch Dropdown */}
+            <div className="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700">
+              <span className="text-[10px] text-slate-400 uppercase font-bold">Switch:</span>
+              <select
+                value={student.id}
+                onChange={(e) => {
+                  saveItemToStorage('biley_student_portal_auth_student_id', e.target.value);
+                  setAuthenticatedStudentId(e.target.value);
+                }}
+                className="bg-transparent text-xs text-amber-300 font-bold focus:outline-none cursor-pointer max-w-[200px] truncate"
+              >
+                {students.map((st) => (
+                  <option key={st.id} value={st.id} className="bg-slate-900 text-white">
+                    [Cl {st.classLevel}] {st.name} (Roll: {st.rollNo})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Browse Directory Button */}
+            <button
+              onClick={() => {
+                saveItemToStorage('biley_student_portal_auth_student_id', null);
+                setAuthenticatedStudentId(null);
+              }}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Users className="w-3.5 h-3.5 text-amber-400" />
+              <span>Browse All Students</span>
+            </button>
+
+            {/* Quick Staff Actions for Student */}
+            <button
+              onClick={() => onOpenFeeDepositModal(student.id)}
+              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Deposit fee for this student"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>Deposit Fee</span>
+            </button>
+
+            <button
+              onClick={() => onOpenIdCardModal(student)}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Generate student ID card"
+            >
+              <IdCard className="w-3.5 h-3.5" />
+              <span>ID Card</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Student Banner Card */}
       <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -488,7 +854,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
               <div>
                 <span className="text-[9px] text-emerald-400 uppercase font-bold tracking-wider block">
-                  Verified Mobile Access
+                  {currentAdmin ? 'Staff Inspection Mode' : 'Verified Mobile Access'}
                 </span>
                 <span className="text-xs font-mono font-bold text-slate-200">
                   {student.contactNumber}
@@ -496,15 +862,30 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={handleLogoutStudent}
-              id="student-portal-logout-btn"
-              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/60 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs"
-              title="Log out and switch mobile number"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
-            </button>
+            {currentAdmin ? (
+              <button
+                onClick={() => {
+                  saveItemToStorage('biley_student_portal_auth_student_id', null);
+                  setAuthenticatedStudentId(null);
+                }}
+                id="student-portal-switch-student-btn"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-2xl text-xs transition-all cursor-pointer shadow-xs"
+                title="Return to Staff Student Directory"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Switch Student</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleLogoutStudent}
+                id="student-portal-logout-btn"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/60 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                title="Log out and switch mobile number"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
+            )}
           </div>
         </div>
 

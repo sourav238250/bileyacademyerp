@@ -983,6 +983,11 @@ export default function App() {
             attendance={attendance}
             assignments={assignments}
             questionBank={questionBank}
+            currentAdmin={currentAdmin}
+            onOpenAdminLogin={() => {
+              setLoginModalSectionTitle('Staff Administration Session');
+              setIsAdminLoginModalOpen(true);
+            }}
             onOpenFeeDepositModal={(stId) => handleQuickFeeDeposit(stId)}
             onViewReceipt={(dep) => setSelectedReceiptDeposit(dep)}
             onViewReportCard={(res) => setSelectedReportCardResult(res)}
