@@ -293,6 +293,17 @@ export function evaluateSectionAuthorization(
           requiredRole: 'Accounts & Cashier / Super Admin / Director',
         };
 
+      case 'library':
+        return {
+          isAllowed: false,
+          canWrite: false,
+          roleTitle: 'Signed Out',
+          badgeLabel: 'Library Authorization Required',
+          badgeStyle: 'bg-rose-100 text-rose-800 border-rose-300',
+          notice: 'Institutional Library access is strictly restricted to registered Biley Academy students, faculty members, and staff.',
+          requiredRole: 'Registered Student / Faculty / Staff',
+        };
+
       default:
         return {
           isAllowed: false,
@@ -561,6 +572,15 @@ export function evaluateSectionAuthorization(
         roleTitle: role,
         badgeLabel: 'Investor Capital & Liquidity Controller Authorized',
         badgeStyle: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+      };
+
+    case 'library':
+      return {
+        isAllowed: true,
+        canWrite: true,
+        roleTitle: role,
+        badgeLabel: role === 'Faculty Mentor' ? 'Faculty Library Access' : 'Librarian & Staff Administration',
+        badgeStyle: 'bg-teal-50 text-teal-800 border-teal-300',
       };
 
     default:

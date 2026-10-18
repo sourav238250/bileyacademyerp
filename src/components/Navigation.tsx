@@ -18,6 +18,7 @@ import {
   Lock,
   ChevronLeft,
   ChevronRight,
+  Library,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -36,6 +37,7 @@ interface NavigationProps {
   assignmentCount?: number;
   disbursementsCount?: number;
   investorsCount?: number;
+  booksCount?: number;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -50,6 +52,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   assignmentCount,
   disbursementsCount,
   investorsCount,
+  booksCount,
 }) => {
   const isSignedOut = !currentAdmin;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +127,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       badge: investorsCount && investorsCount > 0 ? `${investorsCount} Inv` : undefined,
       badgeColor: 'bg-emerald-800',
       requiresAuth: true,
+    },
+    {
+      id: 'library',
+      label: 'Library & Books',
+      icon: Library,
+      badge: booksCount && booksCount > 0 ? `${booksCount} Books` : undefined,
+      badgeColor: 'bg-teal-700',
     },
     {
       id: 'student-portal',

@@ -40,6 +40,8 @@ function createDataHash(data: AppStateData): string {
       attendance: data.attendance || [],
       questionBank: data.questionBank || [],
       assignments: data.assignments || [],
+      books: data.books || [],
+      bookIssues: data.bookIssues || [],
       authConfig: data.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
     });
   } catch {
@@ -121,6 +123,8 @@ class FirebaseSyncService {
               attendance: remoteData.attendance || [],
               questionBank: remoteData.questionBank || [],
               assignments: remoteData.assignments || [],
+              books: remoteData.books || [],
+              bookIssues: remoteData.bookIssues || [],
               authConfig: remoteData.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
             };
 

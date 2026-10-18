@@ -11,6 +11,7 @@ import {
   AssignmentSet,
   QuestionBankItem,
   AdminUser,
+  NavigationTab,
 } from '../../types';
 
 import {
@@ -61,6 +62,7 @@ import {
   Users,
   Search,
   Eye,
+  Library,
 } from 'lucide-react';
 
 interface StudentPortalViewProps {
@@ -80,6 +82,7 @@ interface StudentPortalViewProps {
   onViewReceipt: (deposit: FeeDeposit) => void;
   onViewReportCard: (result: ExamResult) => void;
   onOpenIdCardModal: (student: Student) => void;
+  onNavigateToTab?: (tab: NavigationTab) => void;
 }
 
 export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
@@ -99,6 +102,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   onViewReceipt,
   onViewReportCard,
   onOpenIdCardModal,
+  onNavigateToTab,
 }) => {
   // Authenticated Student State (persisted in localStorage)
   const [authenticatedStudentId, setAuthenticatedStudentId] = useState<string | null>(() => {
@@ -1039,6 +1043,35 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               )}
             </div>
 
+            {/* Central Library Access Card */}
+            {onNavigateToTab && (
+              <div className="bg-gradient-to-r from-teal-900 via-teal-850 to-slate-900 text-white p-5 rounded-2xl border border-teal-700/50 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/30 shrink-0">
+                    <Library className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-sm text-white">Central Library & Digital Books</h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-400/20 text-teal-300 border border-teal-400/30">
+                        Registered Student Access
+                      </span>
+                    </div>
+                    <p className="text-xs text-teal-100/80 mt-0.5">
+                      Access NCERT core textbooks, competitive reference guides, and digital study materials linked to your Class {student.classLevel} curriculum.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigateToTab('library')}
+                  className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <span>Open Library</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Student Profile Card */}

@@ -181,6 +181,7 @@ export type NavigationTab =
   | 'disbursements'
   | 'investors'
   | 'question-bank'
+  | 'library'
   | 'student-portal';
 
 export interface Investor {
@@ -564,5 +565,75 @@ export interface AssignmentSet {
   createdAt: string;
   status: 'Published' | 'Draft' | 'Archived';
   submissionCount?: number;
+}
+
+// ==========================================
+// INSTITUTIONAL LIBRARY & DIGITAL REPOSITORY
+// ==========================================
+
+export type BookCategory =
+  | 'NCERT & Core Textbooks'
+  | 'Reference & Practice Guides'
+  | 'Board & Competitive PYQs'
+  | 'Foundation JEE & NEET'
+  | 'Literature & Language'
+  | 'Science Experiments & Lab Manuals';
+
+export interface Book {
+  id: string; // e.g. "BK-10-MATH-01"
+  isbn: string; // e.g. "978-93-5292-123-4"
+  title: string;
+  author: string;
+  publisher: string;
+  editionYear: string;
+  category: BookCategory;
+  classLevel: ClassLevel | 'All';
+  stream?: StreamType;
+  subjectName: string;
+  shelfLocation: string; // e.g. "Rack B-2, Shelf 3"
+  totalCopies: number;
+  availableCopies: number;
+  description: string;
+  coverColor: 'indigo' | 'emerald' | 'amber' | 'rose' | 'blue' | 'purple' | 'cyan';
+  digitalAvailable: boolean;
+  digitalPdfUrl?: string; // Digital chapter / synopsis
+  digitalPagesCount?: number;
+  tags: string[];
+  addedDate: string;
+}
+
+export type BorrowerType = 'Student' | 'Faculty' | 'Staff';
+export type BookIssueStatus = 'Active' | 'Returned' | 'Overdue' | 'Lost';
+
+export interface BookIssueRecord {
+  id: string; // e.g. "ISSUE-2026-001"
+  issueNo: string; // e.g. "LIB-2026-8801"
+  bookId: string;
+  bookTitle: string;
+  bookIsbn: string;
+  borrowerType: BorrowerType;
+  borrowerId: string; // studentId or facultyId or staffId
+  borrowerName: string;
+  borrowerContact: string;
+  borrowerDetails: string; // e.g. "Class 10 • Roll 04" or "Senior Faculty • Physics"
+  issueDate: string; // YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD
+  returnDate?: string; // YYYY-MM-DD
+  status: BookIssueStatus;
+  issuedByStaffName: string;
+  remarks?: string;
+  fineAmount?: number;
+}
+
+export type LibraryUserRole = 'Student' | 'Faculty' | 'Staff';
+
+export interface LibrarySessionUser {
+  role: LibraryUserRole;
+  id: string; // studentId or facultyId or adminUser id
+  name: string;
+  subTitle: string; // e.g. "Class 10 (Roll 04)" or "Subject Lead - Physics" or "Super Admin / Director"
+  contactNumber: string;
+  avatarUrl?: string;
+  authenticatedAt: string;
 }
 

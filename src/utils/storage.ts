@@ -16,6 +16,8 @@ import {
   InstitutionalAuthorizationConfig,
   StaffCredential,
   AdminUser,
+  Book,
+  BookIssueRecord,
 } from '../types';
 import {
   INITIAL_ATTENDANCE,
@@ -36,6 +38,10 @@ import {
   INITIAL_INVESTORS,
   INITIAL_INVESTOR_TRANSACTIONS,
 } from '../data/initialInvestorData';
+import {
+  INITIAL_BOOKS,
+  INITIAL_BOOK_ISSUES,
+} from '../data/initialLibraryData';
 
 export const DEFAULT_DIGITAL_SIGNATURE_DATA_URL =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" width="320" height="100"><path d="M 25,65 Q 45,20 60,35 Q 75,55 90,30 Q 105,10 115,45 Q 125,75 140,50 Q 155,25 175,40 Q 195,55 210,35 Q 225,18 240,48 Q 255,70 280,30 M 45,78 C 100,72 200,68 295,62" fill="none" stroke="%231e3a8a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -136,6 +142,8 @@ export interface AppStateData {
   attendance: AttendanceRecord[];
   questionBank: QuestionBankItem[];
   assignments: AssignmentSet[];
+  books?: Book[];
+  bookIssues?: BookIssueRecord[];
   authConfig?: InstitutionalAuthorizationConfig;
 }
 
@@ -153,6 +161,8 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'biley_academy_attendance_v1',
   QUESTION_BANK: 'biley_academy_question_bank_v1',
   ASSIGNMENTS: 'biley_academy_assignments_v1',
+  BOOKS: 'biley_academy_books_v1',
+  BOOK_ISSUES: 'biley_academy_book_issues_v1',
   AUTH_CONFIG: 'biley_academy_auth_config_v1',
   STAFF_CREDENTIALS: 'biley_academy_staff_credentials_v1',
 };
@@ -402,6 +412,8 @@ export function loadInitialState(): AppStateData {
     attendance: sanitizedAttendance,
     questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
     assignments: loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS),
+    books: loadFromStorage<Book[]>(STORAGE_KEYS.BOOKS, INITIAL_BOOKS),
+    bookIssues: loadFromStorage<BookIssueRecord[]>(STORAGE_KEYS.BOOK_ISSUES, INITIAL_BOOK_ISSUES),
     authConfig: loadedAuthConfig,
   };
 }
@@ -424,6 +436,12 @@ export function saveToStorage(data: AppStateData): void {
     saveItemToStorage(STORAGE_KEYS.ATTENDANCE, data.attendance);
     saveItemToStorage(STORAGE_KEYS.QUESTION_BANK, data.questionBank);
     saveItemToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
+    if (data.books) {
+      saveItemToStorage(STORAGE_KEYS.BOOKS, data.books);
+    }
+    if (data.bookIssues) {
+      saveItemToStorage(STORAGE_KEYS.BOOK_ISSUES, data.bookIssues);
+    }
     if (data.authConfig) {
       saveItemToStorage(STORAGE_KEYS.AUTH_CONFIG, data.authConfig);
     }
@@ -443,6 +461,8 @@ export function saveToStorage(data: AppStateData): void {
     localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
     localStorage.removeItem(STORAGE_KEYS.QUESTION_BANK);
     localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS);
+    localStorage.removeItem(STORAGE_KEYS.BOOKS);
+    localStorage.removeItem(STORAGE_KEYS.BOOK_ISSUES);
     localStorage.removeItem(STORAGE_KEYS.AUTH_CONFIG);
     return loadInitialState();
   }

@@ -15,6 +15,8 @@ import {
   AdminUser,
   QuestionBankItem,
   AssignmentSet,
+  Book,
+  BookIssueRecord,
   InstitutionalAuthorizationConfig,
 } from './types';
 import {
@@ -54,6 +56,7 @@ import { ResultsView } from './components/results/ResultsView';
 import { FeesView } from './components/fees/FeesView';
 import { DisbursementsView } from './components/disbursements/DisbursementsView';
 import { InvestorsView } from './components/investors/InvestorsView';
+import { LibraryView } from './components/library/LibraryView';
 import { StudentPortalView } from './components/student-portal/StudentPortalView';
 
 // Printable and detail modals
@@ -102,6 +105,8 @@ export default function App() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [questionBank, setQuestionBank] = useState<QuestionBankItem[]>([]);
   const [assignments, setAssignments] = useState<AssignmentSet[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [bookIssues, setBookIssues] = useState<BookIssueRecord[]>([]);
   const [authConfig, setAuthConfig] = useState<InstitutionalAuthorizationConfig>(DEFAULT_AUTHORIZATION_CONFIG);
   const [isAuthorizationSettingsOpen, setIsAuthorizationSettingsOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
@@ -148,6 +153,8 @@ export default function App() {
     setAttendance(localData.attendance || []);
     setQuestionBank(localData.questionBank || []);
     setAssignments(localData.assignments || []);
+    setBooks(localData.books || []);
+    setBookIssues(localData.bookIssues || []);
     setAuthConfig(localData.authConfig || DEFAULT_AUTHORIZATION_CONFIG);
     setIsLoaded(true);
 
@@ -166,6 +173,8 @@ export default function App() {
       setAttendance(cloudData.attendance || []);
       setQuestionBank(cloudData.questionBank || []);
       setAssignments(cloudData.assignments || []);
+      setBooks(cloudData.books || []);
+      setBookIssues(cloudData.bookIssues || []);
       if (cloudData.authConfig) {
         setAuthConfig(cloudData.authConfig);
       }
@@ -193,6 +202,8 @@ export default function App() {
       attendance,
       questionBank,
       assignments,
+      books,
+      bookIssues,
       authConfig,
     };
     
@@ -204,7 +215,7 @@ export default function App() {
 
     // Synchronize to Express backend REST API
     backendApi.pushState(currentState).catch(() => {});
-  }, [students, faculty, subjects, exams, results, deposits, disbursements, investors, investorTransactions, timetable, attendance, questionBank, assignments, authConfig, isLoaded]);
+  }, [students, faculty, subjects, exams, results, deposits, disbursements, investors, investorTransactions, timetable, attendance, questionBank, assignments, books, bookIssues, authConfig, isLoaded]);
 
   // Full Institutional State Refresh Handler
   const handleRefreshAllData = () => {
@@ -222,6 +233,8 @@ export default function App() {
     setAttendance(refreshed.attendance || []);
     setQuestionBank(refreshed.questionBank || []);
     setAssignments(refreshed.assignments || []);
+    setBooks(refreshed.books || []);
+    setBookIssues(refreshed.bookIssues || []);
     if (refreshed.authConfig) setAuthConfig(refreshed.authConfig);
   };
 
@@ -415,6 +428,50 @@ export default function App() {
     });
   };
 
+  // Central Library Handlers
+  const handleAddBook = (newBook: Book) => {
+    setBooks((prev) => [newBook, ...prev]);
+  };
+
+  const handleUpdateBook = (updatedBook: Book) => {
+    setBooks((prev) => prev.map((b) => (b.id === updatedBook.id ? updatedBook : b)));
+  };
+
+  const handleDeleteBook = (bookId: string) => {
+    setBooks((prev) => prev.filter((b) => b.id !== bookId));
+  };
+
+  const handleIssueBook = (issue: BookIssueRecord) => {
+    setBookIssues((prev) => [issue, ...prev]);
+    setBooks((prev) =>
+      prev.map((b) =>
+        b.id === issue.bookId
+          ? { ...b, availableCopies: Math.max(0, b.availableCopies - 1) }
+          : b
+      )
+    );
+  };
+
+  const handleReturnBook = (issueId: string) => {
+    const targetIssue = bookIssues.find((i) => i.id === issueId);
+    setBookIssues((prev) =>
+      prev.map((i) =>
+        i.id === issueId
+          ? { ...i, status: 'Returned', returnDate: new Date().toISOString().slice(0, 10) }
+          : i
+      )
+    );
+    if (targetIssue) {
+      setBooks((prev) =>
+        prev.map((b) =>
+          b.id === targetIssue.bookId
+            ? { ...b, availableCopies: Math.min(b.totalCopies, b.availableCopies + 1) }
+            : b
+        )
+      );
+    }
+  };
+
   // Cross-Navigation Shortcuts
   const handleQuickNewAdmission = () => {
     if (!currentAdmin) {
@@ -567,6 +624,7 @@ export default function App() {
         attendanceRecordsCount={attendance.length}
         questionBankCount={questionBank.length}
         assignmentCount={assignments.length}
+        booksCount={books.length}
       />
 
       {/* Main Content Area */}
@@ -971,6 +1029,26 @@ export default function App() {
           )
         )}
 
+        {activeTab === 'library' && (
+          <LibraryView
+            books={books}
+            bookIssues={bookIssues}
+            students={students}
+            faculty={faculty}
+            currentAdmin={currentAdmin}
+            onAddBook={handleAddBook}
+            onUpdateBook={handleUpdateBook}
+            onDeleteBook={handleDeleteBook}
+            onIssueBook={handleIssueBook}
+            onReturnBook={handleReturnBook}
+            onOpenAdminLogin={() => {
+              setLoginModalSectionTitle('Central Library Administration');
+              setIsAdminLoginModalOpen(true);
+            }}
+            onNavigateToTab={setActiveTab}
+          />
+        )}
+
         {activeTab === 'student-portal' && (
           <StudentPortalView
             students={students}
@@ -992,6 +1070,7 @@ export default function App() {
             onViewReceipt={(dep) => setSelectedReceiptDeposit(dep)}
             onViewReportCard={(res) => setSelectedReportCardResult(res)}
             onOpenIdCardModal={(st) => setSelectedIdCardStudent(st)}
+            onNavigateToTab={setActiveTab}
           />
         )}
 
