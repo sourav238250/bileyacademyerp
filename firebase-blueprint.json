@@ -20,6 +20,8 @@
         "attendance": { "type": "array" },
         "questionBank": { "type": "array" },
         "assignments": { "type": "array" },
+        "books": { "type": "array" },
+        "bookIssues": { "type": "array" },
         "authConfig": { "type": "object" }
       }
     }

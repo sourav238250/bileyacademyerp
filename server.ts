@@ -30,6 +30,17 @@ function initDatabase(): AppStateData {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.students) && Array.isArray(parsed.faculty)) {
         console.log(`[Backend DB] Loaded existing institutional database from ${DB_FILE}`);
+        if (!Array.isArray(parsed.books) || parsed.books.length === 0) {
+          const freshState = loadInitialState();
+          parsed.books = freshState.books || [];
+          parsed.bookIssues = freshState.bookIssues || [];
+          try {
+            fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), 'utf-8');
+            console.log(`[Backend DB] Seeded ${parsed.books.length} books into database on disk`);
+          } catch (e) {
+            console.error('[Backend DB] Failed writing seeded books to disk:', e);
+          }
+        }
         return parsed;
       }
     }
@@ -97,6 +108,8 @@ async function startServer() {
         results: stateCache.results?.length || 0,
         questionBank: stateCache.questionBank?.length || 0,
         assignments: stateCache.assignments?.length || 0,
+        books: stateCache.books?.length || 0,
+        bookIssues: stateCache.bookIssues?.length || 0,
       },
       memory: {
         rssMB: Math.round(memory.rss / (1024 * 1024)),
@@ -336,7 +349,88 @@ async function startServer() {
     res.json({ success: true, count: list.length, data: list });
   });
 
-  // 9. Full Snapshot Backup and Restore
+  // 9. Central Library Books & Loan Circulation API
+  app.get('/api/books', (req: Request, res: Response) => {
+    let list = stateCache.books || [];
+    const { category, classLevel, search } = req.query;
+    if (category) list = list.filter((b) => b.category === category);
+    if (classLevel && classLevel !== 'All') list = list.filter((b) => b.classLevel === classLevel || b.classLevel === 'All');
+    if (search && typeof search === 'string') {
+      const q = search.toLowerCase();
+      list = list.filter((b) =>
+        b.title.toLowerCase().includes(q) ||
+        b.author.toLowerCase().includes(q) ||
+        b.isbn.toLowerCase().includes(q) ||
+        b.subjectName.toLowerCase().includes(q)
+      );
+    }
+    res.json({ success: true, count: list.length, data: list });
+  });
+
+  app.post('/api/books', (req: Request, res: Response) => {
+    const book = req.body;
+    if (!book || !book.id || !book.title) {
+      return res.status(400).json({ success: false, error: 'Book ID and Title are required' });
+    }
+
+    const currentBooks = [...(stateCache.books || [])];
+    const index = currentBooks.findIndex((b) => b.id === book.id);
+    if (index >= 0) {
+      currentBooks[index] = { ...currentBooks[index], ...book };
+    } else {
+      currentBooks.unshift(book);
+    }
+    stateCache.books = currentBooks;
+    stateVersion += 1;
+    persistStateToDisk();
+    res.json({ success: true, book, version: stateVersion, totalBooks: stateCache.books.length });
+  });
+
+  app.delete('/api/books/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    stateCache.books = (stateCache.books || []).filter((b) => b.id !== id);
+    stateVersion += 1;
+    persistStateToDisk();
+    res.json({ success: true, deletedId: id, totalBooks: stateCache.books.length });
+  });
+
+  app.get('/api/book-issues', (req: Request, res: Response) => {
+    res.json({ success: true, count: (stateCache.bookIssues || []).length, data: stateCache.bookIssues || [] });
+  });
+
+  app.post('/api/book-issues', (req: Request, res: Response) => {
+    const issue = req.body;
+    if (!issue || !issue.id || !issue.bookId) {
+      return res.status(400).json({ success: false, error: 'Issue record and bookId required' });
+    }
+    stateCache.bookIssues = [issue, ...(stateCache.bookIssues || [])];
+    stateCache.books = (stateCache.books || []).map((b) =>
+      b.id === issue.bookId ? { ...b, availableCopies: Math.max(0, b.availableCopies - 1) } : b
+    );
+    stateVersion += 1;
+    persistStateToDisk();
+    res.json({ success: true, issue, version: stateVersion });
+  });
+
+  app.put('/api/book-issues/:id/return', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const target = (stateCache.bookIssues || []).find((i) => i.id === id);
+    if (target) {
+      stateCache.bookIssues = (stateCache.bookIssues || []).map((i) =>
+        i.id === id ? { ...i, status: 'Returned', returnDate: new Date().toISOString().slice(0, 10) } : i
+      );
+      stateCache.books = (stateCache.books || []).map((b) =>
+        b.id === target.bookId ? { ...b, availableCopies: Math.min(b.totalCopies, b.availableCopies + 1) } : b
+      );
+      stateVersion += 1;
+      persistStateToDisk();
+      res.json({ success: true, returnedIssueId: id });
+    } else {
+      res.status(404).json({ success: false, error: 'Issue record not found' });
+    }
+  });
+
+  // 10. Full Snapshot Backup and Restore
   app.get('/api/backup', (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="biley_academy_backup_${new Date().toISOString().slice(0, 10)}.json"`);

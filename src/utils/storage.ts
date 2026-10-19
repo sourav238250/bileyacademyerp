@@ -412,10 +412,24 @@ export function loadInitialState(): AppStateData {
     attendance: sanitizedAttendance,
     questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
     assignments: loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS),
-    books: loadFromStorage<Book[]>(STORAGE_KEYS.BOOKS, INITIAL_BOOKS),
-    bookIssues: loadFromStorage<BookIssueRecord[]>(STORAGE_KEYS.BOOK_ISSUES, INITIAL_BOOK_ISSUES),
+    books: (() => {
+      const stored = loadFromStorage<Book[]>(STORAGE_KEYS.BOOKS, INITIAL_BOOKS);
+      return (!Array.isArray(stored) || stored.length === 0) ? INITIAL_BOOKS : stored;
+    })(),
+    bookIssues: (() => {
+      const stored = loadFromStorage<BookIssueRecord[]>(STORAGE_KEYS.BOOK_ISSUES, INITIAL_BOOK_ISSUES);
+      return (!Array.isArray(stored) || stored.length === 0) ? INITIAL_BOOK_ISSUES : stored;
+    })(),
     authConfig: loadedAuthConfig,
   };
+}
+
+export function saveBooksToPersistentStorage(books: Book[]): void {
+  saveItemToStorage(STORAGE_KEYS.BOOKS, books);
+}
+
+export function saveBookIssuesToPersistentStorage(issues: BookIssueRecord[]): void {
+  saveItemToStorage(STORAGE_KEYS.BOOK_ISSUES, issues);
 }
 
 export function saveToStorage(data: AppStateData): void {
@@ -436,10 +450,10 @@ export function saveToStorage(data: AppStateData): void {
     saveItemToStorage(STORAGE_KEYS.ATTENDANCE, data.attendance);
     saveItemToStorage(STORAGE_KEYS.QUESTION_BANK, data.questionBank);
     saveItemToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
-    if (data.books) {
+    if (data.books && Array.isArray(data.books)) {
       saveItemToStorage(STORAGE_KEYS.BOOKS, data.books);
     }
-    if (data.bookIssues) {
+    if (data.bookIssues && Array.isArray(data.bookIssues)) {
       saveItemToStorage(STORAGE_KEYS.BOOK_ISSUES, data.bookIssues);
     }
     if (data.authConfig) {
@@ -570,6 +584,12 @@ export function parseDatabaseBackup(jsonString: string): AppStateData {
   }
   if (!Array.isArray(stateData.assignments)) {
     stateData.assignments = INITIAL_ASSIGNMENT_SETS;
+  }
+  if (!Array.isArray(stateData.books)) {
+    stateData.books = INITIAL_BOOKS;
+  }
+  if (!Array.isArray(stateData.bookIssues)) {
+    stateData.bookIssues = INITIAL_BOOK_ISSUES;
   }
 
   return stateData;

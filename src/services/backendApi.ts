@@ -1,5 +1,5 @@
 import { AppStateData } from '../utils/storage';
-import { Student, Faculty, TimetableSlot, AttendanceRecord, FeeDeposit, PaymentDisbursement } from '../types';
+import { Student, Faculty, TimetableSlot, AttendanceRecord, FeeDeposit, PaymentDisbursement, Book, BookIssueRecord } from '../types';
 
 export interface BackendHealthResponse {
   status: 'healthy' | 'degraded' | 'offline';
@@ -78,6 +78,68 @@ class BackendApiService {
       return { success: true, version: json.version };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error' };
+    }
+  }
+
+  /**
+   * Dedicated Book Persistence API
+   */
+  async saveBook(book: Book): Promise<{ success: boolean; version?: number; error?: string }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/books`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(book),
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Save book failed' };
+    }
+  }
+
+  async deleteBook(bookId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/books/${bookId}`, {
+        method: 'DELETE',
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Delete book failed' };
+    }
+  }
+
+  async issueBook(issue: BookIssueRecord): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/book-issues`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(issue),
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Issue book failed' };
+    }
+  }
+
+  async returnBook(issueId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/book-issues/${issueId}/return`, {
+        method: 'PUT',
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Return book failed' };
+    }
+  }
+
+  async fetchBooks(): Promise<{ success: boolean; data?: Book[]; error?: string }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/books`);
+      if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+      const json = await res.json();
+      return { success: true, data: json.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Fetch books failed' };
     }
   }
 

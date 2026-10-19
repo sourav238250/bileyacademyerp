@@ -428,48 +428,87 @@ export default function App() {
     });
   };
 
-  // Central Library Handlers
+  // Central Library Handlers with Guaranteed Synchronous & Persistent Storage
   const handleAddBook = (newBook: Book) => {
-    setBooks((prev) => [newBook, ...prev]);
+    setBooks((prev) => {
+      const next = [newBook, ...prev];
+      saveItemToStorage('biley_academy_books_v1', next);
+      backendApi.saveBook(newBook).catch(() => {});
+      return next;
+    });
   };
 
   const handleUpdateBook = (updatedBook: Book) => {
-    setBooks((prev) => prev.map((b) => (b.id === updatedBook.id ? updatedBook : b)));
+    setBooks((prev) => {
+      const next = prev.map((b) => (b.id === updatedBook.id ? updatedBook : b));
+      saveItemToStorage('biley_academy_books_v1', next);
+      backendApi.saveBook(updatedBook).catch(() => {});
+      return next;
+    });
   };
 
   const handleDeleteBook = (bookId: string) => {
-    setBooks((prev) => prev.filter((b) => b.id !== bookId));
+    setBooks((prev) => {
+      const next = prev.filter((b) => b.id !== bookId);
+      saveItemToStorage('biley_academy_books_v1', next);
+      backendApi.deleteBook(bookId).catch(() => {});
+      return next;
+    });
   };
 
   const handleIssueBook = (issue: BookIssueRecord) => {
-    setBookIssues((prev) => [issue, ...prev]);
-    setBooks((prev) =>
-      prev.map((b) =>
+    setBookIssues((prev) => {
+      const next = [issue, ...prev];
+      saveItemToStorage('biley_academy_book_issues_v1', next);
+      backendApi.issueBook(issue).catch(() => {});
+      return next;
+    });
+    setBooks((prev) => {
+      const next = prev.map((b) =>
         b.id === issue.bookId
           ? { ...b, availableCopies: Math.max(0, b.availableCopies - 1) }
           : b
-      )
-    );
+      );
+      saveItemToStorage('biley_academy_books_v1', next);
+      return next;
+    });
   };
 
   const handleReturnBook = (issueId: string) => {
     const targetIssue = bookIssues.find((i) => i.id === issueId);
-    setBookIssues((prev) =>
-      prev.map((i) =>
+    setBookIssues((prev) => {
+      const next = prev.map((i) =>
         i.id === issueId
           ? { ...i, status: 'Returned', returnDate: new Date().toISOString().slice(0, 10) }
           : i
-      )
-    );
+      );
+      saveItemToStorage('biley_academy_book_issues_v1', next);
+      backendApi.returnBook(issueId).catch(() => {});
+      return next;
+    });
     if (targetIssue) {
-      setBooks((prev) =>
-        prev.map((b) =>
+      setBooks((prev) => {
+        const next = prev.map((b) =>
           b.id === targetIssue.bookId
             ? { ...b, availableCopies: Math.min(b.totalCopies, b.availableCopies + 1) }
             : b
-        )
-      );
+        );
+        saveItemToStorage('biley_academy_books_v1', next);
+        return next;
+      });
     }
+  };
+
+  const handleRestoreDefaultBooks = () => {
+    const seed = loadInitialState();
+    const defaultBooks = seed.books || [];
+    const defaultIssues = seed.bookIssues || [];
+    setBooks(defaultBooks);
+    setBookIssues(defaultIssues);
+    saveItemToStorage('biley_academy_books_v1', defaultBooks);
+    saveItemToStorage('biley_academy_book_issues_v1', defaultIssues);
+    backendApi.pushState({ ...seed, books: defaultBooks, bookIssues: defaultIssues }).catch(() => {});
+    firebaseSyncService.scheduleCloudPush({ ...seed, books: defaultBooks, bookIssues: defaultIssues });
   };
 
   // Cross-Navigation Shortcuts
@@ -1046,6 +1085,7 @@ export default function App() {
               setIsAdminLoginModalOpen(true);
             }}
             onNavigateToTab={setActiveTab}
+            onRestoreDefaultBooks={handleRestoreDefaultBooks}
           />
         )}
 

@@ -109,6 +109,15 @@ class FirebaseSyncService {
           if (snapshot.exists()) {
             const remoteData = snapshot.data() as Partial<AppStateData>;
 
+            // Persistent fallback logic to prevent accidental erasure of books if remote document lacked them
+            const localFallback = loadInitialState();
+            const persistentBooks = (Array.isArray(remoteData.books) && remoteData.books.length > 0)
+              ? remoteData.books
+              : (localFallback.books || []);
+            const persistentBookIssues = (Array.isArray(remoteData.bookIssues) && remoteData.bookIssues.length > 0)
+              ? remoteData.bookIssues
+              : (localFallback.bookIssues || []);
+
             const merged: AppStateData = {
               students: remoteData.students || [],
               faculty: remoteData.faculty || [],
@@ -123,8 +132,8 @@ class FirebaseSyncService {
               attendance: remoteData.attendance || [],
               questionBank: remoteData.questionBank || [],
               assignments: remoteData.assignments || [],
-              books: remoteData.books || [],
-              bookIssues: remoteData.bookIssues || [],
+              books: persistentBooks,
+              bookIssues: persistentBookIssues,
               authConfig: remoteData.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
             };
 

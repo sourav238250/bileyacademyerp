@@ -10,7 +10,7 @@ import {
   ClassLevel,
   NavigationTab,
 } from '../../types';
-import { loadFromStorage, saveItemToStorage } from '../../utils/storage';
+import { loadFromStorage, saveItemToStorage, saveBooksToPersistentStorage, saveBookIssuesToPersistentStorage } from '../../utils/storage';
 import { LibraryAccessGate } from './LibraryAccessGate';
 import { BookCard } from './BookCard';
 import { BookDetailModal } from './BookDetailModal';
@@ -39,6 +39,9 @@ import {
   Printer,
   ChevronRight,
   UserCheck,
+  Save,
+  Database,
+  Check,
 } from 'lucide-react';
 
 interface LibraryViewProps {
@@ -54,6 +57,7 @@ interface LibraryViewProps {
   onReturnBook: (issueId: string) => void;
   onOpenAdminLogin: () => void;
   onNavigateToTab?: (tab: NavigationTab) => void;
+  onRestoreDefaultBooks?: () => void;
 }
 
 const STORAGE_LIBRARY_USER_KEY = 'biley_library_session_user_v1';
@@ -72,7 +76,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onReturnBook,
   onOpenAdminLogin,
   onNavigateToTab,
+  onRestoreDefaultBooks,
 }) => {
+  const [justSaved, setJustSaved] = useState(false);
+
+  const handleManualSave = () => {
+    saveBooksToPersistentStorage(books);
+    saveBookIssuesToPersistentStorage(bookIssues);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2500);
+  };
   // Session resolution
   const [sessionUser, setSessionUser] = useState<LibrarySessionUser | null>(() => {
     // 1. If staff is authenticated via currentAdmin
@@ -330,6 +343,66 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         </div>
       </div>
 
+      {/* Persistent Storage Status Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200 shrink-0">
+            <Database className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-900">Persistent Storage Mode:</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                Active & Synced
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              All <strong>{books.length}</strong> catalog books and <strong>{bookIssues.length}</strong> circulation records are saved persistently across LocalStorage, Server Database, and Cloud Firestore.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleManualSave}
+            id="persist-books-storage-btn"
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer border ${
+              justSaved
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            }`}
+            title="Save library records to persistent storage"
+          >
+            {justSaved ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-white" />
+                <span>Saved & Persisted!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5 text-slate-600" />
+                <span>Save to Persistent Storage</span>
+              </>
+            )}
+          </button>
+
+          {isStaff && onRestoreDefaultBooks && (
+            <button
+              type="button"
+              onClick={onRestoreDefaultBooks}
+              id="restore-default-books-btn"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs border border-slate-300 transition-all cursor-pointer"
+              title="Restore standard curriculum textbook catalog"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Reset Standard Catalog</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-3">
@@ -462,7 +535,27 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           </div>
 
           {/* Book Cards Grid */}
-          {filteredBooks.length === 0 ? (
+          {books.length === 0 ? (
+            <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 shadow-xs space-y-4">
+              <BookOpen className="w-12 h-12 text-teal-500 mx-auto" />
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Library Catalog is Empty</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                  Initialize the standard Biley Academy curriculum textbook catalog into persistent storage.
+                </p>
+              </div>
+              {onRestoreDefaultBooks && (
+                <button
+                  type="button"
+                  onClick={onRestoreDefaultBooks}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Restore Standard 20-Book Catalog</span>
+                </button>
+              )}
+            </div>
+          ) : filteredBooks.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 shadow-xs">
               <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
               <h3 className="font-bold text-sm text-slate-800">No books match your search or filter</h3>
