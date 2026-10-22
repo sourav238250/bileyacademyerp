@@ -232,9 +232,9 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <p className="text-slate-600 mt-1"><span className="font-semibold">Student ID:</span> {student.id}</p>
             </div>
             <div>
-              <p className="text-slate-500 uppercase text-[10px] font-semibold">Class & Stream</p>
+              <p className="text-slate-500 uppercase text-[10px] font-semibold">Class & Board</p>
               <p className="font-bold text-slate-800 mt-0.5">Class {student.classLevel} - {student.stream}</p>
-              <p className="text-slate-600 mt-1"><span className="font-semibold">Roll Number:</span> {student.rollNo}</p>
+              <p className="text-slate-600 mt-1"><span className="font-semibold">Board:</span> <span className="font-bold text-slate-900 bg-slate-200/60 px-1.5 py-0.5 rounded">{exam.curriculum || student.curriculum || 'CBSE'}</span> • Roll: {student.rollNo}</p>
             </div>
             <div>
               <p className="text-slate-500 uppercase text-[10px] font-semibold">Attendance & Batch</p>
@@ -317,11 +317,40 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
           </div>
 
           {/* Teacher's Overall Evaluation */}
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs mb-8">
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs mb-4">
             <p className="text-[10px] uppercase font-bold text-slate-500">Academic Mentor's Remarks:</p>
             <p className="text-slate-800 italic mt-1 font-serif text-sm">
               "{result.overallRemarks}"
             </p>
+          </div>
+
+          {/* Board-Specific Grading Scale Key */}
+          <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200 text-[10px] mb-8">
+            <span className="font-bold text-slate-700 uppercase tracking-wide block mb-1">
+              Official {(exam.curriculum || student.curriculum || 'CBSE')} Evaluation & Grading Scheme:
+            </span>
+            {(exam.curriculum || student.curriculum) === 'W.B. Board' ? (
+              <div className="flex flex-wrap items-center gap-2 text-slate-600 font-medium">
+                <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">AA (90-100%): Outstanding</span>
+                <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">A+ (80-89%): Excellent</span>
+                <span className="bg-cyan-100 text-cyan-800 px-1.5 py-0.5 rounded font-bold">A (60-79%): Very Good</span>
+                <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">B+ (45-59%): Good</span>
+                <span className="bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded font-bold">B (35-44%): Satisfactory</span>
+                <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-bold">C (25-34%): Marginal Pass</span>
+                <span className="bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">D (&lt;25%): Disqualified</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2 text-slate-600 font-medium">
+                <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">A1 (91-100%): Top Tier</span>
+                <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold">A2 (81-90%)</span>
+                <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">B1 (71-80%)</span>
+                <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold">B2 (61-70%)</span>
+                <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">C1 (51-60%)</span>
+                <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-bold">C2 (41-50%)</span>
+                <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-bold">D (33-40%): Pass</span>
+                <span className="bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">E (&lt;33%): Remedial</span>
+              </div>
+            )}
           </div>
 
           {/* Signature & Seal Footer */}

@@ -9,6 +9,7 @@ interface RoutinePrintModalProps {
   type: 'class' | 'faculty';
   classLevel?: ClassLevel | string;
   stream?: StreamType | string;
+  curriculum?: 'CBSE' | 'W.B. Board';
   facultyMember?: Faculty;
   timetable: TimetableSlot[];
   faculty: Faculty[];
@@ -21,6 +22,7 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
   type,
   classLevel = '10',
   stream = 'General',
+  curriculum,
   facultyMember,
   timetable,
   faculty,
@@ -81,7 +83,12 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
 
   // Filter slots
   const relevantSlots = type === 'class'
-    ? timetable.filter((s) => s.classLevel === classLevel && (classLevel === '11' || classLevel === '12' ? s.stream === stream : true))
+    ? timetable.filter(
+        (s) =>
+          s.classLevel === classLevel &&
+          (classLevel === '11' || classLevel === '12' ? s.stream === stream : true) &&
+          (!curriculum || s.curriculum === curriculum)
+      )
     : timetable.filter((s) => s.facultyId === facultyMember?.id);
 
   // Group slots by day
@@ -203,8 +210,8 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
                   <p className="font-extrabold text-slate-900 text-sm mt-0.5">Class {classLevel}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Stream / Track</span>
-                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">{stream}</p>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Board / Stream</span>
+                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">{curriculum ? `${curriculum} (${stream})` : stream}</p>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Weekly Lectures</span>
@@ -287,9 +294,18 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
                                   <Clock className="w-3.5 h-3.5 text-purple-700 shrink-0" />
                                   <span className="font-mono font-bold text-slate-900">{slot.timeSlot}</span>
                                 </div>
-                                <span className="bg-emerald-100 text-emerald-800 print:border print:border-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
-                                  {slot.room}
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                    slot.curriculum === 'W.B. Board'
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                      : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  }`}>
+                                    {slot.curriculum || 'CBSE'}
+                                  </span>
+                                  <span className="bg-emerald-100 text-emerald-800 print:border print:border-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                    {slot.room}
+                                  </span>
+                                </div>
                               </div>
 
                               <div className="flex items-center justify-between text-[11px]">

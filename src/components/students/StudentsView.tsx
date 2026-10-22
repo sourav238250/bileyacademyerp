@@ -11,6 +11,7 @@ import {
   AdminUser,
   AttendanceRecord,
   Faculty,
+  CurriculumBoard,
 } from '../../types';
 import {
   CLASS_LEVELS,
@@ -120,6 +121,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const triggerFeeDeposit = onOpenFeeDepositModal || onDepositFee || (() => {});
   const triggerIdCard = onOpenIdCardModal || onViewIdCard || (() => {});
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCurriculum, setSelectedCurriculum] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [selectedFeeStatus, setSelectedFeeStatus] = useState<string>('all');
@@ -134,7 +136,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   // Helper for subject visual themes and badges
   const getSubjectColorStyles = (code: string, name: string) => {
     const upper = (code + ' ' + name).toUpperCase();
-    if (upper.includes('MATH') || upper.includes('MTH')) {
+    if (upper.includes('MATH') || upper.includes('MTH') || upper.includes('GANIT')) {
       return {
         bg: 'bg-indigo-50/60',
         border: 'border-indigo-200',
@@ -147,7 +149,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         iconBg: 'bg-indigo-600',
       };
     }
-    if (upper.includes('PHY')) {
+    if (upper.includes('PHY') || upper.includes('BHOUTA')) {
       return {
         bg: 'bg-blue-50/60',
         border: 'border-blue-200',
@@ -173,7 +175,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         iconBg: 'bg-amber-600',
       };
     }
-    if (upper.includes('BIO')) {
+    if (upper.includes('BIO') || upper.includes('JIBON') || upper.includes('EVS') || upper.includes('PORIBESH')) {
       return {
         bg: 'bg-emerald-50/60',
         border: 'border-emerald-200',
@@ -186,7 +188,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         iconBg: 'bg-emerald-600',
       };
     }
-    if (upper.includes('ENG')) {
+    if (upper.includes('ENG') || upper.includes('BUTTERFLY') || upper.includes('BLOSSOMS')) {
       return {
         bg: 'bg-rose-50/60',
         border: 'border-rose-200',
@@ -199,7 +201,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         iconBg: 'bg-rose-600',
       };
     }
-    if (upper.includes('COMPUTER APPLICATION') || upper.includes('CA-') || upper.includes('CA')) {
+    if (upper.includes('COMPUTER APPLICATION') || upper.includes('COMA') || upper.includes('CA-') || upper.includes('CA') || upper.includes('ICT')) {
       return {
         bg: 'bg-teal-50/60',
         border: 'border-teal-200',
@@ -212,7 +214,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         iconBg: 'bg-teal-600',
       };
     }
-    if (upper.includes('COMPUTER SCIENCE') || upper.includes('CS-') || upper.includes('CS')) {
+    if (upper.includes('COMPUTER SCIENCE') || upper.includes('COMS') || upper.includes('CS-') || upper.includes('CS')) {
       return {
         bg: 'bg-purple-50/60',
         border: 'border-purple-200',
@@ -242,6 +244,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [formData, setFormData] = useState<Partial<Student>>({
     name: '',
     classLevel: '10',
+    curriculum: 'CBSE',
     stream: 'General',
     batch: 'Evening Batch (4:00 PM - 8:30 PM)',
     gender: 'Male',
@@ -263,18 +266,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     enrollmentType: 'All Subjects Combo',
   });
 
-  // Helper to get available subjects for the form's active class & stream
+  // Helper to get available subjects for the form's active class, stream & curriculum
   const formAvailableSubjects = getAvailableSubjectsForStudent(
     (formData.classLevel as ClassLevel) || '10',
     formData.stream || 'General',
-    subjects
+    subjects,
+    formData.curriculum || 'CBSE'
   );
 
   const handleOpenAdmission = () => {
     setEditingStudent(null);
     const initialClass: ClassLevel = '10';
     const initialStream: StreamType = 'General';
-    const available = getAvailableSubjectsForStudent(initialClass, initialStream, subjects);
+    const initialCurriculum: import('../../types').CurriculumBoard = selectedCurriculum === 'W.B. Board' ? 'W.B. Board' : 'CBSE';
+    const available = getAvailableSubjectsForStudent(initialClass, initialStream, subjects, initialCurriculum);
     
     const defaultAdmMonth = getSessionMonthFromDate(new Date().toISOString().split('T')[0]);
     const initialDetails = available.map((s) => ({
@@ -285,6 +290,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     setFormData({
       name: '',
       classLevel: initialClass,
+      curriculum: initialCurriculum,
       stream: initialStream,
       batch: 'Evening Batch (4:00 PM - 8:30 PM)',
       gender: 'Male',
@@ -311,7 +317,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   const handleOpenEdit = (student: Student) => {
     setEditingStudent(student);
-    const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
+    const studentCurriculum = student.curriculum || 'CBSE';
+    const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects, studentCurriculum);
     const enrolledIds = student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0
       ? student.enrolledSubjectIds
       : available.map((s) => s.id);
@@ -366,7 +373,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const available = getAvailableSubjectsForStudent(
       (formData.classLevel as ClassLevel) || '10',
       formData.stream || 'General',
-      subjects
+      subjects,
+      formData.curriculum || 'CBSE'
     );
 
     let derivedMode = formData.enrollmentType;
@@ -398,7 +406,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const available = getAvailableSubjectsForStudent(
       (formData.classLevel as ClassLevel) || '10',
       formData.stream || 'General',
-      subjects
+      subjects,
+      formData.curriculum || 'CBSE'
     );
 
     if (mode === 'All Subjects Combo') {
@@ -433,7 +442,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const available = getAvailableSubjectsForStudent(
       (formData.classLevel as ClassLevel) || '10',
       formData.stream || 'General',
-      subjects
+      subjects,
+      formData.curriculum || 'CBSE'
     );
 
     if (presetKey === 'ALL') {
@@ -494,7 +504,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const available = getAvailableSubjectsForStudent(
       (formData.classLevel as ClassLevel) || '10',
       formData.stream || 'General',
-      subjects
+      subjects,
+      formData.curriculum || 'CBSE'
     );
 
     const enrolled = formData.enrolledSubjectIds && formData.enrolledSubjectIds.length > 0
@@ -522,6 +533,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       const updated: Student = {
         ...editingStudent,
         ...(formData as Student),
+        curriculum: formData.curriculum || editingStudent.curriculum || 'CBSE',
         enrolledSubjectIds: enrolled,
         enrollmentType: finalMode,
         subjectEnrollments: resolvedEnrollments,
@@ -538,15 +550,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       const rollSuffix = String(
         students.filter((s) => s.classLevel === formData.classLevel).length + 1
       ).padStart(2, '0');
+      const boardTag = formData.curriculum === 'W.B. Board' ? 'WB' : 'CBSE';
       const rollPrefix = formData.classLevel === '11' || formData.classLevel === '12' 
-        ? `${formData.classLevel}-${formData.stream?.substring(0, 3).toUpperCase()}` 
-        : `${formData.classLevel}-GEN`;
+        ? `${formData.classLevel}-${formData.stream?.substring(0, 3).toUpperCase()}-${boardTag}` 
+        : `${formData.classLevel}-${boardTag}`;
 
       const newStudent: Student = {
         id: newId,
         rollNo: `${rollPrefix}-${rollSuffix}`,
         name: formData.name || '',
         classLevel: formData.classLevel as ClassLevel,
+        curriculum: formData.curriculum || 'CBSE',
         stream: (formData.stream as StreamType) || 'General',
         batch: (formData.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
         gender: (formData.gender as Gender) || 'Male',
@@ -601,6 +615,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       st.guardianName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       enrolledSubs.some((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const matchesCurriculum = selectedCurriculum === 'all' || st.curriculum === selectedCurriculum;
     const matchesClass = selectedClass === 'all' || st.classLevel === selectedClass;
     const matchesStream = selectedStream === 'all' || st.stream === selectedStream;
     const matchesFee =
@@ -615,7 +630,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       selectedSubjectFilter === 'all' ||
       enrolledSubs.some((s) => s.name.toLowerCase() === selectedSubjectFilter.toLowerCase() || s.code.toLowerCase() === selectedSubjectFilter.toLowerCase());
 
-    return matchesSearch && matchesClass && matchesStream && matchesFee && matchesEnrollmentMode && matchesSubject;
+    return matchesSearch && matchesCurriculum && matchesClass && matchesStream && matchesFee && matchesEnrollmentMode && matchesSubject;
   });
 
   return (
@@ -678,6 +693,45 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* Filters & Search Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+        {/* Curriculum Board Tabs */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculum('all')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center ${
+              selectedCurriculum === 'all'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            All Boards ({students.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculum('CBSE')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
+              selectedCurriculum === 'CBSE'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+            CBSE Curriculum ({students.filter((s) => s.curriculum === 'CBSE').length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculum('W.B. Board')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
+              selectedCurriculum === 'W.B. Board'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+            W.B. Board Curriculum ({students.filter((s) => s.curriculum === 'W.B. Board').length})
+          </button>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-3">
           
           {/* Search bar */}
@@ -843,11 +897,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </div>
                       </td>
 
-                      {/* Class & Stream */}
+                      {/* Class & Stream & Curriculum */}
                       <td className="py-3.5 px-4">
-                        <span className="inline-block font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                          Class {student.classLevel}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-block font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                            Class {student.classLevel}
+                          </span>
+                          <span className={`inline-block font-bold px-2 py-0.5 rounded text-[10px] ${
+                            student.curriculum === 'W.B. Board'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            {student.curriculum || 'CBSE'}
+                          </span>
+                        </div>
                         <span className="block text-[11px] text-slate-500 mt-0.5">{student.stream}</span>
                       </td>
 
@@ -1010,7 +1073,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4 text-emerald-600" /> 1. Academic Class & Batch
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">
                       Student Full Name *
@@ -1027,6 +1090,34 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">
+                      Curriculum Board *
+                    </label>
+                    <select
+                      value={formData.curriculum || 'CBSE'}
+                      onChange={(e) => {
+                        const newBoard = e.target.value as CurriculumBoard;
+                        const newAvail = getAvailableSubjectsForStudent(
+                          (formData.classLevel as ClassLevel) || '10',
+                          formData.stream || 'General',
+                          subjects,
+                          newBoard
+                        );
+                        setFormData({
+                          ...formData,
+                          curriculum: newBoard,
+                          enrolledSubjectIds: newAvail.map((s) => s.id),
+                          enrollmentType: 'All Subjects Combo',
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white font-semibold text-slate-900"
+                    >
+                      <option value="CBSE">CBSE (Central Board)</option>
+                      <option value="W.B. Board">W.B. Board (West Bengal State)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
                       Class Level *
                     </label>
                     <select
@@ -1038,7 +1129,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           ? (formData.stream as StreamType)
                           : (validStreams[0] as StreamType);
                         
-                        const newAvail = getAvailableSubjectsForStudent(newClass, streamToSet, subjects);
+                        const newAvail = getAvailableSubjectsForStudent(newClass, streamToSet, subjects, formData.curriculum || 'CBSE');
                         
                         setFormData({
                           ...formData,
@@ -1069,7 +1160,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         const newAvail = getAvailableSubjectsForStudent(
                           (formData.classLevel as ClassLevel) || '10',
                           newStream,
-                          subjects
+                          subjects,
+                          formData.curriculum || 'CBSE'
                         );
                         setFormData({
                           ...formData,
@@ -1708,8 +1800,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   {viewingStudent.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-base">{viewingStudent.name}</h3>
-                  <p className="text-xs text-slate-400 font-mono">ID: {viewingStudent.id} • Roll: {viewingStudent.rollNo}</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base">{viewingStudent.name}</h3>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      viewingStudent.curriculum === 'W.B. Board'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                        : 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                    }`}>
+                      {viewingStudent.curriculum || 'CBSE'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono">ID: {viewingStudent.id} • Roll: {viewingStudent.rollNo} • Board: {viewingStudent.curriculum || 'CBSE'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

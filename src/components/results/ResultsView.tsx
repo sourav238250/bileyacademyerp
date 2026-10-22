@@ -70,12 +70,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const examResults = results.filter((r) => r.examId === selectedExamId);
   const rankedResults = assignRanksToResults(examResults);
 
-  // Filter students eligible for this exam (same class and stream)
+  // Filter students eligible for this exam (same class, stream, and board)
   const eligibleStudents = currentExam
     ? students.filter(
         (s) =>
           s.classLevel === currentExam.classLevel &&
-          (currentExam.stream === 'General' || s.stream === currentExam.stream)
+          (currentExam.stream === 'General' || s.stream === currentExam.stream) &&
+          (!currentExam.curriculum || s.curriculum === currentExam.curriculum)
       )
     : [];
 
@@ -144,14 +145,16 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       };
     });
 
+    const studentObj = students.find((s) => s.id === entryStudentId);
     const percentage = totalMax > 0 ? Number(((totalObtained / totalMax) * 100).toFixed(1)) : 0;
-    const gradeInfo = calculateGrade(percentage);
+    const gradeInfo = calculateGrade(percentage, currentExam.curriculum || studentObj?.curriculum || 'CBSE');
 
     const newResult: ExamResult = {
       id: editingResultId || `RES-${currentExam.classLevel}-${Date.now().toString().slice(-4)}`,
       examId: currentExam.id,
       studentId: entryStudentId,
       classLevel: currentExam.classLevel,
+      curriculum: currentExam.curriculum || studentObj?.curriculum || 'CBSE',
       scores: scoresList,
       totalMarksObtained: totalObtained,
       totalMaxMarks: totalMax,
@@ -223,7 +226,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           >
             {exams.map((ex) => (
               <option key={ex.id} value={ex.id}>
-                Class {ex.classLevel} - {ex.title}
+                [{ex.curriculum || 'CBSE'}] Class {ex.classLevel} - {ex.title}
               </option>
             ))}
           </select>

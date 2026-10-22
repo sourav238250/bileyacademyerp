@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Subject, Faculty, ClassLevel, StreamType, AdminUser } from '../../types';
+import { Subject, Faculty, ClassLevel, StreamType, AdminUser, CurriculumBoard } from '../../types';
 import { CLASS_LEVELS, STREAMS_FOR_CLASS, STANDARD_SUBJECT_NAMES, STANDARD_SUBJECT_CODES, StandardSubjectName } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
@@ -41,6 +41,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
   onOpenPermissionsMatrix,
 }) => {
   const auth = evaluateSectionAuthorization(currentAdmin, 'subjects');
+  const [selectedCurriculum, setSelectedCurriculum] = useState<'all' | 'CBSE' | 'W.B. Board'>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -49,6 +50,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
   const [formData, setFormData] = useState<Partial<Subject>>({
     name: '',
     code: '',
+    curriculum: 'CBSE',
     classLevel: '10',
     stream: 'General',
     weeklyHours: 4,
@@ -64,6 +66,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
     setFormData({
       name: '',
       code: '',
+      curriculum: selectedCurriculum !== 'all' ? selectedCurriculum : 'CBSE',
       classLevel: '10',
       stream: 'General',
       weeklyHours: 4,
@@ -89,17 +92,23 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
       return;
     }
 
+    const curBoard: CurriculumBoard = formData.curriculum || 'CBSE';
+    const isWB = curBoard === 'W.B. Board';
+
     if (editingSubject) {
       const updated: Subject = {
         ...editingSubject,
         ...(formData as Subject),
+        curriculum: curBoard,
       };
       onUpdateSubject(updated);
     } else {
+      const prefix = isWB ? 'SUB-WB' : 'SUB';
       const newSubject: Subject = {
-        id: `SUB-${formData.classLevel}-${formData.code?.toUpperCase().replace(/\s+/g, '')}`,
+        id: `${prefix}-${formData.classLevel}-${formData.code?.toUpperCase().replace(/\s+/g, '')}`,
         code: formData.code || '',
         name: formData.name || '',
+        curriculum: curBoard,
         classLevel: (formData.classLevel as ClassLevel) || '10',
         stream: (formData.stream as StreamType) || 'General',
         weeklyHours: Number(formData.weeklyHours) || 3,
@@ -121,7 +130,8 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
       (sub.textbook && sub.textbook.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesClass = selectedClass === 'all' || sub.classLevel === selectedClass;
-    return matchesSearch && matchesClass;
+    const matchesCurriculum = selectedCurriculum === 'all' || sub.curriculum === selectedCurriculum;
+    return matchesSearch && matchesClass && matchesCurriculum;
   });
 
   // Calculate total weekly hours across curriculum
@@ -175,6 +185,45 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
 
       {/* Class Level Filters */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+        {/* Curriculum Board Switcher */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculum('all')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center ${
+              selectedCurriculum === 'all'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            All Curricula ({subjects.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculum('CBSE')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
+              selectedCurriculum === 'CBSE'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+            CBSE Curriculum ({subjects.filter((s) => s.curriculum === 'CBSE').length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculum('W.B. Board')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
+              selectedCurriculum === 'W.B. Board'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+            W.B. Board Curriculum ({subjects.filter((s) => s.curriculum === 'W.B. Board').length})
+          </button>
+        </div>
+
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           
           {/* Class selector */}
@@ -323,9 +372,16 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
                 {/* Header row */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-800 px-2 py-0.5 rounded">
                         Class {sub.classLevel}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        sub.curriculum === 'W.B. Board'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
+                        {sub.curriculum || 'CBSE'}
                       </span>
                       <span className="text-[10px] font-semibold text-slate-500">
                         {sub.stream}
@@ -448,6 +504,18 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Curriculum Board *</label>
+                <select
+                  value={formData.curriculum || 'CBSE'}
+                  onChange={(e) => setFormData({ ...formData, curriculum: e.target.value as CurriculumBoard })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white font-semibold text-slate-900"
+                >
+                  <option value="CBSE">CBSE (Central Board)</option>
+                  <option value="W.B. Board">W.B. Board (West Bengal State Board)</option>
+                </select>
+              </div>
+
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-slate-700 font-semibold">Standard Subject *</label>

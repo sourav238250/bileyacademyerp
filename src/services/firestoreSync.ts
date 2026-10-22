@@ -252,6 +252,8 @@ class FirebaseSyncService {
         attendance: JSON.parse(JSON.stringify(dataToSave.attendance || [])),
         questionBank: JSON.parse(JSON.stringify(dataToSave.questionBank || [])),
         assignments: JSON.parse(JSON.stringify(dataToSave.assignments || [])),
+        books: JSON.parse(JSON.stringify(dataToSave.books || [])),
+        bookIssues: JSON.parse(JSON.stringify(dataToSave.bookIssues || [])),
         authConfig: JSON.parse(JSON.stringify(dataToSave.authConfig || DEFAULT_AUTHORIZATION_CONFIG)),
       };
 

@@ -97,7 +97,7 @@ export const IdCardModal: React.FC<IdCardModalProps> = ({ student, onClose }) =>
             <div className="text-xs space-y-1">
               <h3 className="text-sm font-bold text-white tracking-tight">{student.name}</h3>
               <p className="text-slate-300 font-mono text-[11px]"><span className="text-slate-400">ID:</span> {student.id}</p>
-              <p className="text-slate-300"><span className="text-slate-400">Class:</span> <span className="font-semibold text-amber-300">Class {student.classLevel}</span> ({student.stream})</p>
+              <p className="text-slate-300"><span className="text-slate-400">Class:</span> <span className="font-semibold text-amber-300">Class {student.classLevel}</span> ({student.stream}) • <span className="font-bold text-emerald-400">{student.curriculum || 'CBSE'}</span></p>
               <p className="text-slate-300"><span className="text-slate-400">Roll:</span> {student.rollNo}</p>
               <p className="text-slate-300"><span className="text-slate-400">Guardian:</span> {student.guardianName}</p>
               <p className="text-slate-300"><span className="text-slate-400">Blood Group:</span> {student.bloodGroup || 'N/A'}</p>

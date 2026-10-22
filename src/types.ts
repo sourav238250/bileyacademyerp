@@ -1,5 +1,7 @@
 export type ClassLevel = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '12';
 
+export type CurriculumBoard = 'CBSE' | 'W.B. Board';
+
 export type StreamType = 'General' | 'Science' | 'Commerce' | 'Arts';
 
 export type BatchShift =
@@ -248,6 +250,7 @@ export interface Student {
   name: string;
   avatarUrl?: string;
   classLevel: ClassLevel;
+  curriculum: CurriculumBoard; // 'CBSE' | 'W.B. Board'
   stream: StreamType; // General for 5-10; Science/Commerce/Arts for 11-12
   batch: BatchShift;
   gender: Gender;
@@ -285,6 +288,7 @@ export interface Subject {
   code: string;
   name: string;
   classLevel: ClassLevel;
+  curriculum: CurriculumBoard; // 'CBSE' | 'W.B. Board'
   stream: StreamType;
   weeklyHours: number;
   facultyId?: string; // Assigned faculty ID
@@ -305,6 +309,7 @@ export interface Faculty {
   joiningDate: string;
   experienceYears: number;
   assignedSubjectIds: string[]; // Subject IDs taught
+  curriculumFocus?: 'CBSE' | 'W.B. Board' | 'Both';
   maxWeeklyHours: number;
   bio?: string;
 }
@@ -316,6 +321,7 @@ export interface Exam {
   title: string;
   examType: ExamType;
   classLevel: ClassLevel;
+  curriculum: CurriculumBoard; // 'CBSE' | 'W.B. Board'
   stream: StreamType;
   startDate: string;
   endDate: string;
@@ -346,6 +352,7 @@ export interface ExamResult {
   examId: string;
   studentId: string;
   classLevel: ClassLevel;
+  curriculum?: CurriculumBoard;
   scores: StudentSubjectScore[];
   totalMarksObtained: number;
   totalMaxMarks: number;
@@ -360,6 +367,7 @@ export interface ExamResult {
 
 export interface FeeStructure {
   classLevel: ClassLevel;
+  curriculum?: CurriculumBoard; // 'CBSE' | 'W.B. Board'
   stream: StreamType;
   admissionFee: number;
   monthlyTuitionFee: number; // Full package rate for all subjects
@@ -419,6 +427,7 @@ export interface TimetableSlot {
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
   timeSlot: string; // e.g. "06:30 AM - 07:30 AM"
   classLevel: ClassLevel;
+  curriculum?: CurriculumBoard; // 'CBSE' | 'W.B. Board'
   stream: StreamType;
   batch: BatchShift;
   subjectId: string;
@@ -433,6 +442,7 @@ export interface AttendanceRecord {
   studentId: string;
   subjectId: string;
   classLevel: ClassLevel;
+  curriculum?: CurriculumBoard; // 'CBSE' | 'W.B. Board'
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   facultyId?: string;

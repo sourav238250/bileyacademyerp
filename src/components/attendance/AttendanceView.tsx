@@ -89,19 +89,24 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   }, [currentAdmin, faculty]);
 
   // Marker form states
+  const [selectedBoard, setSelectedBoard] = useState<'all' | 'CBSE' | 'W.B. Board'>('all');
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>(() => {
     return loggedInFaculty ? loggedInFaculty.id : (faculty[0]?.id || 'ALL');
   });
 
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
-  // Available subjects for the selected faculty
+  // Available subjects for the selected faculty & board
   const availableSubjects = useMemo(() => {
-    if (selectedFacultyId === 'ALL') {
-      return subjects;
+    let list = subjects;
+    if (selectedFacultyId !== 'ALL') {
+      list = list.filter((s) => s.facultyId === selectedFacultyId);
     }
-    return subjects.filter((s) => s.facultyId === selectedFacultyId);
-  }, [subjects, selectedFacultyId]);
+    if (selectedBoard !== 'all') {
+      list = list.filter((s) => s.curriculum === selectedBoard);
+    }
+    return list;
+  }, [subjects, selectedFacultyId, selectedBoard]);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
     return availableSubjects[0]?.id || (subjects[0]?.id || '');
@@ -230,6 +235,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         id: `ATT-${selectedDate.replace(/-/g, '')}-${currentSubject.id}-${st.id}`,
         studentId: st.id,
         subjectId: currentSubject.id,
+        curriculum: currentSubject.curriculum || st.curriculum || 'CBSE',
         classLevel: currentSubject.classLevel,
         date: selectedDate,
         status: draft.status,
@@ -248,12 +254,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   };
 
   // Register view state
+  const [registerBoard, setRegisterBoard] = useState<'all' | 'CBSE' | 'W.B. Board'>('all');
   const [registerClassLevel, setRegisterClassLevel] = useState<ClassLevel>('10');
   const [registerSubjectId, setRegisterSubjectId] = useState<string>('');
 
   const registerSubjects = useMemo(() => {
-    return subjects.filter((s) => s.classLevel === registerClassLevel);
-  }, [subjects, registerClassLevel]);
+    return subjects.filter((s) => {
+      const matchClass = s.classLevel === registerClassLevel;
+      const matchBoard = registerBoard === 'all' || s.curriculum === registerBoard;
+      return matchClass && matchBoard;
+    });
+  }, [subjects, registerClassLevel, registerBoard]);
 
   useEffect(() => {
     if (registerSubjects.length > 0) {
@@ -441,13 +452,30 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           
           {/* Controls Bar: Faculty, Subject & Date Selector */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               
+              {/* Board Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
+                  1. Board
+                </label>
+                <select
+                  value={selectedBoard}
+                  onChange={(e) => setSelectedBoard(e.target.value as any)}
+                  className="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                >
+                  <option value="all">All Boards</option>
+                  <option value="CBSE">CBSE (Central Board)</option>
+                  <option value="W.B. Board">W.B. Board (West Bengal State)</option>
+                </select>
+              </div>
+
               {/* Faculty Mentor Filter */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-indigo-600" />
-                  1. Faculty Mentor
+                  2. Faculty Mentor
                 </label>
                 <select
                   value={selectedFacultyId}
@@ -467,7 +495,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                  2. Subject & Class Level
+                  3. Subject & Class Level
                 </label>
                 <select
                   value={selectedSubjectId}
@@ -489,7 +517,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                  3. Lecture Date
+                  4. Lecture Date
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -682,8 +710,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
                             {/* Class & Coaching Mode */}
                             <td className="py-3 px-4">
-                              <span className="font-semibold text-slate-800">Class {student.classLevel}</span>
-                              <span className="block text-[10px] text-indigo-700 font-bold">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-slate-800">Class {student.classLevel}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                  student.curriculum === 'W.B. Board'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                }`}>
+                                  {student.curriculum || 'CBSE'}
+                                </span>
+                              </div>
+                              <span className="block text-[10px] text-indigo-700 font-bold mt-0.5">
                                 {student.enrollmentType || 'All Subjects Combo'}
                               </span>
                             </td>
@@ -839,6 +876,20 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               
+              {/* Board */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Board</label>
+                <select
+                  value={registerBoard}
+                  onChange={(e) => setRegisterBoard(e.target.value as any)}
+                  className="px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg focus:outline-none bg-white text-slate-800"
+                >
+                  <option value="all">All Boards</option>
+                  <option value="CBSE">CBSE</option>
+                  <option value="W.B. Board">W.B. Board</option>
+                </select>
+              </div>
+
               {/* Class Level */}
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Class Level</label>

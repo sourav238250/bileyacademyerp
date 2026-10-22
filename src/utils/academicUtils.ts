@@ -2,6 +2,7 @@ import {
   AttendanceRecord,
   AttendanceStatus,
   ClassLevel,
+  CurriculumBoard,
   ExamResult,
   Faculty,
   FeeDeposit,
@@ -16,6 +17,8 @@ import {
 } from '../types';
 
 export const CLASS_LEVELS: ClassLevel[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+export const CURRICULUM_BOARDS: CurriculumBoard[] = ['CBSE', 'W.B. Board'];
 
 export const STANDARD_SUBJECT_NAMES = [
   'Mathematics',
@@ -74,23 +77,57 @@ export const STREAMS_FOR_CLASS: Record<ClassLevel, string[]> = {
 };
 
 export const DEFAULT_FEE_STRUCTURE: Record<string, FeeStructure> = {
-  // Class 1 to 4: Admission: 100, Tuition: 300/subject, Exam: 50, Study Material & Lab Fees: 50, Annual Development & others: 50
+  // CBSE Fee Structures
+  '1-General-CBSE': { classLevel: '1', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '2-General-CBSE': { classLevel: '2', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '3-General-CBSE': { classLevel: '3', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '4-General-CBSE': { classLevel: '4', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '5-General-CBSE': { classLevel: '5', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '6-General-CBSE': { classLevel: '6', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '7-General-CBSE': { classLevel: '7', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '8-General-CBSE': { classLevel: '8', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '9-General-CBSE': { classLevel: '9', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '10-General-CBSE': { classLevel: '10', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Science-CBSE': { classLevel: '11', stream: 'Science', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Commerce-CBSE': { classLevel: '11', stream: 'Commerce', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Arts-CBSE': { classLevel: '11', stream: 'Arts', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-General-CBSE': { classLevel: '11', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Science-CBSE': { classLevel: '12', stream: 'Science', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Commerce-CBSE': { classLevel: '12', stream: 'Commerce', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Arts-CBSE': { classLevel: '12', stream: 'Arts', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-General-CBSE': { classLevel: '12', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // W.B. Board Fee Structures
+  '1-General-W.B. Board': { classLevel: '1', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '2-General-W.B. Board': { classLevel: '2', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '3-General-W.B. Board': { classLevel: '3', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '4-General-W.B. Board': { classLevel: '4', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '5-General-W.B. Board': { classLevel: '5', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '6-General-W.B. Board': { classLevel: '6', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '7-General-W.B. Board': { classLevel: '7', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '8-General-W.B. Board': { classLevel: '8', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '9-General-W.B. Board': { classLevel: '9', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '10-General-W.B. Board': { classLevel: '10', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Science-W.B. Board': { classLevel: '11', stream: 'Science', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Commerce-W.B. Board': { classLevel: '11', stream: 'Commerce', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Arts-W.B. Board': { classLevel: '11', stream: 'Arts', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-General-W.B. Board': { classLevel: '11', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Science-W.B. Board': { classLevel: '12', stream: 'Science', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Commerce-W.B. Board': { classLevel: '12', stream: 'Commerce', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Arts-W.B. Board': { classLevel: '12', stream: 'Arts', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-General-W.B. Board': { classLevel: '12', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // General Fallback Structures
   '1-General': { classLevel: '1', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
   '2-General': { classLevel: '2', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
   '3-General': { classLevel: '3', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
   '4-General': { classLevel: '4', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-
-  // Class 5 to 8: Admission: 100, Tuition: 350/subject, Exam: 50, Study Material & Lab Fees: 50, Annual Development & others: 50
   '5-General': { classLevel: '5', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
   '6-General': { classLevel: '6', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
   '7-General': { classLevel: '7', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
   '8-General': { classLevel: '8', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-
-  // Class 9 to 10: Admission: 100, Tuition: 400/subject, Exam: 100, Study Material & Lab Fees: 50, Annual Development & others: 50
   '9-General': { classLevel: '9', stream: 'General', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
   '10-General': { classLevel: '10', stream: 'General', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-
-  // Class 11 to 12: Admission: 100, Tuition: 450/subject, Exam: 100, Study Material & Lab Fees: 50, Annual Development & others: 50
   '11-Science': { classLevel: '11', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
   '11-Commerce': { classLevel: '11', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
   '11-Arts': { classLevel: '11', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
@@ -101,6 +138,25 @@ export const DEFAULT_FEE_STRUCTURE: Record<string, FeeStructure> = {
   '12-General': { classLevel: '12', stream: 'General', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
 };
 
+export function getFeeStructure(
+  classLevel: ClassLevel,
+  stream: string,
+  curriculum?: CurriculumBoard,
+  feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE
+): FeeStructure {
+  if (curriculum) {
+    const boardKey = `${classLevel}-${stream}-${curriculum}`;
+    if (feeStructures[boardKey]) return feeStructures[boardKey];
+    const boardGeneralKey = `${classLevel}-General-${curriculum}`;
+    if (feeStructures[boardGeneralKey]) return feeStructures[boardGeneralKey];
+  }
+  const key = `${classLevel}-${stream}`;
+  if (feeStructures[key]) return feeStructures[key];
+  const generalKey = `${classLevel}-General`;
+  if (feeStructures[generalKey]) return feeStructures[generalKey];
+  return feeStructures['1-General'] || DEFAULT_FEE_STRUCTURE['1-General'];
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -109,7 +165,21 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function calculateGrade(percentage: number): { grade: string; remarks: string; gpa: number } {
+export function calculateGrade(
+  percentage: number,
+  curriculum: CurriculumBoard = 'CBSE'
+): { grade: string; remarks: string; gpa: number } {
+  if (curriculum === 'W.B. Board') {
+    if (percentage >= 90) return { grade: 'AA', remarks: 'Outstanding Academic Performance (উৎকৃষ্ট)', gpa: 10.0 };
+    if (percentage >= 80) return { grade: 'A+', remarks: 'Excellent Mastery & Understanding (চমৎকার)', gpa: 9.0 };
+    if (percentage >= 60) return { grade: 'A', remarks: 'Very Good Standard (খুব ভালো)', gpa: 8.0 };
+    if (percentage >= 45) return { grade: 'B+', remarks: 'Good Competence (ভালো)', gpa: 7.0 };
+    if (percentage >= 35) return { grade: 'B', remarks: 'Satisfactory, Regular Practice Needed (সন্তোষজনক)', gpa: 6.0 };
+    if (percentage >= 25) return { grade: 'C', remarks: 'Marginal Pass, Intensive Support Recommended (প্রান্তিক উত্তীর্ণ)', gpa: 4.0 };
+    return { grade: 'D', remarks: 'Needs Immediate Remedial Coaching (অকৃতকার্য)', gpa: 0.0 };
+  }
+
+  // CBSE Grading Scale
   if (percentage >= 91) return { grade: 'A1', remarks: 'Outstanding Academic Performance', gpa: 10.0 };
   if (percentage >= 81) return { grade: 'A2', remarks: 'Excellent Mastery & Understanding', gpa: 9.0 };
   if (percentage >= 71) return { grade: 'B1', remarks: 'Very Good Academic Standard', gpa: 8.0 };
@@ -126,12 +196,13 @@ export function calculateGrade(percentage: number): { grade: string; remarks: st
 export function getAvailableSubjectsForStudent(
   classLevel: ClassLevel,
   stream: string,
-  subjects: Subject[]
+  subjects: Subject[],
+  curriculum?: CurriculumBoard
 ): Subject[] {
   return subjects.filter((s) => {
     if (s.classLevel !== classLevel) return false;
-    // For Higher Secondary (Class 11 & 12), all 7 standardized subjects
-    // (Maths, Physics, Chemistry, Biology, English, Computer Application, Computer Science)
+    if (curriculum && s.curriculum && s.curriculum !== curriculum) return false;
+    // For Higher Secondary (Class 11 & 12), all standardized subjects
     // are available for comprehensive coaching enrollment regardless of stream selection
     if (['11', '12'].includes(classLevel)) {
       return true;
@@ -142,10 +213,10 @@ export function getAvailableSubjectsForStudent(
 
 /**
  * Returns the exact list of subjects a student is enrolled in for coaching.
- * If enrolledSubjectIds is not specified or empty, assumes all available subjects for class & stream.
+ * If enrolledSubjectIds is not specified or empty, assumes all available subjects for class & stream & curriculum.
  */
 export function getEnrolledSubjectsForStudent(student: Student, subjects: Subject[]): Subject[] {
-  const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
+  const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects, student.curriculum);
   const enrolledIds =
     student.subjectEnrollments && student.subjectEnrollments.length > 0
       ? student.subjectEnrollments.map((e) => e.subjectId)
@@ -401,13 +472,7 @@ export function getStudentMonthTuitionRate(
     };
   }
 
-  const key = `${student.classLevel}-${student.stream}`;
-  const structure =
-    feeStructures[key] ||
-    feeStructures[`${student.classLevel}-General`] ||
-    DEFAULT_FEE_STRUCTURE[key] ||
-    DEFAULT_FEE_STRUCTURE[`${student.classLevel}-General`] ||
-    DEFAULT_FEE_STRUCTURE['1-General'];
+  const structure = getFeeStructure(student.classLevel, student.stream, student.curriculum, feeStructures);
   const perSubRate = structure.perSubjectMonthlyFee || 350;
   const tuition = activeCount * perSubRate;
 
@@ -430,7 +495,7 @@ export function getStudentCoachingMode(
   subjects?: Subject[]
 ): 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo' {
   if (subjects && subjects.length > 0) {
-    const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
+    const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects, student.curriculum);
     const enrolled = getEnrolledSubjectsForStudent(student, subjects);
     if (enrolled.length === 1) return 'Single Subject';
     if (enrolled.length > 1 && enrolled.length < available.length) return 'Multiple Subjects';
@@ -458,13 +523,7 @@ export function computeStudentFeeSummary(
   feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
   subjects?: Subject[]
 ): StudentFeeSummary {
-  const key = `${student.classLevel}-${student.stream}`;
-  const structure =
-    feeStructures[key] ||
-    feeStructures[`${student.classLevel}-General`] ||
-    DEFAULT_FEE_STRUCTURE[key] ||
-    DEFAULT_FEE_STRUCTURE[`${student.classLevel}-General`] ||
-    DEFAULT_FEE_STRUCTURE['1-General'];
+  const structure = getFeeStructure(student.classLevel, student.stream, student.curriculum, feeStructures);
 
   // Determine enrolled subject count & coaching mode
   const allEnrollments = getStudentSubjectEnrollments(student, subjects);
@@ -474,7 +533,7 @@ export function computeStudentFeeSummary(
   // Available subjects for proportional material fees
   let totalAvailableCount = 6;
   if (subjects && subjects.length > 0) {
-    const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects);
+    const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects, student.curriculum);
     totalAvailableCount = Math.max(available.length, 1);
   }
 

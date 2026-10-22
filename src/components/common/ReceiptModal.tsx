@@ -338,6 +338,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <p className="text-slate-600 mt-0.5"><span className="font-semibold">Student ID:</span> {student.id}</p>
               <p className="text-slate-600 mt-0.5"><span className="font-semibold">Roll No:</span> {student.rollNo}</p>
               <p className="text-slate-600 mt-0.5"><span className="font-semibold">Class / Stream:</span> Class {student.classLevel} ({student.stream})</p>
+              <p className="text-slate-600 mt-0.5"><span className="font-semibold">Curriculum Board:</span> <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">{student.curriculum || 'CBSE'}</span></p>
             </div>
             <div>
               <p className="text-slate-500 font-medium uppercase text-[10px]">Guardian & Batch Info</p>

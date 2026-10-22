@@ -100,6 +100,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   // Class Routine View State
   const [selectedClassRoutine, setSelectedClassRoutine] = useState<ClassLevel>('10');
   const [selectedStreamRoutine, setSelectedStreamRoutine] = useState<StreamType>('General');
+  const [selectedRoutineCurriculum, setSelectedRoutineCurriculum] = useState<'all' | 'CBSE' | 'W.B. Board'>('all');
 
   // Faculty Routine View State
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>(faculty[0]?.id || 'FAC-09');
@@ -114,6 +115,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     type: 'class' | 'faculty';
     classLevel?: ClassLevel;
     stream?: StreamType;
+    curriculum?: 'CBSE' | 'W.B. Board';
     facultyMember?: Faculty;
   }>({
     isOpen: false,
@@ -316,6 +318,9 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       return;
     }
 
+    const subObj = subjects.find((s) => s.id === slotFormData.subjectId);
+    const resolvedCurriculum = subObj?.curriculum || slotFormData.curriculum || 'CBSE';
+
     if (editingTimetableSlot) {
       const updated: TimetableSlot = {
         ...editingTimetableSlot,
@@ -323,6 +328,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         timeSlot: timeSlot,
         classLevel: (slotFormData.classLevel as ClassLevel) || editingTimetableSlot.classLevel,
         stream: (slotFormData.stream as StreamType) || editingTimetableSlot.stream,
+        curriculum: resolvedCurriculum,
         batch: (slotFormData.batch as BatchShift) || editingTimetableSlot.batch,
         subjectId: slotFormData.subjectId,
         facultyId: chosenFacultyId,
@@ -336,6 +342,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         timeSlot: timeSlot,
         classLevel: (slotFormData.classLevel as ClassLevel) || '10',
         stream: (slotFormData.stream as StreamType) || 'General',
+        curriculum: resolvedCurriculum,
         batch: (slotFormData.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
         subjectId: slotFormData.subjectId,
         facultyId: chosenFacultyId,
@@ -490,14 +497,54 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                       type: 'class',
                       classLevel: selectedClassRoutine,
                       stream: (selectedClassRoutine === '11' || selectedClassRoutine === '12') ? selectedStreamRoutine : 'General',
+                      curriculum: selectedRoutineCurriculum !== 'all' ? selectedRoutineCurriculum : undefined,
                     })
                   }
                   className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Print Class {selectedClassRoutine} Routine</span>
+                  <span>Print {selectedRoutineCurriculum !== 'all' ? selectedRoutineCurriculum : ''} Class {selectedClassRoutine} Routine</span>
                 </button>
               </div>
+            </div>
+
+            {/* Curriculum Board Switcher */}
+            <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setSelectedRoutineCurriculum('all')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedRoutineCurriculum === 'all'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Routines (Combined)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRoutineCurriculum('CBSE')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedRoutineCurriculum === 'CBSE'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+                CBSE Class Routine
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRoutineCurriculum('W.B. Board')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedRoutineCurriculum === 'W.B. Board'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+                W.B. Board Class Routine
+              </button>
             </div>
 
             {/* Class Buttons Grid */}
@@ -564,7 +611,8 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 s.classLevel === selectedClassRoutine &&
                 (selectedClassRoutine === '11' || selectedClassRoutine === '12'
                   ? s.stream === selectedStreamRoutine
-                  : true)
+                  : true) &&
+                (selectedRoutineCurriculum === 'all' || s.curriculum === selectedRoutineCurriculum)
             );
 
             return (
@@ -1517,6 +1565,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
           type={printModalConfig.type}
           classLevel={printModalConfig.classLevel}
           stream={printModalConfig.stream}
+          curriculum={printModalConfig.curriculum}
           facultyMember={printModalConfig.facultyMember}
           timetable={timetable}
           faculty={faculty}

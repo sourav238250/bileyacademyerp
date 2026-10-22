@@ -111,6 +111,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('all');
+  const [selectedCurriculum, setSelectedCurriculum] = useState<'all' | 'CBSE' | 'W.B. Board'>('all');
 
   // Sync initial tab when changed from props
   useEffect(() => {
@@ -849,7 +850,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
   const totalCollectedGross = deposits.reduce((sum, d) => sum + d.amountPaid, 0);
   const totalOutstandingDues = allFeeSummaries.reduce((sum, item) => sum + item.summary.dueAmount, 0);
-  const defaultersList = allFeeSummaries.filter((item) => item.summary.dueAmount > 0);
+  const defaultersList = allFeeSummaries.filter((item) => {
+    const hasDue = item.summary.dueAmount > 0;
+    const matchesCurriculum = selectedCurriculum === 'all' || item.student.curriculum === selectedCurriculum;
+    const matchesClass = selectedClassFilter === 'all' || item.student.classLevel === selectedClassFilter;
+    return hasDue && matchesCurriculum && matchesClass;
+  });
 
   // Filtered deposits
   const filteredDeposits = deposits.filter((dep) => {
@@ -862,8 +868,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
     const matchesClass =
       selectedClassFilter === 'all' || (student && student.classLevel === selectedClassFilter);
+    const matchesCurriculum =
+      selectedCurriculum === 'all' || (student && student.curriculum === selectedCurriculum);
 
-    return matchesSearch && matchesClass;
+    return matchesSearch && matchesClass && matchesCurriculum;
   });
 
   return (
@@ -1045,6 +1053,45 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
       {activeTab === 'deposits' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-6">
+          {/* Curriculum Board Switcher */}
+          <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setSelectedCurriculum('all')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedCurriculum === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Boards ({deposits.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCurriculum('CBSE')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedCurriculum === 'CBSE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+              CBSE Ledger
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCurriculum('W.B. Board')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedCurriculum === 'W.B. Board'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+              W.B. Board Ledger
+            </button>
+          </div>
+
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1103,9 +1150,18 @@ export const FeesView: React.FC<FeesViewProps> = ({
                           <span className="font-bold text-slate-900 block">
                             {student?.name || 'Unknown Student'}
                           </span>
-                          <span className="text-[11px] text-slate-500">
-                            Class {student?.classLevel} ({student?.stream}) • {student?.rollNo}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="text-[11px] text-slate-500">
+                              Class {student?.classLevel} ({student?.stream}) • {student?.rollNo}
+                            </span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                              student?.curriculum === 'W.B. Board'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            }`}>
+                              {student?.curriculum || 'CBSE'}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex flex-wrap items-center gap-1.5">
@@ -1259,7 +1315,16 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     <tr key={student.id} className="hover:bg-amber-50/40">
                       <td className="py-3.5 px-4">
                         <span className="font-bold text-slate-900 text-sm block">{student.name}</span>
-                        <span className="text-[11px] font-mono text-slate-400">{student.id}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] font-mono text-slate-400">{student.id}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            student.curriculum === 'W.B. Board'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            {student.curriculum || 'CBSE'}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="font-bold text-slate-800">Class {student.classLevel}</span>

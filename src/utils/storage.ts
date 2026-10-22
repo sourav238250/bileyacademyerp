@@ -312,30 +312,48 @@ export function loadInitialState(): AppStateData {
       batch = 'Evening Batch (4:00 PM - 8:30 PM)';
     }
 
+    const initSt = INITIAL_STUDENTS.find((s) => s.id === st.id);
+    const curriculum = st.curriculum || (initSt ? initSt.curriculum : 'CBSE');
+
     if (standardClassLevels.includes(st.classLevel) && st.enrolledSubjectIds) {
       const filteredEnrolled = st.enrolledSubjectIds.filter((id) => validSubjectIds.has(id));
       if (filteredEnrolled.length === 0) {
-        // Default to all subjects for that class
-        const classSubs = mergedSubjects.filter((s) => s.classLevel === st.classLevel).map((s) => s.id);
+        // Default to all subjects for that class and curriculum
+        const classSubs = mergedSubjects
+          .filter((s) => s.classLevel === st.classLevel && (!curriculum || s.curriculum === curriculum))
+          .map((s) => s.id);
         return {
           ...st,
+          curriculum,
           batch,
           enrolledSubjectIds: classSubs,
         };
       }
       return {
         ...st,
+        curriculum,
         batch,
         enrolledSubjectIds: filteredEnrolled,
       };
     }
     return {
       ...st,
+      curriculum,
       batch,
     };
   });
 
+  // Ensure all initial dual curriculum students are present
+  const studentIdMap = new Set(sanitizedStudents.map((s) => s.id));
+  for (const initSt of INITIAL_STUDENTS) {
+    if (!studentIdMap.has(initSt.id)) {
+      sanitizedStudents.push(initSt);
+      studentIdMap.add(initSt.id);
+    }
+  }
+
   const loadedExams = loadFromStorage<Exam[]>(STORAGE_KEYS.EXAMS, INITIAL_EXAMS);
+  const examIdMap = new Set(loadedExams.map((e) => e.id));
   const sanitizedExams = loadedExams.map((ex) => {
     const initEx = INITIAL_EXAMS.find((e) => e.id === ex.id);
     if (initEx && standardClassLevels.includes(ex.classLevel)) {
@@ -343,8 +361,15 @@ export function loadInitialState(): AppStateData {
     }
     return ex;
   });
+  for (const initEx of INITIAL_EXAMS) {
+    if (!examIdMap.has(initEx.id)) {
+      sanitizedExams.push(initEx);
+      examIdMap.add(initEx.id);
+    }
+  }
 
   const loadedResults = loadFromStorage<ExamResult[]>(STORAGE_KEYS.RESULTS, INITIAL_RESULTS);
+  const resultIdMap = new Set(loadedResults.map((r) => r.id));
   const sanitizedResults = loadedResults.map((res) => {
     const initRes = INITIAL_RESULTS.find((r) => r.id === res.id);
     if (initRes && standardClassLevels.includes(res.classLevel)) {
@@ -352,6 +377,12 @@ export function loadInitialState(): AppStateData {
     }
     return res;
   });
+  for (const initRes of INITIAL_RESULTS) {
+    if (!resultIdMap.has(initRes.id)) {
+      sanitizedResults.push(initRes);
+      resultIdMap.add(initRes.id);
+    }
+  }
 
   const loadedTimetable = loadFromStorage<TimetableSlot[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
   // If stored timetable is legacy or incomplete (< 100 slots), sync with pristine INITIAL_TIMETABLE

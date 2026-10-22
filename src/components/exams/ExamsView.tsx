@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Exam, Subject, ClassLevel, StreamType, ExamType, AdminUser } from '../../types';
+import { Exam, Subject, ClassLevel, StreamType, ExamType, AdminUser, CurriculumBoard } from '../../types';
 import { CLASS_LEVELS, STREAMS_FOR_CLASS } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
@@ -46,12 +46,14 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
   const auth = evaluateSectionAuthorization(currentAdmin, 'exams');
   const canManageExams = auth.canWrite && hasPermission(currentAdmin, 'EXAM_CREATE_SCHEDULE');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedCurriculumFilter, setSelectedCurriculumFilter] = useState<'all' | 'CBSE' | 'W.B. Board'>('all');
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<Partial<Exam>>({
     title: '',
+    curriculum: 'CBSE',
     examType: 'Unit Test 1',
     classLevel: '10',
     stream: 'General',
@@ -64,19 +66,21 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
 
   const handleOpenAdd = () => {
     setEditingExam(null);
-    const defaultClassSubs = subjects.filter((s) => s.classLevel === '10' && s.stream === 'General');
+    const chosenCurriculum: CurriculumBoard = selectedCurriculumFilter !== 'all' ? selectedCurriculumFilter : 'CBSE';
+    const defaultClassSubs = subjects.filter((s) => s.classLevel === '10' && s.stream === 'General' && s.curriculum === chosenCurriculum);
     const defaultSchedule = defaultClassSubs.slice(0, 4).map((sub, i) => ({
       subjectId: sub.id,
       subjectName: sub.name,
       date: new Date(Date.now() + (i + 1) * 86400000).toISOString().split('T')[0],
       time: '10:00 AM - 01:00 PM',
       maxMarks: 80,
-      passMarks: 27,
+      passMarks: chosenCurriculum === 'W.B. Board' ? 25 : 27,
       roomNo: 'Room 201',
     }));
 
     setFormData({
-      title: 'Class 10 Unit Test Assessment',
+      title: `Class 10 ${chosenCurriculum} Unit Test Assessment`,
+      curriculum: chosenCurriculum,
       examType: 'Unit Test 1',
       classLevel: '10',
       stream: 'General',
@@ -102,16 +106,21 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
       return;
     }
 
+    const curBoard: CurriculumBoard = formData.curriculum || 'CBSE';
+
     if (editingExam) {
       const updated: Exam = {
         ...editingExam,
         ...(formData as Exam),
+        curriculum: curBoard,
       };
       onUpdateExam(updated);
     } else {
+      const boardTag = curBoard === 'W.B. Board' ? 'WB' : 'CBSE';
       const newExam: Exam = {
-        id: `EX-${new Date().getFullYear()}-${String(exams.length + 1).padStart(2, '0')}`,
+        id: `EX-${new Date().getFullYear()}-${boardTag}-${String(exams.length + 1).padStart(2, '0')}`,
         title: formData.title || '',
+        curriculum: curBoard,
         examType: (formData.examType as ExamType) || 'Unit Test 1',
         classLevel: (formData.classLevel as ClassLevel) || '10',
         stream: (formData.stream as StreamType) || 'General',
@@ -127,7 +136,9 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
   };
 
   const filteredExams = exams.filter((ex) => {
-    return selectedClassFilter === 'all' || ex.classLevel === selectedClassFilter;
+    const matchesClass = selectedClassFilter === 'all' || ex.classLevel === selectedClassFilter;
+    const matchesCurriculum = selectedCurriculumFilter === 'all' || ex.curriculum === selectedCurriculumFilter;
+    return matchesClass && matchesCurriculum;
   });
 
   return (
@@ -170,19 +181,60 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
         )}
       </div>
 
-      {/* Class Filters */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-2 overflow-x-auto no-scrollbar">
-        <span className="text-xs font-bold text-slate-500 uppercase mr-1">Filter Class:</span>
-        <button
-          onClick={() => setSelectedClassFilter('all')}
-          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-            selectedClassFilter === 'all'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          All Exams ({exams.length})
-        </button>
+      {/* Curriculum Board & Class Filters */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+        {/* Curriculum Board Switcher */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculumFilter('all')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              selectedCurriculumFilter === 'all'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            All Boards ({exams.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculumFilter('CBSE')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              selectedCurriculumFilter === 'CBSE'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+            CBSE Assessments ({exams.filter((e) => e.curriculum === 'CBSE').length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCurriculumFilter('W.B. Board')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              selectedCurriculumFilter === 'W.B. Board'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+            W.B. Board Assessments ({exams.filter((e) => e.curriculum === 'W.B. Board').length})
+          </button>
+        </div>
+
+        {/* Class Filters */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2 border-t border-slate-100">
+          <span className="text-xs font-bold text-slate-500 uppercase mr-1">Filter Class:</span>
+          <button
+            onClick={() => setSelectedClassFilter('all')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+              selectedClassFilter === 'all'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            All Classes
+          </button>
         {CLASS_LEVELS.map((cls) => {
           const count = exams.filter((e) => e.classLevel === cls).length;
           return (
@@ -199,6 +251,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* Exams List */}
@@ -213,9 +266,16 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-xs font-bold bg-slate-900 text-amber-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                       Class {exam.classLevel} ({exam.stream})
+                    </span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      exam.curriculum === 'W.B. Board'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-blue-100 text-blue-800 border border-blue-200'
+                    }`}>
+                      {exam.curriculum || 'CBSE'}
                     </span>
                     <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                       {exam.examType}
@@ -348,7 +408,35 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Curriculum Board *</label>
+                  <select
+                    value={formData.curriculum || 'CBSE'}
+                    onChange={(e) => {
+                      const newBoard = e.target.value as CurriculumBoard;
+                      const validSubs = subjects.filter((s) => s.classLevel === (formData.classLevel || '10') && s.curriculum === newBoard);
+                      setFormData({
+                        ...formData,
+                        curriculum: newBoard,
+                        subjectsSchedule: validSubs.slice(0, 4).map((sub, i) => ({
+                          subjectId: sub.id,
+                          subjectName: sub.name,
+                          date: new Date(Date.now() + (i + 1) * 86400000).toISOString().split('T')[0],
+                          time: '10:00 AM - 01:00 PM',
+                          maxMarks: 80,
+                          passMarks: newBoard === 'W.B. Board' ? 25 : 27,
+                          roomNo: 'Room 201',
+                        })),
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white font-semibold text-slate-900"
+                  >
+                    <option value="CBSE">CBSE (Central Board)</option>
+                    <option value="W.B. Board">W.B. Board (West Bengal State)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Exam Type</label>
                   <select
