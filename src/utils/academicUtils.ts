@@ -78,64 +78,78 @@ export const STREAMS_FOR_CLASS: Record<ClassLevel, string[]> = {
 
 export const DEFAULT_FEE_STRUCTURE: Record<string, FeeStructure> = {
   // CBSE Fee Structures
-  '1-General-CBSE': { classLevel: '1', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '2-General-CBSE': { classLevel: '2', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '3-General-CBSE': { classLevel: '3', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '4-General-CBSE': { classLevel: '4', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '5-General-CBSE': { classLevel: '5', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '6-General-CBSE': { classLevel: '6', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '7-General-CBSE': { classLevel: '7', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '8-General-CBSE': { classLevel: '8', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '9-General-CBSE': { classLevel: '9', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '10-General-CBSE': { classLevel: '10', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Science-CBSE': { classLevel: '11', stream: 'Science', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Commerce-CBSE': { classLevel: '11', stream: 'Commerce', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Arts-CBSE': { classLevel: '11', stream: 'Arts', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-General-CBSE': { classLevel: '11', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Science-CBSE': { classLevel: '12', stream: 'Science', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Commerce-CBSE': { classLevel: '12', stream: 'Commerce', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Arts-CBSE': { classLevel: '12', stream: 'Arts', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-General-CBSE': { classLevel: '12', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  // Class 1 to 4: for all subjects, Rs 1500 /- (one package)
+  '1-General-CBSE': { classLevel: '1', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 1500, perSubjectMonthlyFee: 1500, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '2-General-CBSE': { classLevel: '2', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 1500, perSubjectMonthlyFee: 1500, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '3-General-CBSE': { classLevel: '3', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 1500, perSubjectMonthlyFee: 1500, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '4-General-CBSE': { classLevel: '4', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 1500, perSubjectMonthlyFee: 1500, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 5 to 8: Rs 750 /- per subject
+  '5-General-CBSE': { classLevel: '5', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 3000, perSubjectMonthlyFee: 750, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '6-General-CBSE': { classLevel: '6', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 3000, perSubjectMonthlyFee: 750, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '7-General-CBSE': { classLevel: '7', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 3000, perSubjectMonthlyFee: 750, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '8-General-CBSE': { classLevel: '8', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 3000, perSubjectMonthlyFee: 750, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 9 & 10: Rs 800 /- per subject
+  '9-General-CBSE': { classLevel: '9', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 3200, perSubjectMonthlyFee: 800, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '10-General-CBSE': { classLevel: '10', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 3200, perSubjectMonthlyFee: 800, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 11 & 12: Rs 1000 /- per subject
+  '11-Science-CBSE': { classLevel: '11', stream: 'Science', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Commerce-CBSE': { classLevel: '11', stream: 'Commerce', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Arts-CBSE': { classLevel: '11', stream: 'Arts', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-General-CBSE': { classLevel: '11', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Science-CBSE': { classLevel: '12', stream: 'Science', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Commerce-CBSE': { classLevel: '12', stream: 'Commerce', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Arts-CBSE': { classLevel: '12', stream: 'Arts', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-General-CBSE': { classLevel: '12', stream: 'General', curriculum: 'CBSE', admissionFee: 100, monthlyTuitionFee: 4000, perSubjectMonthlyFee: 1000, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
 
   // W.B. Board Fee Structures
-  '1-General-W.B. Board': { classLevel: '1', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '2-General-W.B. Board': { classLevel: '2', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '3-General-W.B. Board': { classLevel: '3', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '4-General-W.B. Board': { classLevel: '4', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '5-General-W.B. Board': { classLevel: '5', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '6-General-W.B. Board': { classLevel: '6', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '7-General-W.B. Board': { classLevel: '7', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '8-General-W.B. Board': { classLevel: '8', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '9-General-W.B. Board': { classLevel: '9', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '10-General-W.B. Board': { classLevel: '10', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Science-W.B. Board': { classLevel: '11', stream: 'Science', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Commerce-W.B. Board': { classLevel: '11', stream: 'Commerce', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Arts-W.B. Board': { classLevel: '11', stream: 'Arts', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-General-W.B. Board': { classLevel: '11', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Science-W.B. Board': { classLevel: '12', stream: 'Science', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Commerce-W.B. Board': { classLevel: '12', stream: 'Commerce', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Arts-W.B. Board': { classLevel: '12', stream: 'Arts', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-General-W.B. Board': { classLevel: '12', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  // Class 1 to 4: for all subjects, Rs 800 /- (one package)
+  '1-General-W.B. Board': { classLevel: '1', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 800, perSubjectMonthlyFee: 800, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '2-General-W.B. Board': { classLevel: '2', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 800, perSubjectMonthlyFee: 800, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '3-General-W.B. Board': { classLevel: '3', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 800, perSubjectMonthlyFee: 800, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '4-General-W.B. Board': { classLevel: '4', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 800, perSubjectMonthlyFee: 800, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 5 to 8: Rs 300 /- per subject
+  '5-General-W.B. Board': { classLevel: '5', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1200, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '6-General-W.B. Board': { classLevel: '6', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1200, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '7-General-W.B. Board': { classLevel: '7', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1200, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '8-General-W.B. Board': { classLevel: '8', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1200, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 9 to 10: Rs 350 /- per subject
+  '9-General-W.B. Board': { classLevel: '9', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1400, perSubjectMonthlyFee: 350, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '10-General-W.B. Board': { classLevel: '10', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1400, perSubjectMonthlyFee: 350, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+
+  // Class 11 and 12: Rs 450 /- per subject
+  '11-Science-W.B. Board': { classLevel: '11', stream: 'Science', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Commerce-W.B. Board': { classLevel: '11', stream: 'Commerce', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Arts-W.B. Board': { classLevel: '11', stream: 'Arts', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-General-W.B. Board': { classLevel: '11', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Science-W.B. Board': { classLevel: '12', stream: 'Science', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Commerce-W.B. Board': { classLevel: '12', stream: 'Commerce', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Arts-W.B. Board': { classLevel: '12', stream: 'Arts', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-General-W.B. Board': { classLevel: '12', stream: 'General', curriculum: 'W.B. Board', admissionFee: 100, monthlyTuitionFee: 1800, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
 
   // General Fallback Structures
-  '1-General': { classLevel: '1', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '2-General': { classLevel: '2', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '3-General': { classLevel: '3', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '4-General': { classLevel: '4', stream: 'General', admissionFee: 100, monthlyTuitionFee: 300, perSubjectMonthlyFee: 300, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '5-General': { classLevel: '5', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '6-General': { classLevel: '6', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '7-General': { classLevel: '7', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '8-General': { classLevel: '8', stream: 'General', admissionFee: 100, monthlyTuitionFee: 350, perSubjectMonthlyFee: 350, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
-  '9-General': { classLevel: '9', stream: 'General', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '10-General': { classLevel: '10', stream: 'General', admissionFee: 100, monthlyTuitionFee: 400, perSubjectMonthlyFee: 400, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Science': { classLevel: '11', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Commerce': { classLevel: '11', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-Arts': { classLevel: '11', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '11-General': { classLevel: '11', stream: 'General', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Science': { classLevel: '12', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Commerce': { classLevel: '12', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-Arts': { classLevel: '12', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
-  '12-General': { classLevel: '12', stream: 'General', admissionFee: 100, monthlyTuitionFee: 450, perSubjectMonthlyFee: 450, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '1-General': { classLevel: '1', stream: 'General', admissionFee: 100, monthlyTuitionFee: 1150, perSubjectMonthlyFee: 1150, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '2-General': { classLevel: '2', stream: 'General', admissionFee: 100, monthlyTuitionFee: 1150, perSubjectMonthlyFee: 1150, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '3-General': { classLevel: '3', stream: 'General', admissionFee: 100, monthlyTuitionFee: 1150, perSubjectMonthlyFee: 1150, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '4-General': { classLevel: '4', stream: 'General', admissionFee: 100, monthlyTuitionFee: 1150, perSubjectMonthlyFee: 1150, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '5-General': { classLevel: '5', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2100, perSubjectMonthlyFee: 525, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '6-General': { classLevel: '6', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2100, perSubjectMonthlyFee: 525, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '7-General': { classLevel: '7', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2100, perSubjectMonthlyFee: 525, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '8-General': { classLevel: '8', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2100, perSubjectMonthlyFee: 525, examFeePerTerm: 50, materialsFee: 50, annualDevelopmentFee: 50 },
+  '9-General': { classLevel: '9', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2300, perSubjectMonthlyFee: 575, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '10-General': { classLevel: '10', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2300, perSubjectMonthlyFee: 575, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Science': { classLevel: '11', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Commerce': { classLevel: '11', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-Arts': { classLevel: '11', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '11-General': { classLevel: '11', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Science': { classLevel: '12', stream: 'Science', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Commerce': { classLevel: '12', stream: 'Commerce', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-Arts': { classLevel: '12', stream: 'Arts', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
+  '12-General': { classLevel: '12', stream: 'General', admissionFee: 100, monthlyTuitionFee: 2900, perSubjectMonthlyFee: 725, examFeePerTerm: 100, materialsFee: 50, annualDevelopmentFee: 50 },
 };
 
 export function getFeeStructure(
@@ -473,8 +487,12 @@ export function getStudentMonthTuitionRate(
   }
 
   const structure = getFeeStructure(student.classLevel, student.stream, student.curriculum, feeStructures);
-  const perSubRate = structure.perSubjectMonthlyFee || 350;
-  const tuition = activeCount * perSubRate;
+  const isPrimary = ['1', '2', '3', '4'].includes(student.classLevel);
+  // For Primary (Classes 1-4), all subjects are one combined package:
+  // W.B. Board: Rs 800 /- (one package); CBSE: Rs 1500 /- (one package)
+  const tuition = isPrimary
+    ? (structure.monthlyTuitionFee || (student.curriculum === 'W.B. Board' ? 800 : 1500))
+    : activeCount * (structure.perSubjectMonthlyFee || (student.curriculum === 'W.B. Board' ? 350 : 800));
 
   const names = activeSubs.map((item) => item.subject?.name || item.enrollment.subjectId);
 
@@ -494,6 +512,10 @@ export function getStudentCoachingMode(
   student: Student,
   subjects?: Subject[]
 ): 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo' {
+  if (['1', '2', '3', '4'].includes(student.classLevel)) {
+    return 'All Subjects Combo';
+  }
+
   if (subjects && subjects.length > 0) {
     const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects, student.curriculum);
     const enrolled = getEnrolledSubjectsForStudent(student, subjects);
@@ -561,7 +583,11 @@ export function computeStudentFeeSummary(
     monthWiseTuitionBreakdown.find((b) => matchMonth(b.month, 'September 2026')) ||
     monthWiseTuitionBreakdown.filter((b) => !b.isPreEnrollment).slice(-1)[0] ||
     monthWiseTuitionBreakdown[0];
-  const effectiveMonthlyTuition = activeNowBreakdown?.monthlyTuition || enrolledCount * (structure.perSubjectMonthlyFee || 350);
+  const isPrimary = ['1', '2', '3', '4'].includes(student.classLevel);
+  const fallbackTuition = isPrimary
+    ? (structure.monthlyTuitionFee || (student.curriculum === 'W.B. Board' ? 800 : 1500))
+    : enrolledCount * (structure.perSubjectMonthlyFee || (student.curriculum === 'W.B. Board' ? 350 : 800));
+  const effectiveMonthlyTuition = activeNowBreakdown?.monthlyTuition || fallbackTuition;
 
   // One-time non-tuition fees (submitted only once per candidate)
   const admissionFee = structure.admissionFee;

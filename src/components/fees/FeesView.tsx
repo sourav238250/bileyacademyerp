@@ -7,12 +7,14 @@ import {
   ClassLevel,
   FeeStructure,
   AdminUser,
+  CurriculumBoard,
 } from '../../types';
 import {
   formatCurrency,
   computeStudentFeeSummary,
   generateReceiptNumber,
   DEFAULT_FEE_STRUCTURE,
+  getFeeStructure,
   CLASS_LEVELS,
   ACADEMIC_SESSION_MONTHS,
   MONTH_SHORT_NAMES,
@@ -123,7 +125,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   // Fee Structures State with Local Persistence
   const [feeStructures, setFeeStructures] = useState<Record<string, FeeStructure>>(() => {
     try {
-      const saved = localStorage.getItem('biley_academy_custom_fee_structure_v2');
+      const saved = localStorage.getItem('biley_academy_custom_fee_structure_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         return { ...DEFAULT_FEE_STRUCTURE, ...parsed };
@@ -138,9 +140,11 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const [structureCategoryFilter, setStructureCategoryFilter] = useState<
     'ALL' | 'PRIMARY' | 'MIDDLE' | 'SECONDARY' | 'SENIOR' | 'SCIENCE' | 'COMMERCE' | 'ARTS'
   >('ALL');
+  const [structureCurriculumFilter, setStructureCurriculumFilter] = useState<'ALL' | 'CBSE' | 'W.B. Board'>('ALL');
 
   // Interactive Fee Calculator State
   const [calcClass, setCalcClass] = useState<ClassLevel>('10');
+  const [calcCurriculum, setCalcCurriculum] = useState<CurriculumBoard>('CBSE');
   const [calcStream, setCalcStream] = useState<string>('General');
   const [calcMode, setCalcMode] = useState<'full' | 'perSubject'>('perSubject');
   const [calcSubjectCount, setCalcSubjectCount] = useState<number>(4);
@@ -159,6 +163,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   // Batch Bracket Update State
   const [isBatchModalOpen, setIsBatchModalOpen] = useState<boolean>(false);
   const [batchTargetBracket, setBatchTargetBracket] = useState<'PRIMARY' | 'MIDDLE' | 'SECONDARY' | 'SENIOR' | 'ALL'>('PRIMARY');
+  const [batchTargetCurriculum, setBatchTargetCurriculum] = useState<'ALL' | 'CBSE' | 'W.B. Board'>('ALL');
   const [batchAdmissionFee, setBatchAdmissionFee] = useState<number>(100);
   const [batchTuitionFee, setBatchTuitionFee] = useState<number>(300);
   const [batchExamFee, setBatchExamFee] = useState<number>(50);
@@ -217,29 +222,33 @@ export const FeesView: React.FC<FeesViewProps> = ({
     specificMonths?: string[]
   ): { amount: number; rateDisplay: string; details: string } => {
     const student = students.find((s) => s.id === studentId);
-    const structKey = student ? `${student.classLevel}-${student.stream}` : '1-General';
-    const st =
-      feeStructures[structKey] ||
-      feeStructures[`${student?.classLevel || '1'}-General`] ||
-      DEFAULT_FEE_STRUCTURE[structKey] ||
-      DEFAULT_FEE_STRUCTURE['1-General'];
+    const st = student
+      ? getFeeStructure(student.classLevel, student.stream, student.curriculum, feeStructures)
+      : feeStructures['1-General'] || DEFAULT_FEE_STRUCTURE['1-General'];
+    const isPrimary = student && ['1', '2', '3', '4'].includes(student.classLevel);
 
     switch (head) {
       case 'Tuition Fee': {
-        const perSub = st.perSubjectMonthlyFee || 350;
+        const perSub = st.perSubjectMonthlyFee || (student?.curriculum === 'W.B. Board' ? 350 : 800);
         let amount = 0;
         if (student && specificMonths && specificMonths.length > 0) {
           specificMonths.forEach((m) => {
             const r = getStudentMonthTuitionRate(student, m, feeStructures, subjects);
             amount += r.requiredTuition;
           });
+        } else if (isPrimary) {
+          amount = (st.monthlyTuitionFee || (student?.curriculum === 'W.B. Board' ? 800 : 1500)) * Math.max(1, monthsCount);
         } else {
           amount = perSub * Math.max(1, subjectsCount) * Math.max(1, monthsCount);
         }
         return {
           amount,
-          rateDisplay: `₹${perSub}/subj/mo`,
-          details: `Tuition for ${subjectsCount} subject(s) × ${monthsCount} month(s)`,
+          rateDisplay: isPrimary
+            ? `₹${st.monthlyTuitionFee || (student?.curriculum === 'W.B. Board' ? 800 : 1500)}/mo (All Subjects Package)`
+            : `₹${perSub}/subj/mo`,
+          details: isPrimary
+            ? `Tuition package (all subjects) × ${monthsCount} month(s)`
+            : `Tuition for ${subjectsCount} subject(s) × ${monthsCount} month(s)`,
         };
       }
       case 'Admission Fee':
@@ -707,6 +716,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
       setFeeStructures(DEFAULT_FEE_STRUCTURE);
       localStorage.removeItem('biley_academy_custom_fee_structure_v1');
       localStorage.removeItem('biley_academy_custom_fee_structure_v2');
+      localStorage.removeItem('biley_academy_custom_fee_structure_v3');
       setStructureSuccessNotice('Fee structures successfully reset to Academy standard active rates.');
       setTimeout(() => setStructureSuccessNotice(null), 4000);
     }
@@ -722,39 +732,38 @@ export const FeesView: React.FC<FeesViewProps> = ({
     setEditAnnualDevFee(st.annualDevelopmentFee ?? 50);
   };
 
-  const handleOpenBatchModal = (bracket: 'PRIMARY' | 'MIDDLE' | 'SECONDARY' | 'SENIOR' | 'ALL') => {
+  const handleOpenBatchModal = (
+    bracket: 'PRIMARY' | 'MIDDLE' | 'SECONDARY' | 'SENIOR' | 'ALL',
+    curriculum: 'ALL' | 'CBSE' | 'W.B. Board' = batchTargetCurriculum
+  ) => {
     setBatchTargetBracket(bracket);
-    if (bracket === 'PRIMARY') {
-      setBatchAdmissionFee(100);
-      setBatchTuitionFee(300);
-      setBatchExamFee(50);
-      setBatchMaterialsFee(50);
-      setBatchAnnualDevFee(50);
-    } else if (bracket === 'MIDDLE') {
-      setBatchAdmissionFee(100);
-      setBatchTuitionFee(350);
-      setBatchExamFee(50);
-      setBatchMaterialsFee(50);
-      setBatchAnnualDevFee(50);
-    } else if (bracket === 'SECONDARY') {
-      setBatchAdmissionFee(100);
-      setBatchTuitionFee(400);
-      setBatchExamFee(100);
-      setBatchMaterialsFee(50);
-      setBatchAnnualDevFee(50);
-    } else if (bracket === 'SENIOR') {
-      setBatchAdmissionFee(100);
-      setBatchTuitionFee(450);
-      setBatchExamFee(100);
-      setBatchMaterialsFee(50);
-      setBatchAnnualDevFee(50);
+    setBatchTargetCurriculum(curriculum);
+
+    // Set smart defaults according to curriculum & bracket
+    if (curriculum === 'CBSE') {
+      if (bracket === 'PRIMARY') setBatchTuitionFee(1500);
+      else if (bracket === 'MIDDLE') setBatchTuitionFee(750);
+      else if (bracket === 'SECONDARY') setBatchTuitionFee(800);
+      else if (bracket === 'SENIOR') setBatchTuitionFee(1000);
+      else setBatchTuitionFee(800);
+    } else if (curriculum === 'W.B. Board') {
+      if (bracket === 'PRIMARY') setBatchTuitionFee(800);
+      else if (bracket === 'MIDDLE') setBatchTuitionFee(300);
+      else if (bracket === 'SECONDARY') setBatchTuitionFee(350);
+      else if (bracket === 'SENIOR') setBatchTuitionFee(450);
+      else setBatchTuitionFee(350);
     } else {
-      setBatchAdmissionFee(100);
-      setBatchTuitionFee(350);
-      setBatchExamFee(75);
-      setBatchMaterialsFee(50);
-      setBatchAnnualDevFee(50);
+      if (bracket === 'PRIMARY') setBatchTuitionFee(1150);
+      else if (bracket === 'MIDDLE') setBatchTuitionFee(525);
+      else if (bracket === 'SECONDARY') setBatchTuitionFee(575);
+      else if (bracket === 'SENIOR') setBatchTuitionFee(725);
+      else setBatchTuitionFee(500);
     }
+
+    setBatchAdmissionFee(100);
+    setBatchExamFee(bracket === 'PRIMARY' || bracket === 'MIDDLE' ? 50 : 100);
+    setBatchMaterialsFee(50);
+    setBatchAnnualDevFee(50);
     setIsBatchModalOpen(true);
   };
 
@@ -773,12 +782,19 @@ export const FeesView: React.FC<FeesViewProps> = ({
       if (batchTargetBracket === 'SENIOR' && classNum >= 11 && classNum <= 12) matches = true;
       if (batchTargetBracket === 'ALL') matches = true;
 
+      if (matches && batchTargetCurriculum !== 'ALL') {
+        if (st.curriculum && st.curriculum !== batchTargetCurriculum) {
+          matches = false;
+        }
+      }
+
       if (matches) {
+        const isPrim = classNum >= 1 && classNum <= 4;
         updatedMap[key] = {
           ...st,
           admissionFee: Number(batchAdmissionFee),
           monthlyTuitionFee: Number(batchTuitionFee),
-          perSubjectMonthlyFee: Number(batchTuitionFee),
+          perSubjectMonthlyFee: isPrim ? Number(batchTuitionFee) : Number(batchTuitionFee),
           examFeePerTerm: Number(batchExamFee),
           materialsFee: Number(batchMaterialsFee),
           annualDevelopmentFee: Number(batchAnnualDevFee),
@@ -788,7 +804,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
     setFeeStructures(updatedMap);
     try {
-      localStorage.setItem('biley_academy_custom_fee_structure_v2', JSON.stringify(updatedMap));
+      localStorage.setItem('biley_academy_custom_fee_structure_v3', JSON.stringify(updatedMap));
     } catch (err) {
       console.error('Failed to save custom fee structures:', err);
     }
@@ -805,7 +821,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
           : batchTargetBracket === 'SENIOR'
           ? 'Classes 11 to 12'
           : 'All Classes (1 to 12)'
-      } updated successfully!`
+      } (${batchTargetCurriculum}) updated successfully!`
     );
     setTimeout(() => setStructureSuccessNotice(null), 4000);
   };
@@ -816,11 +832,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
     const current = feeStructures[editingKey];
     if (!current) return;
 
+    const isPrim = ['1', '2', '3', '4'].includes(current.classLevel);
     const updated: FeeStructure = {
       ...current,
       admissionFee: Number(editAdmissionFee),
       monthlyTuitionFee: Number(editMonthlyFee),
-      perSubjectMonthlyFee: Number(editPerSubjectFee),
+      perSubjectMonthlyFee: isPrim ? Number(editMonthlyFee) : Number(editPerSubjectFee),
       examFeePerTerm: Number(editExamFee),
       materialsFee: Number(editMaterialsFee),
       annualDevelopmentFee: Number(editAnnualDevFee),
@@ -833,7 +850,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
     setFeeStructures(updatedMap);
     try {
-      localStorage.setItem('biley_academy_custom_fee_structure_v2', JSON.stringify(updatedMap));
+      localStorage.setItem('biley_academy_custom_fee_structure_v3', JSON.stringify(updatedMap));
     } catch (err) {
       console.error('Failed to save custom fee structures:', err);
     }
@@ -1492,7 +1509,20 @@ export const FeesView: React.FC<FeesViewProps> = ({
             </div>
 
             {/* Calculator Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-slate-700 font-bold text-xs mb-1.5">Curriculum Board</label>
+                <select
+                  value={calcCurriculum}
+                  onChange={(e) => setCalcCurriculum(e.target.value as CurriculumBoard)}
+                  id="calc-curriculum-select"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                >
+                  <option value="CBSE">CBSE Board</option>
+                  <option value="W.B. Board">W.B. Board</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-slate-700 font-bold text-xs mb-1.5">Class Level</label>
                 <select
@@ -1541,56 +1571,67 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-bold text-xs mb-1.5">Enrollment Package</label>
-                <div className="flex bg-slate-200 p-1 rounded-xl gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setCalcMode('full')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      calcMode === 'full'
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Full Combo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCalcMode('perSubject')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      calcMode === 'perSubject'
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Per-Subject ({calcSubjectCount})
-                  </button>
-                </div>
-                {calcMode === 'perSubject' && (
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-slate-500">Subjects:</span>
-                    <div className="flex gap-1 flex-wrap">
-                      {(() => {
-                        const available = subjects
-                          ? getAvailableSubjectsForStudent(calcClass, calcStream, subjects)
-                          : [];
-                        const maxAvail = ['11', '12'].includes(calcClass) ? 7 : (available.length > 0 ? available.length : 4);
-                        return Array.from({ length: maxAvail }, (_, i) => i + 1).map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => setCalcSubjectCount(num)}
-                            className={`w-6 h-6 rounded-md text-[10px] font-bold cursor-pointer ${
-                              calcSubjectCount === num
-                                ? 'bg-amber-500 text-slate-950 font-black'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ));
-                      })()}
-                    </div>
+                {['1', '2', '3', '4'].includes(calcClass) ? (
+                  <div className="py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center justify-between">
+                    <span>All Subjects Package</span>
+                    <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded">
+                      {calcCurriculum === 'W.B. Board' ? '₹800/mo' : '₹1,500/mo'}
+                    </span>
                   </div>
+                ) : (
+                  <>
+                    <div className="flex bg-slate-200 p-1 rounded-xl gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setCalcMode('full')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          calcMode === 'full'
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Full Combo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCalcMode('perSubject')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          calcMode === 'perSubject'
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Per-Subject ({calcSubjectCount})
+                      </button>
+                    </div>
+                    {calcMode === 'perSubject' && (
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-slate-500">Subjects:</span>
+                        <div className="flex gap-1 flex-wrap">
+                          {(() => {
+                            const available = subjects
+                              ? getAvailableSubjectsForStudent(calcClass, calcStream, subjects, calcCurriculum)
+                              : [];
+                            const maxAvail = ['11', '12'].includes(calcClass) ? 7 : (available.length > 0 ? available.length : 4);
+                            return Array.from({ length: maxAvail }, (_, i) => i + 1).map((num) => (
+                              <button
+                                key={num}
+                                type="button"
+                                onClick={() => setCalcSubjectCount(num)}
+                                className={`w-6 h-6 rounded-md text-[10px] font-bold cursor-pointer ${
+                                  calcSubjectCount === num
+                                    ? 'bg-amber-500 text-slate-950 font-black'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                              >
+                                {num}
+                              </button>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1613,13 +1654,12 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
             {/* Calculated Breakdown Display */}
             {(() => {
-              const structKey = `${calcClass}-${calcStream}`;
-              const st = feeStructures[structKey] || feeStructures[`${calcClass}-General`] || Object.values(feeStructures)[0];
-              const perSubRate = st.perSubjectMonthlyFee || 350;
-              const monthlyRate =
-                calcMode === 'full'
-                  ? st.monthlyTuitionFee
-                  : perSubRate * calcSubjectCount;
+              const isPrimary = ['1', '2', '3', '4'].includes(calcClass);
+              const st = getFeeStructure(calcClass, calcStream, calcCurriculum, feeStructures);
+              const perSubRate = st.perSubjectMonthlyFee || (calcCurriculum === 'W.B. Board' ? 350 : 800);
+              const monthlyRate = isPrimary
+                ? (st.monthlyTuitionFee || (calcCurriculum === 'W.B. Board' ? 800 : 1500))
+                : (calcMode === 'full' ? st.monthlyTuitionFee : perSubRate * calcSubjectCount);
               const annualTuition = monthlyRate * 12;
               const admissionFee = st.admissionFee;
               const examFees = st.examFeePerTerm * 2;
@@ -1637,7 +1677,11 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       {formatCurrency(monthlyRate)}
                       <span className="text-[10px] text-slate-400 font-normal">/mo</span>
                     </p>
-                    <span className="text-[9px] text-slate-400">{calcMode === 'perSubject' ? `${calcSubjectCount} sub × ₹${perSubRate}` : '12 installments'}</span>
+                    <span className="text-[9px] text-slate-500 font-medium">
+                      {isPrimary
+                        ? `All Subjects Package (${calcCurriculum})`
+                        : (calcMode === 'perSubject' ? `${calcSubjectCount} sub × ₹${perSubRate}` : '12 installments')}
+                    </span>
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
@@ -1715,30 +1759,72 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 </p>
               </div>
 
-              {/* Category Segment Filter */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
-                {[
-                  { id: 'ALL', label: 'All Classes' },
-                  { id: 'PRIMARY', label: 'Primary (1-4)' },
-                  { id: 'MIDDLE', label: 'Middle (5-8)' },
-                  { id: 'SECONDARY', label: 'Secondary (9-10)' },
-                  { id: 'SENIOR', label: 'Senior (11-12)' },
-                  { id: 'SCIENCE', label: 'Science' },
-                  { id: 'COMMERCE', label: 'Commerce' },
-                  { id: 'ARTS', label: 'Arts' },
-                ].map((tab) => (
+              {/* Filters: Curriculum Board Switcher & Category Tabs */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                {/* Curriculum Switcher */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
                   <button
-                    key={tab.id}
-                    onClick={() => setStructureCategoryFilter(tab.id as any)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer ${
-                      structureCategoryFilter === tab.id
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    type="button"
+                    onClick={() => setStructureCurriculumFilter('ALL')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      structureCurriculumFilter === 'ALL'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {tab.label}
+                    All Boards
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setStructureCurriculumFilter('CBSE')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                      structureCurriculumFilter === 'CBSE'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-300"></span>
+                    CBSE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStructureCurriculumFilter('W.B. Board')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                      structureCurriculumFilter === 'W.B. Board'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+                    W.B. Board
+                  </button>
+                </div>
+
+                {/* Category Segment Filter */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
+                  {[
+                    { id: 'ALL', label: 'All Classes' },
+                    { id: 'PRIMARY', label: 'Primary (1-4)' },
+                    { id: 'MIDDLE', label: 'Middle (5-8)' },
+                    { id: 'SECONDARY', label: 'Secondary (9-10)' },
+                    { id: 'SENIOR', label: 'Senior (11-12)' },
+                    { id: 'SCIENCE', label: 'Science' },
+                    { id: 'COMMERCE', label: 'Commerce' },
+                    { id: 'ARTS', label: 'Arts' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setStructureCategoryFilter(tab.id as any)}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                        structureCategoryFilter === tab.id
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1748,19 +1834,27 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 <thead className="bg-slate-900 text-white uppercase text-[10px] font-bold tracking-wider">
                   <tr>
                     <th className="py-3 px-3">Class Level</th>
+                    <th className="py-3 px-3">Curriculum Board</th>
                     <th className="py-3 px-3">Stream Track</th>
                     <th className="py-3 px-3 text-right">Admission Fee</th>
-                    <th className="py-3 px-3 text-right">Tuition / Subj</th>
+                    <th className="py-3 px-3 text-right">Monthly Tuition</th>
                     <th className="py-3 px-3 text-right">Exam Fee / Term</th>
                     <th className="py-3 px-3 text-right">Study Material & Lab</th>
                     <th className="py-3 px-3 text-right">Annual Dev. & Others</th>
-                    <th className="py-3 px-3 text-right">Est. Annual (4 Subj)</th>
+                    <th className="py-3 px-3 text-right">Est. Annual Fee</th>
                     <th className="py-3 px-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {(Object.entries(feeStructures) as [string, FeeStructure][])
                     .filter(([key, st]) => {
+                      if (structureCurriculumFilter !== 'ALL') {
+                        if (st.curriculum && st.curriculum !== structureCurriculumFilter) return false;
+                        if (!st.curriculum && structureCurriculumFilter !== 'ALL') return false;
+                      } else {
+                        if (!st.curriculum) return false;
+                      }
+
                       const classNum = parseInt(st.classLevel, 10);
                       if (structureCategoryFilter === 'PRIMARY') return classNum >= 1 && classNum <= 4;
                       if (structureCategoryFilter === 'MIDDLE') return classNum >= 5 && classNum <= 8;
@@ -1772,19 +1866,28 @@ export const FeesView: React.FC<FeesViewProps> = ({
                       return true;
                     })
                     .map(([key, st]) => {
+                      const isPrimary = ['1', '2', '3', '4'].includes(st.classLevel);
                       const perSub = st.perSubjectMonthlyFee || 350;
                       const annualDev = st.annualDevelopmentFee ?? 50;
-                      const estAnnual =
-                        st.admissionFee +
-                        perSub * 4 * 12 +
-                        st.examFeePerTerm * 2 +
-                        st.materialsFee +
-                        annualDev;
+                      const estAnnual = isPrimary
+                        ? st.admissionFee + (st.monthlyTuitionFee * 12) + (st.examFeePerTerm * 2) + st.materialsFee + annualDev
+                        : st.admissionFee + (perSub * 4 * 12) + (st.examFeePerTerm * 2) + st.materialsFee + annualDev;
 
                       return (
                         <tr key={key} className="hover:bg-amber-50/40 transition-colors">
                           <td className="py-3 px-3 font-black text-slate-900">
                             Class {st.classLevel}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                st.curriculum === 'W.B. Board'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}
+                            >
+                              {st.curriculum || 'General'}
+                            </span>
                           </td>
                           <td className="py-3 px-3 font-semibold text-slate-700">
                             <span
@@ -1805,7 +1908,17 @@ export const FeesView: React.FC<FeesViewProps> = ({
                             {formatCurrency(st.admissionFee)}
                           </td>
                           <td className="py-3 px-3 text-right font-bold text-emerald-700">
-                            {formatCurrency(perSub)}/sub
+                            {isPrimary ? (
+                              <div>
+                                <span>{formatCurrency(st.monthlyTuitionFee)}/mo</span>
+                                <span className="block text-[9px] text-slate-400 font-medium">All Subjects Package</span>
+                              </div>
+                            ) : (
+                              <div>
+                                <span>{formatCurrency(perSub)}/sub</span>
+                                <span className="block text-[9px] text-slate-400 font-medium">Monthly per subject</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-right text-slate-700">
                             {formatCurrency(st.examFeePerTerm)}
@@ -1818,6 +1931,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
                           </td>
                           <td className="py-3 px-3 text-right font-black text-slate-950">
                             {formatCurrency(estAnnual)}
+                            <span className="block text-[9px] text-slate-400 font-normal">
+                              {isPrimary ? '(Package 12 mo)' : '(4 Subj 12 mo)'}
+                            </span>
                           </td>
                           <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">
@@ -1825,6 +1941,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                                 onClick={() => {
                                   setCalcClass(st.classLevel);
                                   setCalcStream(st.stream);
+                                  if (st.curriculum) setCalcCurriculum(st.curriculum);
                                   window.scrollTo({ top: 300, behavior: 'smooth' });
                                 }}
                                 title="Load into live fee calculator"
@@ -2701,6 +2818,27 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 </div>
               </div>
 
+              {/* Target Curriculum Board */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">Target Curriculum Board</label>
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                  {(['ALL', 'CBSE', 'W.B. Board'] as const).map((curr) => (
+                    <button
+                      key={curr}
+                      type="button"
+                      onClick={() => handleOpenBatchModal(batchTargetBracket, curr)}
+                      className={`py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer text-xs font-bold ${
+                        batchTargetCurriculum === curr
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {curr === 'ALL' ? 'Both Curricula' : curr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Admission Fee (₹)</label>
@@ -2716,7 +2854,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Monthly Tuition / Subject (₹)</label>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {batchTargetBracket === 'PRIMARY' ? 'All Subjects Package Tuition (₹)' : 'Monthly Tuition / Subject (₹)'}
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -2725,7 +2865,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     onChange={(e) => setBatchTuitionFee(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-emerald-700"
                   />
-                  <span className="text-[10px] text-slate-400">Monthly per subject</span>
+                  <span className="text-[10px] text-slate-400">
+                    {batchTargetBracket === 'PRIMARY' ? 'Flat monthly package' : 'Monthly per subject'}
+                  </span>
                 </div>
               </div>
 
