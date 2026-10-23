@@ -217,6 +217,7 @@ export function loadInitialState(): AppStateData {
   const subjectIdMap = new Set(sanitizedLoadedSubjects.map((s) => s.id));
   const mergedSubjects = sanitizedLoadedSubjects.map((sub) => {
     const initSub = INITIAL_SUBJECTS.find((s) => s.id === sub.id);
+    const resolvedCurriculum = initSub?.curriculum || sub.curriculum || (sub.id.startsWith('SUB-WB-') ? 'W.B. Board' : 'CBSE');
     if (initSub) {
       const isClass1To5 = ['1', '2', '3', '4', '5'].includes(sub.classLevel);
       const isClass6To8MathOrSci = ['6', '7', '8'].includes(sub.classLevel) && ['Mathematics', 'Science'].includes(sub.name);
@@ -227,6 +228,7 @@ export function loadInitialState(): AppStateData {
       ].includes(sub.id);
       return {
         ...sub,
+        curriculum: resolvedCurriculum,
         name: initSub.name,
         code: initSub.code,
         textbook: initSub.textbook,
@@ -235,7 +237,10 @@ export function loadInitialState(): AppStateData {
         weeklyHours: sub.weeklyHours || initSub.weeklyHours,
       };
     }
-    return sub;
+    return {
+      ...sub,
+      curriculum: resolvedCurriculum,
+    };
   });
   for (const initSub of INITIAL_SUBJECTS) {
     if (!subjectIdMap.has(initSub.id)) {

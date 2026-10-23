@@ -17,6 +17,7 @@ import {
   CLASS_LEVELS,
   STREAMS_FOR_CLASS,
   DEFAULT_FEE_STRUCTURE,
+  getFeeStructure,
   computeStudentFeeSummary,
   computeStudentAttendanceSummary,
   getAvailableSubjectsForStudent,
@@ -1102,10 +1103,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           subjects,
                           newBoard
                         );
+                        const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate || new Date().toISOString().split('T')[0]);
+                        const newDetails = newAvail.map((s) => ({
+                          subjectId: s.id,
+                          effectiveMonth: defaultAdmMonth,
+                        }));
                         setFormData({
                           ...formData,
                           curriculum: newBoard,
                           enrolledSubjectIds: newAvail.map((s) => s.id),
+                          enrolledSubjectsDetails: newDetails,
                           enrollmentType: 'All Subjects Combo',
                         });
                       }}
@@ -1130,12 +1137,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           : (validStreams[0] as StreamType);
                         
                         const newAvail = getAvailableSubjectsForStudent(newClass, streamToSet, subjects, formData.curriculum || 'CBSE');
+                        const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate || new Date().toISOString().split('T')[0]);
+                        const newDetails = newAvail.map((s) => ({
+                          subjectId: s.id,
+                          effectiveMonth: defaultAdmMonth,
+                        }));
                         
                         setFormData({
                           ...formData,
                           classLevel: newClass,
                           stream: streamToSet,
                           enrolledSubjectIds: newAvail.map((s) => s.id),
+                          enrolledSubjectsDetails: newDetails,
                           enrollmentType: 'All Subjects Combo',
                         });
                       }}
@@ -1163,10 +1176,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           subjects,
                           formData.curriculum || 'CBSE'
                         );
+                        const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate || new Date().toISOString().split('T')[0]);
+                        const newDetails = newAvail.map((s) => ({
+                          subjectId: s.id,
+                          effectiveMonth: defaultAdmMonth,
+                        }));
                         setFormData({
                           ...formData,
                           stream: newStream,
                           enrolledSubjectIds: newAvail.map((s) => s.id),
+                          enrolledSubjectsDetails: newDetails,
                           enrollmentType: 'All Subjects Combo',
                         });
                       }}
@@ -1594,25 +1613,29 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     };
                     const summary = computeStudentFeeSummary(tempStudent, [], DEFAULT_FEE_STRUCTURE, subjects);
                     const enrolledCount = formData.enrolledSubjectIds?.length || 0;
-                    const key = `${formData.classLevel}-${formData.stream}`;
-                    const structure =
-                      DEFAULT_FEE_STRUCTURE[key] ||
-                      DEFAULT_FEE_STRUCTURE[`${formData.classLevel}-General`] ||
-                      DEFAULT_FEE_STRUCTURE['1-General'];
+                    const structure = getFeeStructure(
+                      (formData.classLevel as ClassLevel) || '10',
+                      formData.stream || 'General',
+                      formData.curriculum || 'CBSE',
+                      DEFAULT_FEE_STRUCTURE
+                    );
+                    const isPrimary = ['1', '2', '3', '4'].includes(formData.classLevel || '');
 
                     return (
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                         <div>
                           <p className="font-bold text-slate-900 flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Coaching Enrollment: {enrolledCount} of {formAvailableSubjects.length} Subject(s) Selected
+                            Coaching Enrollment: {enrolledCount} of {formAvailableSubjects.length} Subject(s) Selected • {formData.curriculum || 'CBSE'}
                           </p>
                           <p className="text-[11px] text-slate-600 mt-0.5">
-                            {formData.enrollmentType === 'Single Subject'
-                              ? 'Targeted Single Subject Coaching Specialization'
+                            {isPrimary
+                              ? `Classes 1–4 Combined Package: ${formData.curriculum === 'W.B. Board' ? '₹800/mo' : '₹1,500/mo'} for all subjects`
+                              : formData.enrollmentType === 'Single Subject'
+                              ? `Targeted Single Subject Coaching Specialization (${formatCurrency(structure.perSubjectMonthlyFee)}/mo)`
                               : formData.enrollmentType === 'Multiple Subjects'
-                              ? 'Custom Multi-Subject Coaching Package'
-                              : 'Complete Comprehensive All-Subjects Combo Package'}
+                              ? `Custom Multi-Subject Coaching Package (${formatCurrency(structure.perSubjectMonthlyFee)}/subject/mo)`
+                              : `Complete Comprehensive All-Subjects Combo Package (${formatCurrency(structure.perSubjectMonthlyFee)}/subject/mo)`}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-slate-500">
                             <span>Admission: {formatCurrency(structure.admissionFee)}</span>

@@ -61,6 +61,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
 }) => {
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
   const [selectedStream, setSelectedStream] = useState<string>('ALL');
+  const [selectedCurriculum, setSelectedCurriculum] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DEFICIT' | 'CLEARED' | 'CURRENT_DUE'>('ALL');
   const [selectedFocusMonth, setSelectedFocusMonth] = useState<string>('ALL');
@@ -158,6 +159,10 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       if (selectedStream !== 'ALL' && student.stream !== selectedStream) {
         return false;
       }
+      // Curriculum filter
+      if (selectedCurriculum !== 'ALL' && (student.curriculum || 'CBSE') !== selectedCurriculum) {
+        return false;
+      }
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -198,7 +203,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       }
       return sortOrder === 'asc' ? cmp : -cmp;
     });
-  }, [studentRows, selectedClass, selectedStream, searchQuery, statusFilter, selectedFocusMonth, sortBy, sortOrder]);
+  }, [studentRows, selectedClass, selectedStream, selectedCurriculum, searchQuery, statusFilter, selectedFocusMonth, sortBy, sortOrder]);
 
   // Export Matrix to CSV
   const handleExportCSV = () => {
@@ -519,6 +524,20 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
             </select>
           </div>
 
+          {/* Curriculum Board Filter */}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500 font-semibold text-[11px]">Board:</span>
+            <select
+              value={selectedCurriculum}
+              onChange={(e) => setSelectedCurriculum(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+            >
+              <option value="ALL">All Boards</option>
+              <option value="CBSE">CBSE Board</option>
+              <option value="W.B. Board">W.B. Board</option>
+            </select>
+          </div>
+
           {/* Status Filter */}
           <div className="flex items-center gap-1">
             <span className="text-slate-500 font-semibold text-[11px]">Status:</span>
@@ -657,12 +676,21 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                         </div>
                       </td>
 
-                      {/* Class / Stream */}
+                      {/* Class / Stream / Board */}
                       <td className="py-2.5 px-2 text-center border-r border-slate-100">
-                        <span className="font-black text-slate-900 text-xs">
-                          {student.classLevel}
-                        </span>
-                        <span className="block text-[9px] text-slate-500 font-medium">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="font-black text-slate-900 text-xs">
+                            {student.classLevel}
+                          </span>
+                          <span className={`text-[8.5px] font-bold px-1 py-0.2 rounded border ${
+                            student.curriculum === 'W.B. Board'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-blue-50 text-blue-800 border-blue-200'
+                          }`}>
+                            {student.curriculum === 'W.B. Board' ? 'WB' : 'CBSE'}
+                          </span>
+                        </div>
+                        <span className="block text-[9px] text-slate-500 font-medium mt-0.5">
                           {student.stream === 'General' ? 'Gen' : student.stream}
                         </span>
                       </td>

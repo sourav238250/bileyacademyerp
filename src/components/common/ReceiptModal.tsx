@@ -306,7 +306,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 font-medium">
-                    Center for Secondary & Higher Secondary Academic Excellence (Class 5 to 12)
+                    Center for Primary, Secondary & Higher Secondary Academic Excellence (Class 1 to 12)
                   </p>
                   <p className="text-[11px] text-slate-500 flex items-center gap-3 mt-1">
                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> Jamna, Pingla, Paschim Medinipur, Pin-721140, W.B.</span>

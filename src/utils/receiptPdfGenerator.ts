@@ -79,7 +79,7 @@ export function generateFeeReceiptPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(226, 232, 240); // slate-200
-  doc.text('Center for Secondary & Higher Secondary Academic Excellence', margin + 6, y + 15);
+  doc.text('Center for Primary, Secondary & Higher Secondary Academic Excellence (Class 1 to 12)', margin + 6, y + 15);
 
   // Contact info
   doc.setFont('helvetica', 'normal');
@@ -140,7 +140,7 @@ export function generateFeeReceiptPDF(
   doc.setFont('helvetica', 'normal');
   doc.text(`Class & Stream: `, margin + 5, y + 28);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Class ${student.classLevel} (${student.stream})`, margin + 27, y + 28);
+  doc.text(`Class ${student.classLevel} (${student.stream}) • ${student.curriculum || 'CBSE'}`, margin + 27, y + 28);
 
   // Vertical Divider
   doc.setDrawColor(226, 232, 240);

@@ -2127,16 +2127,22 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
                   {(() => {
                     const targetStudent = students.find((s) => s.id === selectedStudentId);
-                    const structKey = targetStudent ? `${targetStudent.classLevel}-${targetStudent.stream}` : '1-General';
-                    const st = feeStructures[structKey] || feeStructures[`${targetStudent?.classLevel || '1'}-General`] || DEFAULT_FEE_STRUCTURE[structKey] || DEFAULT_FEE_STRUCTURE['1-General'];
+                    const st = targetStudent
+                      ? getFeeStructure(targetStudent.classLevel, targetStudent.stream, targetStudent.curriculum, feeStructures)
+                      : feeStructures['1-General-CBSE'] || feeStructures['1-General'] || DEFAULT_FEE_STRUCTURE['1-General-CBSE'];
+                    const isPrimary = targetStudent && ['1', '2', '3', '4'].includes(targetStudent.classLevel);
                     const feeHeadsStatus = targetStudent ? getStudentFeeHeadsSubmissionStatus(targetStudent, deposits) : null;
 
                     const headsList: { id: FeeHeadType; label: string; rateDisplay: string; subDesc: string; isSubmittedOnce?: boolean }[] = [
                       {
                         id: 'Tuition Fee',
                         label: 'Tuition Fee',
-                        rateDisplay: `₹${st.perSubjectMonthlyFee || 350}/sub/mo`,
-                        subDesc: `${tuitionSubjectCount} subj × ${selectedMonths.length} mo`,
+                        rateDisplay: isPrimary
+                          ? `₹${st.monthlyTuitionFee || (targetStudent?.curriculum === 'W.B. Board' ? 800 : 1500)}/mo (All Subjects)`
+                          : `₹${st.perSubjectMonthlyFee || (targetStudent?.curriculum === 'W.B. Board' ? 350 : 800)}/sub/mo`,
+                        subDesc: isPrimary
+                          ? `Full Package × ${selectedMonths.length} mo`
+                          : `${tuitionSubjectCount} subj × ${selectedMonths.length} mo`,
                       },
                       {
                         id: 'Admission Fee',

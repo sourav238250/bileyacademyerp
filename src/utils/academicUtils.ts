@@ -158,17 +158,21 @@ export function getFeeStructure(
   curriculum?: CurriculumBoard,
   feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE
 ): FeeStructure {
+  const targetCurriculum: CurriculumBoard = curriculum || 'CBSE';
+  const boardKey = `${classLevel}-${stream}-${targetCurriculum}`;
+  if (feeStructures[boardKey]) return feeStructures[boardKey];
+  const boardGeneralKey = `${classLevel}-General-${targetCurriculum}`;
+  if (feeStructures[boardGeneralKey]) return feeStructures[boardGeneralKey];
+
   if (curriculum) {
-    const boardKey = `${classLevel}-${stream}-${curriculum}`;
-    if (feeStructures[boardKey]) return feeStructures[boardKey];
-    const boardGeneralKey = `${classLevel}-General-${curriculum}`;
-    if (feeStructures[boardGeneralKey]) return feeStructures[boardGeneralKey];
+    const directKey = `${classLevel}-${stream}-${curriculum}`;
+    if (feeStructures[directKey]) return feeStructures[directKey];
   }
   const key = `${classLevel}-${stream}`;
   if (feeStructures[key]) return feeStructures[key];
   const generalKey = `${classLevel}-General`;
   if (feeStructures[generalKey]) return feeStructures[generalKey];
-  return feeStructures['1-General'] || DEFAULT_FEE_STRUCTURE['1-General'];
+  return feeStructures['1-General-CBSE'] || feeStructures['1-General'] || DEFAULT_FEE_STRUCTURE['1-General-CBSE'] || DEFAULT_FEE_STRUCTURE['1-General'];
 }
 
 export function formatCurrency(amount: number): string {
@@ -205,7 +209,9 @@ export function calculateGrade(
 }
 
 /**
- * Returns all curriculum subjects available for a student's class and stream.
+ * Returns all curriculum subjects available for a student's class, stream, and curriculum board.
+ * Strictly isolates subjects: W.B. Board candidates only see W.B. Board subjects,
+ * and CBSE candidates only see CBSE subjects.
  */
 export function getAvailableSubjectsForStudent(
   classLevel: ClassLevel,
@@ -213,10 +219,12 @@ export function getAvailableSubjectsForStudent(
   subjects: Subject[],
   curriculum?: CurriculumBoard
 ): Subject[] {
+  const targetCurriculum: CurriculumBoard = curriculum || 'CBSE';
   return subjects.filter((s) => {
     if (s.classLevel !== classLevel) return false;
-    if (curriculum && s.curriculum && s.curriculum !== curriculum) return false;
-    // For Higher Secondary (Class 11 & 12), all standardized subjects
+    const subCurriculum: CurriculumBoard = s.curriculum || (s.id.startsWith('SUB-WB-') ? 'W.B. Board' : 'CBSE');
+    if (subCurriculum !== targetCurriculum) return false;
+    // For Higher Secondary (Class 11 & 12), all standardized subjects in this board
     // are available for comprehensive coaching enrollment regardless of stream selection
     if (['11', '12'].includes(classLevel)) {
       return true;
@@ -685,8 +693,7 @@ export function getStudentFeeHeadsSubmissionStatus(
   feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
   subjects?: Subject[]
 ): StudentFeeHeadsTracking {
-  const key = `${student.classLevel}-${student.stream}`;
-  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const structure = getFeeStructure(student.classLevel, student.stream, student.curriculum, feeStructures);
   const studentDeposits = deposits.filter((d) => d.studentId === student.id);
 
   let admissionPaid = 0;
@@ -891,8 +898,7 @@ export function computeCandidateDuesTillCurrentMonth(
   const annualSummary = computeStudentFeeSummary(student, deposits, feeStructures, subjects);
   const monthlyTuition = annualSummary.monthlyTuitionFee;
 
-  const key = `${student.classLevel}-${student.stream}`;
-  const structure = feeStructures[key] || DEFAULT_FEE_STRUCTURE['10-General'];
+  const structure = getFeeStructure(student.classLevel, student.stream, student.curriculum, feeStructures);
   const tracking = getStudentFeeHeadsSubmissionStatus(student, deposits, feeStructures, subjects);
 
   // One-time fees + applicable exam terms till current month
@@ -919,7 +925,9 @@ export function computeCandidateDuesTillCurrentMonth(
   const monthStatuses = getStudentTuitionMonthsStatus(
     student,
     deposits,
-    ACADEMIC_SESSION_MONTHS.slice(0, effectiveCurrentIdx + 1)
+    ACADEMIC_SESSION_MONTHS.slice(0, effectiveCurrentIdx + 1),
+    feeStructures,
+    subjects
   );
   const unpaidElapsed = monthStatuses
     .filter((s) => !s.isPreEnrollment && !s.isPaid)
@@ -994,7 +1002,9 @@ export interface StudentMonthTuitionStatus {
 export function getStudentTuitionMonthsStatus(
   studentOrId: Student | string,
   deposits: FeeDeposit[],
-  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS,
+  feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
+  subjects?: Subject[]
 ): StudentMonthTuitionStatus[] {
   const studentId = typeof studentOrId === 'string' ? studentOrId : studentOrId.id;
   const student = typeof studentOrId === 'object' ? studentOrId : null;
@@ -1016,7 +1026,7 @@ export function getStudentTuitionMonthsStatus(
     let requiredTuition: number | undefined = undefined;
 
     if (student) {
-      const rate = getStudentMonthTuitionRate(student, sessionMonth);
+      const rate = getStudentMonthTuitionRate(student, sessionMonth, feeStructures, subjects);
       isPreEnrollment = rate.isPreEnrollment;
       activeSubjectCount = rate.activeSubjectCount;
       activeSubjectNames = rate.activeSubjectNames;
