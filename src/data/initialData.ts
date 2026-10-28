@@ -125,8 +125,6 @@ export const INITIAL_FACULTY: Faculty[] = [
       "SUB-10-CA",
       "SUB-09-CA",
       "SUB-08-CA",
-      "SUB-07-CA",
-      "SUB-06-CA",
       "SUB-06-MATH",
       "SUB-06-SCI",
       "SUB-07-SCI",
@@ -135,15 +133,14 @@ export const INITIAL_FACULTY: Faculty[] = [
       "SUB-WB-10-CA",
       "SUB-WB-09-CA",
       "SUB-WB-08-CA",
-      "SUB-WB-07-CA",
-      "SUB-WB-06-CA",
       "SUB-WB-06-MATH",
       "SUB-WB-06-SCI",
       "SUB-WB-07-SCI"
     ],
     "curriculumFocus": "Both",
+    "teachingMode": "Both",
     "maxWeeklyHours": 28,
-    "bio": "Computer Applications Lead & Academy Founder specializing in IT Code 165, COMA, Python, Web Technologies and foundational sciences."
+    "bio": "Computer Applications Lead & Academy Founder specializing in IT Code 165, COMA, Python, and online Computer Applications for Classes 8 to 12 across CBSE & W.B. Board."
   },
   {
     "id": "FAC-06",
@@ -336,6 +333,26 @@ export const INITIAL_FACULTY: Faculty[] = [
     "curriculumFocus": "Both",
     "maxWeeklyHours": 22,
     "bio": "Primary education specialist focusing on English language acquisition, phonics, reading fluency, and foundational living science for Classes 1 to 5."
+  },
+  {
+    "id": "FAC-14",
+    "name": "Mr. Tanay Mondal",
+    "designation": "Computer Senior Faculty",
+    "qualification": "M.Tech.(CSE)",
+    "email": "tanay.cse@bileyacademy.edu",
+    "phone": "+91 98312 90815",
+    "joiningDate": "2024-04-01",
+    "experienceYears": 15,
+    "assignedSubjectIds": [
+      "SUB-06-CA",
+      "SUB-07-CA",
+      "SUB-WB-06-CA",
+      "SUB-WB-07-CA"
+    ],
+    "curriculumFocus": "Both",
+    "teachingMode": "Online",
+    "maxWeeklyHours": 16,
+    "bio": "Computer Senior Faculty with 15 years experience, allocating 2 hr./week online teaching mode for Class 6 and 7 Computer Applications in both CBSE and W.B. curriculum."
   }
 ];
 
@@ -698,11 +715,12 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "curriculum": "CBSE",
     "stream": "General",
     "weeklyHours": 2,
-    "facultyId": "FAC-05",
+    "facultyId": "FAC-14",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "Touchpad Plus 6 / Python Explorer (CBSE)",
-    "description": "Computer memory & storage, MS Excel spreadsheets, PowerPoint animations, algorithms and flowcharts, Python turtle."
+    "description": "Online practical & concept coaching: Computer memory & storage, MS Excel spreadsheets, PowerPoint animations, algorithms and flowcharts, Python turtle."
   },
   {
     "id": "SUB-07-MATH",
@@ -768,11 +786,12 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "curriculum": "CBSE",
     "stream": "General",
     "weeklyHours": 2,
-    "facultyId": "FAC-05",
+    "facultyId": "FAC-14",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "Touchpad Plus 7 / Cyber Hub (CBSE)",
-    "description": "Number system (binary/decimal), advanced Excel formulas & charts, HTML5 web page authoring, Python syntax & variables."
+    "description": "Online interactive classes: Number system (binary/decimal), advanced Excel formulas & charts, HTML5 web page authoring, Python syntax & variables."
   },
   {
     "id": "SUB-08-MATH",
@@ -839,10 +858,11 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "stream": "General",
     "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "Touchpad Plus 8 / Python & AI (CBSE)",
-    "description": "Relational databases & MS Access, CSS styling, Python conditionals & loops, introduction to artificial intelligence and cloud computing."
+    "description": "Online interactive classes: Relational databases & MS Access, CSS styling, Python conditionals & loops, introduction to artificial intelligence and cloud computing."
   },
   {
     "id": "SUB-09-MATH",
@@ -909,10 +929,11 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "stream": "General",
     "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "Computer Applications Code 165 / IT Code 402 (CBSE)",
-    "description": "Basics of IT, cyber ethics, word processing, presentation tools, spreadsheets, HTML basics and scratch/python logic."
+    "description": "Online interactive classes: Basics of IT, cyber ethics, word processing, presentation tools, spreadsheets, HTML basics and scratch/python logic."
   },
   {
     "id": "SUB-10-MATH",
@@ -979,10 +1000,11 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "stream": "General",
     "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 6,
     "textbook": "Computer Applications Code 165 / IT Code 402 (CBSE)",
-    "description": "Networking & internet protocols, HTML & CSS web design, cyber ethics, digital footprint, python basics and board project practical."
+    "description": "Online interactive classes: Networking & internet protocols, HTML & CSS web design, cyber ethics, digital footprint, python basics and board project practical."
   },
   {
     "id": "SUB-11-MATH",
@@ -1061,12 +1083,13 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "classLevel": "11",
     "curriculum": "CBSE",
     "stream": "Science",
-    "weeklyHours": 3,
+    "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "Informatics Practices Code 065 by Preeti Arora (CBSE)",
-    "description": "Introduction to computer system, introduction to Python programming, data handling using NumPy, database concepts and SQL queries, emerging trends."
+    "description": "Online interactive classes (2hr/week): Introduction to computer system, introduction to Python programming, data handling using NumPy, database concepts and SQL queries, emerging trends."
   },
   {
     "id": "SUB-11-ENG",
@@ -1159,12 +1182,13 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "classLevel": "12",
     "curriculum": "CBSE",
     "stream": "Science",
-    "weeklyHours": 3,
+    "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 6,
     "textbook": "Informatics Practices Code 065 XII (CBSE)",
-    "description": "Data handling using Pandas and Matplotlib data visualization, database query using SQL, introduction to computer networks, societal impacts."
+    "description": "Online interactive classes (2hr/week): Data handling using Pandas and Matplotlib data visualization, database query using SQL, introduction to computer networks, societal impacts."
   },
   {
     "id": "SUB-12-ENG",
@@ -1538,11 +1562,12 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "curriculum": "W.B. Board",
     "stream": "General",
     "weeklyHours": 2,
-    "facultyId": "FAC-05",
+    "facultyId": "FAC-14",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "ICT Curriculum 6 (WBBSE School Computer)",
-    "description": "কম্পিউটার হার্ডওয়্যার ও সফটওয়্যার, স্প্রেডশিট এক্সেল পরিচিতি, অ্যালগরিদম ও ফ্লোচার্ট।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): কম্পিউটার হার্ডওয়্যার ও সফটওয়্যার, স্প্রেডশিট এক্সেল পরিচিতি, অ্যালগরিদম ও ফ্লোচার্ট।"
   },
   {
     "id": "SUB-WB-07-MATH",
@@ -1608,11 +1633,12 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "curriculum": "W.B. Board",
     "stream": "General",
     "weeklyHours": 2,
-    "facultyId": "FAC-05",
+    "facultyId": "FAC-14",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "ICT Curriculum 7 (WBBSE)",
-    "description": "সংখ্যা পদ্ধতি (বাইনারি ও ডেসিমাল), এক্সেল ফর্মুলা, HTML5 ওয়েব পেজ তৈরি, ইন্টারনেট ব্রাউজিং ও সাইবার নিরাপত্তা।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): সংখ্যা পদ্ধতি (বাইনারি ও ডেসিমাল), এক্সেল ফর্মুলা, HTML5 ওয়েব পেজ তৈরি, ইন্টারনেট ব্রাউজিং ও সাইবার নিরাপত্তা।"
   },
   {
     "id": "SUB-WB-08-MATH",
@@ -1679,10 +1705,11 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "stream": "General",
     "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "ICT Curriculum 8 (WBBSE)",
-    "description": "ডাটাবেস ও এক্সেস পরিচিতি, CSS স্টাইলিং, প্রোগ্রামিং এর বেসিক লজিক ও পাইথন কোডিং।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): ডাটাবেস ও এক্সেস পরিচিতি, CSS স্টাইলিং, প্রোগ্রামিং এর বেসিক লজিক ও পাইথন কোডিং।"
   },
   {
     "id": "SUB-WB-09-MATH",
@@ -1749,10 +1776,11 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "stream": "General",
     "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "ICT Curriculum 9 (WBBSE Madhyamik)",
-    "description": "আইটি সিস্টেমের ভিত্তি, ইন্টারনেট ও ইমেল শিষ্টাচার, ডকুমেন্ট প্রসেসিং, স্প্রেডশিট ডেটা অ্যানালিসিস, পাইথন বেসিক।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): আইটি সিস্টেমের ভিত্তি, ইন্টারনেট ও ইমেল শিষ্টাচার, ডকুমেন্ট প্রসেসিং, স্প্রেডশিট ডেটা অ্যানালিসিস, পাইথন বেসিক।"
   },
   {
     "id": "SUB-WB-10-MATH",
@@ -1819,10 +1847,11 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "stream": "General",
     "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 6,
     "textbook": "ICT Curriculum 10 (WBBSE Madhyamik)",
-    "description": "নেটওয়ার্কিং ও ইন্টারনেট প্রোটোকল, এইচটিএমএল ওয়েবপেজ ডিজাইন, সাইবার নিরাপত্তা, ডেটাবেস ধারণা ও প্রজেক্ট।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): নেটওয়ার্কিং ও ইন্টারনেট প্রোটোকল, এইচটিএমএল ওয়েবপেজ ডিজাইন, সাইবার নিরাপত্তা, ডেটাবেস ধারণা ও প্রজেক্ট।"
   },
   {
     "id": "SUB-WB-11-MATH",
@@ -1901,12 +1930,13 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "classLevel": "11",
     "curriculum": "W.B. Board",
     "stream": "Science",
-    "weeklyHours": 3,
+    "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 5,
     "textbook": "Modern Computer Application XI (COMA - Chhaya / WBCHSE)",
-    "description": "তথ্যপ্রযুক্তি ও আধুনিক কম্পিউটারের ধারণা, অপারেটিং সিস্টেম ও উইন্ডোজ, ওয়ার্ড প্রসেসিং এমএস ওয়ার্ড, পাওয়ারপয়েন্ট প্রেজেন্টেশন ও ইন্টারনেট।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): তথ্যপ্রযুক্তি ও আধুনিক কম্পিউটারের ধারণা, অপারেটিং সিস্টেম ও উইন্ডোজ, ওয়ার্ড প্রসেসিং এমএস ওয়ার্ড, পাওয়ারপয়েন্ট প্রেজেন্টেশন ও ইন্টারনেট।"
   },
   {
     "id": "SUB-WB-11-ENG",
@@ -1999,12 +2029,13 @@ export const INITIAL_SUBJECTS: Subject[] = [
     "classLevel": "12",
     "curriculum": "W.B. Board",
     "stream": "Science",
-    "weeklyHours": 3,
+    "weeklyHours": 2,
     "facultyId": "FAC-05",
+    "teachingMode": "Online",
     "totalChapters": 8,
     "completedChapters": 6,
     "textbook": "Modern Computer Application XII (COMA - Chhaya / WBCHSE HS)",
-    "description": "কম্বিনেশনাল সার্কিট (হাফ ও ফুল অ্যাডার, মাল্টিপ্লেক্সার), নেটওয়ার্কিং ও এইচটিএমএল, ডেটাবেস ম্যানেজমেন্ট সিস্টেম ও এসকিউএল, এমএস এক্সেল অ্যাডভান্সড ও এমএস অ্যাক্সেস।"
+    "description": "অনলাইন ইন্টারঅ্যাক্টিভ ক্লাস (২ ঘণ্টা/সপ্তাহ): কম্বিনেশনাল সার্কিট (হাফ ও ফুল অ্যাডার, মাল্টিপ্লেক্সার), নেটওয়ার্কিং ও এইচটিএমএল, ডেটাবেস ম্যানেজমেন্ট সিস্টেম ও এসকিউএল, এমএস এক্সেল অ্যাডভান্সড ও এমএস অ্যাক্সেস।"
   },
   {
     "id": "SUB-WB-12-ENG",
@@ -3461,8 +3492,9 @@ export const INITIAL_TIMETABLE: TimetableSlot[] = [
     "stream": "General",
     "batch": "Evening Batch (4:00 PM - 8:30 PM)",
     "subjectId": "SUB-08-CA",
-    "facultyId": "FAC-07",
-    "room": "ROOM-3"
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
   },
   {
     "id": "TT-014",
@@ -3534,7 +3566,8 @@ export const INITIAL_TIMETABLE: TimetableSlot[] = [
     "batch": "Evening Batch (4:00 PM - 8:30 PM)",
     "subjectId": "SUB-10-CA",
     "facultyId": "FAC-05",
-    "room": "ROOM-5"
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
   },
   {
     "id": "TT-020",
@@ -3570,7 +3603,8 @@ export const INITIAL_TIMETABLE: TimetableSlot[] = [
     "batch": "Evening Batch (4:00 PM - 8:30 PM)",
     "subjectId": "SUB-09-CA",
     "facultyId": "FAC-05",
-    "room": "ROOM-4"
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
   },
   {
     "id": "TT-023",
@@ -3665,8 +3699,9 @@ export const INITIAL_TIMETABLE: TimetableSlot[] = [
     "stream": "General",
     "batch": "Evening Batch (4:00 PM - 8:30 PM)",
     "subjectId": "SUB-07-CA",
-    "facultyId": "FAC-05",
-    "room": "ROOM-2"
+    "facultyId": "FAC-14",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
   },
   {
     "id": "TT-031",
@@ -3701,8 +3736,9 @@ export const INITIAL_TIMETABLE: TimetableSlot[] = [
     "stream": "General",
     "batch": "Evening Batch (4:00 PM - 8:30 PM)",
     "subjectId": "SUB-06-CA",
-    "facultyId": "FAC-05",
-    "room": "ROOM-1"
+    "facultyId": "FAC-14",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
   },
   {
     "id": "TT-034",
@@ -4303,6 +4339,123 @@ export const INITIAL_TIMETABLE: TimetableSlot[] = [
     "subjectId": "SUB-WB-02-MATH",
     "facultyId": "FAC-11",
     "room": "ROOM-1"
+  },
+  {
+    "id": "TT-059",
+    "day": "Saturday",
+    "timeSlot": "04:00 PM - 05:30 PM",
+    "classLevel": "11",
+    "curriculum": "CBSE",
+    "stream": "Science",
+    "batch": "Saturday Evening Batch (3:00 PM - 8:30 PM)",
+    "subjectId": "SUB-11-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-060",
+    "day": "Saturday",
+    "timeSlot": "05:30 PM - 07:00 PM",
+    "classLevel": "12",
+    "curriculum": "CBSE",
+    "stream": "Science",
+    "batch": "Saturday Evening Batch (3:00 PM - 8:30 PM)",
+    "subjectId": "SUB-12-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-028",
+    "day": "Wednesday",
+    "timeSlot": "05:30 PM - 07:00 PM",
+    "classLevel": "6",
+    "curriculum": "W.B. Board",
+    "stream": "General",
+    "batch": "Evening Batch (4:00 PM - 8:30 PM)",
+    "subjectId": "SUB-WB-06-CA",
+    "facultyId": "FAC-14",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-029",
+    "day": "Wednesday",
+    "timeSlot": "07:00 PM - 08:30 PM",
+    "classLevel": "7",
+    "curriculum": "W.B. Board",
+    "stream": "General",
+    "batch": "Evening Batch (4:00 PM - 8:30 PM)",
+    "subjectId": "SUB-WB-07-CA",
+    "facultyId": "FAC-14",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-030",
+    "day": "Friday",
+    "timeSlot": "04:00 PM - 05:30 PM",
+    "classLevel": "8",
+    "curriculum": "W.B. Board",
+    "stream": "General",
+    "batch": "Evening Batch (4:00 PM - 8:30 PM)",
+    "subjectId": "SUB-WB-08-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-031",
+    "day": "Friday",
+    "timeSlot": "05:30 PM - 07:00 PM",
+    "classLevel": "9",
+    "curriculum": "W.B. Board",
+    "stream": "General",
+    "batch": "Evening Batch (4:00 PM - 8:30 PM)",
+    "subjectId": "SUB-WB-09-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-032",
+    "day": "Friday",
+    "timeSlot": "07:00 PM - 08:30 PM",
+    "classLevel": "10",
+    "curriculum": "W.B. Board",
+    "stream": "General",
+    "batch": "Evening Batch (4:00 PM - 8:30 PM)",
+    "subjectId": "SUB-WB-10-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-033",
+    "day": "Sunday",
+    "timeSlot": "09:30 AM - 11:00 AM",
+    "classLevel": "11",
+    "curriculum": "W.B. Board",
+    "stream": "Science",
+    "batch": "Sunday Morning Batch (6:30 AM - 11:30 AM)",
+    "subjectId": "SUB-WB-11-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
+  },
+  {
+    "id": "TT-WB-034",
+    "day": "Sunday",
+    "timeSlot": "11:00 AM - 12:30 PM",
+    "classLevel": "12",
+    "curriculum": "W.B. Board",
+    "stream": "Science",
+    "batch": "Sunday Morning Batch (6:30 AM - 11:30 AM)",
+    "subjectId": "SUB-WB-12-CA",
+    "facultyId": "FAC-05",
+    "room": "Online (Virtual Lab)",
+    "teachingMode": "Online"
   }
 ];
 

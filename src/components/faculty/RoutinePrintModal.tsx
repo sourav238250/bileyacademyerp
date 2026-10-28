@@ -302,8 +302,12 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
                                   }`}>
                                     {slot.curriculum || 'CBSE'}
                                   </span>
-                                  <span className="bg-emerald-100 text-emerald-800 print:border print:border-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
-                                    {slot.room}
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                    slot.teachingMode === 'Online' || slot.room.includes('Online')
+                                      ? 'bg-sky-100 text-sky-800 border border-sky-300 print:border-sky-400'
+                                      : 'bg-emerald-100 text-emerald-800 print:border print:border-emerald-300'
+                                  }`}>
+                                    {slot.teachingMode === 'Online' || slot.room.includes('Online') ? '🌐 Online' : slot.room}
                                   </span>
                                 </div>
                               </div>

@@ -726,8 +726,12 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                                     <span className="font-mono font-bold text-[10px] text-slate-900">
                                       {slot.timeSlot}
                                     </span>
-                                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1 rounded">
-                                      {slot.room}
+                                    <span className={`text-[9px] font-bold px-1 rounded ${
+                                      slot.teachingMode === 'Online' || slot.room.includes('Online')
+                                        ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                                        : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      {slot.teachingMode === 'Online' || slot.room.includes('Online') ? '🌐 Online' : slot.room}
                                     </span>
                                   </div>
 
@@ -918,8 +922,12 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                                     <span className="font-mono font-bold text-[10px] text-purple-950">
                                       {slot.timeSlot}
                                     </span>
-                                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1 rounded">
-                                      {slot.room}
+                                    <span className={`text-[9px] font-bold px-1 rounded ${
+                                      slot.teachingMode === 'Online' || slot.room.includes('Online')
+                                        ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                                        : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      {slot.teachingMode === 'Online' || slot.room.includes('Online') ? '🌐 Online' : slot.room}
                                     </span>
                                   </div>
 
@@ -1449,9 +1457,21 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                         {fac.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                          {fac.designation}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                            {fac.designation}
+                          </span>
+                          {(fac.teachingMode === 'Online' || fac.id === 'FAC-14') && (
+                            <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
+                              🌐 Online Mode
+                            </span>
+                          )}
+                          {fac.id === 'FAC-05' && (
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                              🌐 Online Computer (8-12)
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-base font-bold text-slate-900 mt-1 truncate">{fac.name}</h3>
                         <p className="text-xs text-slate-600 truncate">{fac.qualification}</p>
                       </div>
@@ -1504,9 +1524,13 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                           assignedSubs.map((sub) => (
                             <span
                               key={sub.id}
-                              className="text-[10px] font-semibold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200"
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                                sub.teachingMode === 'Online'
+                                  ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                  : 'bg-slate-100 text-slate-800 border-slate-200'
+                              }`}
                             >
-                              Class {sub.classLevel} {sub.code} ({sub.weeklyHours}h)
+                              Class {sub.classLevel} {sub.code} ({sub.weeklyHours}h){sub.teachingMode === 'Online' ? ' • Online' : ''}
                             </span>
                           ))
                         )}
@@ -1868,7 +1892,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Designation</label>
                   <select
@@ -1878,9 +1902,24 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                   >
                     <option value="Subject Lead">Subject Lead</option>
                     <option value="Senior Faculty">Senior Faculty</option>
+                    <option value="Computer Senior Faculty">Computer Senior Faculty</option>
                     <option value="Assistant Faculty">Assistant Faculty</option>
                     <option value="Computer Instructor">Computer Instructor</option>
                     <option value="Guest Lecturer">Guest Lecturer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Teaching Mode</label>
+                  <select
+                    value={formData.teachingMode || 'Offline'}
+                    onChange={(e) => setFormData({ ...formData, teachingMode: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  >
+                    <option value="Offline">Offline (Classroom)</option>
+                    <option value="Online">Online Mode</option>
+                    <option value="Hybrid">Hybrid Mode</option>
+                    <option value="Both">Both (Online & Offline)</option>
                   </select>
                 </div>
 

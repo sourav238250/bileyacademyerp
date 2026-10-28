@@ -386,6 +386,11 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
                       <span className="text-[10px] font-semibold text-slate-500">
                         {sub.stream}
                       </span>
+                      {sub.teachingMode === 'Online' && (
+                        <span className="text-[10px] font-bold text-sky-800 bg-sky-100 border border-sky-300 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                          🌐 Online Mode (2hr/wk)
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-base font-bold text-slate-900 mt-1">{sub.name}</h3>
                   </div>
@@ -408,10 +413,15 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-black text-slate-900 flex items-center gap-1">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-1 justify-end">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
                       {sub.weeklyHours} hrs/wk
                     </span>
+                    {sub.teachingMode === 'Online' && (
+                      <span className="text-[9px] font-bold text-sky-700 block">
+                        🌐 Virtual Mode
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -622,20 +632,35 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Assigned Faculty Mentor</label>
-                <select
-                  value={formData.facultyId || ''}
-                  onChange={(e) => setFormData({ ...formData, facultyId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-                >
-                  <option value="">-- Select Faculty --</option>
-                  {faculty.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} ({f.qualification})
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Assigned Faculty Mentor</label>
+                  <select
+                    value={formData.facultyId || ''}
+                    onChange={(e) => setFormData({ ...formData, facultyId: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  >
+                    <option value="">-- Select Faculty --</option>
+                    {faculty.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} ({f.qualification})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Teaching Delivery Mode</label>
+                  <select
+                    value={formData.teachingMode || 'Offline'}
+                    onChange={(e) => setFormData({ ...formData, teachingMode: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  >
+                    <option value="Offline">Offline Classroom</option>
+                    <option value="Online">Online Virtual Class</option>
+                    <option value="Hybrid">Hybrid Mode</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

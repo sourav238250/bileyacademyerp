@@ -292,6 +292,7 @@ export interface Subject {
   stream: StreamType;
   weeklyHours: number;
   facultyId?: string; // Assigned faculty ID
+  teachingMode?: 'Online' | 'Offline' | 'Hybrid';
   description?: string;
   totalChapters?: number;
   completedChapters?: number;
@@ -302,7 +303,7 @@ export interface Faculty {
   id: string; // e.g. "FAC-01"
   name: string;
   avatarUrl?: string;
-  designation: 'Senior Faculty' | 'Subject Lead' | 'Assistant Faculty' | 'Guest Lecturer' | 'Computer Instructor';
+  designation: 'Senior Faculty' | 'Subject Lead' | 'Assistant Faculty' | 'Guest Lecturer' | 'Computer Instructor' | 'Computer Senior Faculty';
   qualification: string; // e.g. "M.Sc. Physics (IIT Kharagpur)", "M.Com, B.Ed"
   email: string;
   phone: string;
@@ -310,6 +311,7 @@ export interface Faculty {
   experienceYears: number;
   assignedSubjectIds: string[]; // Subject IDs taught
   curriculumFocus?: 'CBSE' | 'W.B. Board' | 'Both';
+  teachingMode?: 'Online' | 'Offline' | 'Hybrid' | 'Both';
   maxWeeklyHours: number;
   bio?: string;
 }
@@ -433,6 +435,7 @@ export interface TimetableSlot {
   subjectId: string;
   facultyId: string;
   room: string;
+  teachingMode?: 'Online' | 'Offline' | 'Hybrid';
 }
 
 export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';

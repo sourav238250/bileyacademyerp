@@ -221,7 +221,8 @@ export function loadInitialState(): AppStateData {
     if (initSub) {
       const isClass1To5 = ['1', '2', '3', '4', '5'].includes(sub.classLevel);
       const isClass6To8MathOrSci = ['6', '7', '8'].includes(sub.classLevel) && ['Mathematics', 'Science'].includes(sub.name);
-      const shouldOverrideFaculty = isClass1To5 || isClass6To8MathOrSci || [
+      const isComputerSubject = sub.id.includes('-CA') || sub.name.toLowerCase().includes('computer') || sub.name.toLowerCase().includes('ict') || sub.name.toLowerCase().includes('informatics');
+      const shouldOverrideFaculty = isClass1To5 || isClass6To8MathOrSci || isComputerSubject || [
         'SUB-08-SCI', 'SUB-09-SCI', 'SUB-10-SCI', 'SUB-11-CHEM', 'SUB-12-CHEM', 'SUB-07-SCI',
         'SUB-09-MATH', 'SUB-10-MATH', 'SUB-11-MATH', 'SUB-12-MATH',
         'SUB-06-MATH', 'SUB-06-SCI', 'SUB-07-MATH', 'SUB-08-MATH'
@@ -234,7 +235,8 @@ export function loadInitialState(): AppStateData {
         textbook: initSub.textbook,
         description: initSub.description,
         facultyId: shouldOverrideFaculty ? initSub.facultyId : (sub.facultyId || initSub.facultyId),
-        weeklyHours: sub.weeklyHours || initSub.weeklyHours,
+        weeklyHours: isComputerSubject ? initSub.weeklyHours : (sub.weeklyHours || initSub.weeklyHours),
+        teachingMode: initSub.teachingMode || sub.teachingMode,
       };
     }
     return {
@@ -259,6 +261,7 @@ export function loadInitialState(): AppStateData {
       const combinedSubjectIds = Array.from(new Set([...(fac.assignedSubjectIds || []), ...(initFac.assignedSubjectIds || [])]))
         .filter((id) => validSubjectIds.has(id));
       if (
+        fac.id === 'FAC-14' || fac.name === 'Mr. Tanay Mondal' ||
         fac.id === 'FAC-05' || fac.name === 'Mr. Sourav Dinda' || fac.name === 'Mr. Rajeshwar Ghosh' ||
         fac.id === 'FAC-02' || fac.name === 'Mr. Pranab Bhattacharjya' || fac.name === 'Mr. Pranab Bhattacharya' || fac.name === 'Prof. Sangeeta Sharma' ||
         fac.id === 'FAC-10' || fac.name === 'Mrs. Rupa Chakraborty' || fac.name === 'Mr. Ayan Dinda' ||
@@ -278,6 +281,7 @@ export function loadInitialState(): AppStateData {
           experienceYears: initFac.experienceYears,
           email: initFac.email,
           bio: initFac.bio,
+          teachingMode: initFac.teachingMode,
           assignedSubjectIds: initFac.assignedSubjectIds,
           maxWeeklyHours: initFac.maxWeeklyHours,
         };
