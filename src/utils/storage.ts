@@ -315,7 +315,7 @@ export function loadInitialState(): AppStateData {
   }
 
   const loadedStudents = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
-  const sanitizedStudents = loadedStudents.map((st) => {
+  const sanitizedStudents: Student[] = loadedStudents.map((st) => {
     let batch = st.batch;
     if (batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)) {
       batch = 'Evening Batch (4:00 PM - 8:30 PM)';
@@ -323,6 +323,7 @@ export function loadInitialState(): AppStateData {
 
     const initSt = INITIAL_STUDENTS.find((s) => s.id === st.id);
     const curriculum = st.curriculum || (initSt ? initSt.curriculum : 'CBSE');
+    const academicSession = st.academicSession || (initSt ? initSt.academicSession : undefined) || (st.id.startsWith('BA-2027-') || st.enrollmentMonth?.includes('2027') ? '2027' : '2026');
 
     if (standardClassLevels.includes(st.classLevel) && st.enrolledSubjectIds) {
       const filteredEnrolled = st.enrolledSubjectIds.filter((id) => validSubjectIds.has(id));
@@ -335,6 +336,7 @@ export function loadInitialState(): AppStateData {
           ...st,
           curriculum,
           batch,
+          academicSession,
           enrolledSubjectIds: classSubs,
         };
       }
@@ -342,6 +344,7 @@ export function loadInitialState(): AppStateData {
         ...st,
         curriculum,
         batch,
+        academicSession,
         enrolledSubjectIds: filteredEnrolled,
       };
     }
@@ -349,6 +352,7 @@ export function loadInitialState(): AppStateData {
       ...st,
       curriculum,
       batch,
+      academicSession,
     };
   });
 
@@ -444,7 +448,18 @@ export function loadInitialState(): AppStateData {
     subjects: mergedSubjects,
     exams: sanitizedExams,
     results: sanitizedResults,
-    deposits: loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS),
+    deposits: (() => {
+      const loaded = loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS);
+      const depMap = new Set(loaded.map((d) => d.id));
+      const merged = [...loaded];
+      for (const initD of INITIAL_DEPOSITS) {
+        if (!depMap.has(initD.id)) {
+          merged.push(initD);
+          depMap.add(initD.id);
+        }
+      }
+      return merged;
+    })(),
     disbursements: sanitizedDisbursements,
     investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
     investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),

@@ -251,7 +251,7 @@ export function getEnrolledSubjectsForStudent(student: Student, subjects: Subjec
   return available;
 }
 
-export const ACADEMIC_SESSION_MONTHS = [
+export const ACADEMIC_SESSION_2026_MONTHS = [
   'January 2026',
   'February 2026',
   'March 2026',
@@ -266,7 +266,30 @@ export const ACADEMIC_SESSION_MONTHS = [
   'December 2026',
 ] as const;
 
-export type AcademicSessionMonth = (typeof ACADEMIC_SESSION_MONTHS)[number];
+export const ACADEMIC_SESSION_2027_MONTHS = [
+  'January 2027',
+  'February 2027',
+  'March 2027',
+  'April 2027',
+  'May 2027',
+  'June 2027',
+  'July 2027',
+  'August 2027',
+  'September 2027',
+  'October 2027',
+  'November 2027',
+  'December 2027',
+] as const;
+
+export const ALL_ACADEMIC_SESSION_MONTHS = [
+  ...ACADEMIC_SESSION_2026_MONTHS,
+  ...ACADEMIC_SESSION_2027_MONTHS,
+] as const;
+
+// Default session months (Session 2026) maintained for backward-compatibility
+export const ACADEMIC_SESSION_MONTHS = ACADEMIC_SESSION_2026_MONTHS;
+
+export type AcademicSessionMonth = (typeof ALL_ACADEMIC_SESSION_MONTHS)[number];
 
 export const MONTH_SHORT_NAMES: Record<string, string> = {
   'January 2026': 'Jan',
@@ -281,11 +304,56 @@ export const MONTH_SHORT_NAMES: Record<string, string> = {
   'October 2026': 'Oct',
   'November 2026': 'Nov',
   'December 2026': 'Dec',
+  'January 2027': "Jan '27",
+  'February 2027': "Feb '27",
+  'March 2027': "Mar '27",
+  'April 2027': "Apr '27",
+  'May 2027': "May '27",
+  'June 2027': "Jun '27",
+  'July 2027': "Jul '27",
+  'August 2027': "Aug '27",
+  'September 2027': "Sep '27",
+  'October 2027': "Oct '27",
+  'November 2027': "Nov '27",
+  'December 2027': "Dec '27",
 };
 
 /**
+ * Resolves the academic session ('2026' or '2027') for a student.
+ * Supports early admissions intake for Session 2027 commencing in November 2026.
+ */
+export function getStudentSession(student?: Student | null): '2026' | '2027' {
+  if (!student) return '2026';
+  if (student.academicSession === '2027' || (student.academicSession && student.academicSession.includes('2027'))) {
+    return '2027';
+  }
+  if (student.academicSession === '2026' || (student.academicSession && student.academicSession.includes('2026'))) {
+    return '2026';
+  }
+
+  // Check enrollment month
+  if (student.enrollmentMonth && student.enrollmentMonth.includes('2027')) return '2027';
+  if (student.subjectEnrollments?.some((e) => e.enrollmentMonth?.includes('2027'))) return '2027';
+
+  // If admission date is in 2027
+  if (student.admissionDate && student.admissionDate.startsWith('2027')) return '2027';
+
+  return '2026';
+}
+
+/**
+ * Returns the 12 calendar session months (Jan to Dec) for a student's academic session.
+ * Session 2026: January 2026 to December 2026
+ * Session 2027: January 2027 to December 2027 (admissions commence November 2026)
+ */
+export function getStudentSessionMonths(student?: Student | null): readonly string[] {
+  const session = getStudentSession(student);
+  return session === '2027' ? ACADEMIC_SESSION_2027_MONTHS : ACADEMIC_SESSION_2026_MONTHS;
+}
+
+/**
  * Normalizes string representations of months for accurate matching
- * e.g., "April 2026", "April", "Apr 2026", "Apr"
+ * e.g., "April 2026", "April", "Apr 2026", "Apr", "January 2027"
  */
 export function matchMonth(monthNameA: string, monthNameB: string): boolean {
   if (!monthNameA || !monthNameB) return false;
@@ -293,9 +361,18 @@ export function matchMonth(monthNameA: string, monthNameB: string): boolean {
   const cleanB = monthNameB.trim().toLowerCase();
   if (cleanA === cleanB) return true;
 
-  const prefixA = cleanA.split(' ')[0].slice(0, 3);
-  const prefixB = cleanB.split(' ')[0].slice(0, 3);
-  return prefixA === prefixB && prefixA.length >= 3;
+  const partsA = cleanA.split(' ');
+  const partsB = cleanB.split(' ');
+  const prefixA = partsA[0].slice(0, 3);
+  const prefixB = partsB[0].slice(0, 3);
+  
+  if (prefixA !== prefixB || prefixA.length < 3) return false;
+
+  // If both have years, years must match
+  if (partsA.length > 1 && partsB.length > 1) {
+    return partsA[1] === partsB[1];
+  }
+  return true;
 }
 
 /**
@@ -310,12 +387,13 @@ export function getStudentSubjectEnrollments(
   if (!student) return [];
 
   const defaultMonth = getStudentEnrollmentMonth(student);
+  const sessionMonths = getStudentSessionMonths(student);
 
   // If explicit subjectEnrollments exists and has items
   if (student.subjectEnrollments && student.subjectEnrollments.length > 0) {
     return student.subjectEnrollments.map((enr) => {
       let matchedMonth = enr.enrollmentMonth;
-      if (!matchedMonth || !ACADEMIC_SESSION_MONTHS.some((m) => matchMonth(m, matchedMonth))) {
+      if (!matchedMonth || !ALL_ACADEMIC_SESSION_MONTHS.some((m) => matchMonth(m, matchedMonth))) {
         matchedMonth = defaultMonth;
       }
       return {
@@ -337,7 +415,7 @@ export function getStudentSubjectEnrollments(
 
   // Fallback to all available subjects if combo
   if (availableSubjects && availableSubjects.length > 0) {
-    const classAvailable = getAvailableSubjectsForStudent(student.classLevel, student.stream, availableSubjects);
+    const classAvailable = getAvailableSubjectsForStudent(student.classLevel, student.stream, availableSubjects, student.curriculum);
     return classAvailable.map((sub) => ({
       subjectId: sub.id,
       enrollmentMonth: defaultMonth,
@@ -350,24 +428,40 @@ export function getStudentSubjectEnrollments(
 
 /**
  * Resolves the academic session month name from a date string (e.g., '2026-04-12' -> 'April 2026')
+ * Special handling for early admission intake:
+ * If an admission takes place in November or December 2026 for the 2027 session,
+ * teaching classes commence in 'January 2027'.
  */
-export function getSessionMonthFromDate(dateStr?: string): string {
-  if (!dateStr) return 'January 2026';
+export function getSessionMonthFromDate(dateStr?: string, targetSession?: string): string {
+  if (!dateStr) return targetSession === '2027' ? 'January 2027' : 'January 2026';
   const parts = dateStr.split('-');
   if (parts.length >= 2) {
     const year = parseInt(parts[0], 10);
     const monthNum = parseInt(parts[1], 10);
     if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+      if (targetSession === '2027') {
+        // Admissions in Nov/Dec 2026 start their academic session classes in January 2027
+        if (year === 2026 && monthNum >= 11) {
+          return 'January 2027';
+        }
+        if (year === 2027) {
+          return ACADEMIC_SESSION_2027_MONTHS[monthNum - 1] || 'January 2027';
+        }
+        return 'January 2027';
+      }
+
       if (year === 2026) {
-        return ACADEMIC_SESSION_MONTHS[monthNum - 1] || 'January 2026';
+        return ACADEMIC_SESSION_2026_MONTHS[monthNum - 1] || 'January 2026';
+      } else if (year === 2027) {
+        return ACADEMIC_SESSION_2027_MONTHS[monthNum - 1] || 'January 2027';
       } else if (year < 2026) {
         return 'January 2026';
-      } else if (year > 2026) {
-        return 'December 2026';
+      } else if (year > 2027) {
+        return 'December 2027';
       }
     }
   }
-  return 'January 2026';
+  return targetSession === '2027' ? 'January 2027' : 'January 2026';
 }
 
 /**
@@ -375,10 +469,12 @@ export function getSessionMonthFromDate(dateStr?: string): string {
  */
 export function getSubjectEffectiveMonth(student?: Student | null, subjectId?: string): string {
   if (!student) return 'January 2026';
+  const sessionMonths = getStudentSessionMonths(student);
   if (student.subjectEnrollments && student.subjectEnrollments.length > 0 && subjectId) {
     const enr = student.subjectEnrollments.find((e) => e.subjectId === subjectId);
     if (enr && enr.enrollmentMonth) {
-      const matched = ACADEMIC_SESSION_MONTHS.find((m) => matchMonth(m, enr.enrollmentMonth));
+      const matched = sessionMonths.find((m) => matchMonth(m, enr.enrollmentMonth)) ||
+        ALL_ACADEMIC_SESSION_MONTHS.find((m) => matchMonth(m, enr.enrollmentMonth));
       if (matched) return matched;
     }
   }
@@ -388,51 +484,58 @@ export function getSubjectEffectiveMonth(student?: Student | null, subjectId?: s
 /**
  * Resolves the earliest subject enrollment month for a candidate.
  * If individual subject enrollments exist, finds the earliest start month.
- * If explicitly specified on student (e.g. 'April 2026'), uses that.
- * Otherwise parses student admissionDate (e.g. 2026-04-12 -> 'April 2026').
- * If student joined in a prior session (e.g. 2025), default to session start ('January 2026').
+ * If explicitly specified on student (e.g. 'April 2026' or 'January 2027'), uses that.
+ * Otherwise parses student admissionDate:
+ *   - For New Session 2027 admitted in Nov/Dec 2026, defaults to 'January 2027'
+ *   - For Session 2026, parses date to 2026 session month
  */
 export function getStudentEnrollmentMonth(student?: Student | null): string {
   if (!student) return 'January 2026';
+  const is2027 = getStudentSession(student) === '2027';
+  const sessionMonths = getStudentSessionMonths(student);
+  const defaultFallback = is2027 ? 'January 2027' : 'January 2026';
 
-  // Check if subjectEnrollments exist and pick the earliest valid enrollment month
+  // Check if subjectEnrollments exist and pick the earliest valid enrollment month in the student's session
   if (student.subjectEnrollments && student.subjectEnrollments.length > 0) {
     let earliestIdx = 999;
     student.subjectEnrollments.forEach((enr) => {
-      const idx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enr.enrollmentMonth));
+      const idx = sessionMonths.findIndex((m) => matchMonth(m, enr.enrollmentMonth));
       if (idx >= 0 && idx < earliestIdx) {
         earliestIdx = idx;
       }
     });
-    if (earliestIdx >= 0 && earliestIdx < ACADEMIC_SESSION_MONTHS.length) {
-      return ACADEMIC_SESSION_MONTHS[earliestIdx];
+    if (earliestIdx >= 0 && earliestIdx < sessionMonths.length) {
+      return sessionMonths[earliestIdx];
     }
   }
 
   if (student.enrollmentMonth && typeof student.enrollmentMonth === 'string' && student.enrollmentMonth.trim()) {
-    const matched = ACADEMIC_SESSION_MONTHS.find((m) => matchMonth(m, student.enrollmentMonth!));
+    const matched = sessionMonths.find((m) => matchMonth(m, student.enrollmentMonth!)) ||
+      ALL_ACADEMIC_SESSION_MONTHS.find((m) => matchMonth(m, student.enrollmentMonth!));
     if (matched) return matched;
   }
 
   if (student.admissionDate) {
-    return getSessionMonthFromDate(student.admissionDate);
+    return getSessionMonthFromDate(student.admissionDate, is2027 ? '2027' : '2026');
   }
 
-  return 'January 2026';
+  return defaultFallback;
 }
 
 /**
  * Returns the list of academic session months applicable to this candidate
- * calculated strictly from their earliest subject enrollment month to the session end (December 2026).
+ * calculated strictly from their earliest subject enrollment month to the session end
+ * (December 2026 for Session 2026, or December 2027 for Session 2027).
  */
 export function getApplicableSessionMonthsForStudent(
   student?: Student | null,
-  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+  sessionMonths?: readonly string[]
 ): string[] {
+  const months = sessionMonths || getStudentSessionMonths(student);
   const enrollmentMonth = getStudentEnrollmentMonth(student);
-  const startIdx = sessionMonths.findIndex((m) => matchMonth(m, enrollmentMonth));
+  const startIdx = months.findIndex((m) => matchMonth(m, enrollmentMonth));
   const effectiveStart = startIdx >= 0 ? startIdx : 0;
-  return sessionMonths.slice(effectiveStart) as string[];
+  return months.slice(effectiveStart) as string[];
 }
 
 /**
@@ -444,7 +547,8 @@ export function getStudentActiveSubjectsForMonth(
   sessionMonth: string,
   subjects?: Subject[]
 ): { enrollment: StudentSubjectEnrollment; subject?: Subject }[] {
-  const targetIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, sessionMonth));
+  const sessionMonths = getStudentSessionMonths(student);
+  const targetIdx = sessionMonths.findIndex((m) => matchMonth(m, sessionMonth));
   if (targetIdx < 0) return [];
 
   const enrollments = getStudentSubjectEnrollments(student, subjects);
@@ -452,7 +556,7 @@ export function getStudentActiveSubjectsForMonth(
 
   enrollments.forEach((enr) => {
     if (enr.status === 'Dropped') return;
-    const enrIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enr.enrollmentMonth));
+    const enrIdx = sessionMonths.findIndex((m) => matchMonth(m, enr.enrollmentMonth));
     if (enrIdx >= 0 && enrIdx <= targetIdx) {
       const matchedSub = subjects?.find((s) => s.id === enr.subjectId);
       activeList.push({
@@ -568,8 +672,12 @@ export function computeStudentFeeSummary(
   }
 
   // Calculate month-by-month tuition across the 12 session months
+  const sessionMonths = getStudentSessionMonths(student);
+  const isSession2027 = getStudentSession(student) === '2027';
+  const sessionEndMonth = sessionMonths[sessionMonths.length - 1] || (isSession2027 ? 'December 2027' : 'December 2026');
+
   let totalTuitionForSession = 0;
-  const monthWiseTuitionBreakdown = ACADEMIC_SESSION_MONTHS.map((m) => {
+  const monthWiseTuitionBreakdown = sessionMonths.map((m) => {
     const rate = getStudentMonthTuitionRate(student, m, feeStructures, subjects);
     totalTuitionForSession += rate.requiredTuition;
     return {
@@ -581,14 +689,15 @@ export function computeStudentFeeSummary(
     };
   });
 
-  // Calculate applicable months from earliest subject enrollment month to session end (December 2026)
+  // Calculate applicable months from earliest subject enrollment month to session end
   const enrollmentMonth = getStudentEnrollmentMonth(student);
-  const applicableMonths = getApplicableSessionMonthsForStudent(student, ACADEMIC_SESSION_MONTHS);
+  const applicableMonths = getApplicableSessionMonthsForStudent(student, sessionMonths);
   const applicableMonthsCount = applicableMonths.length;
 
-  // Active monthly tuition for current (September 2026) or latest active rate
+  // Active monthly tuition for current (September 2026 for 2026 session, or January 2027 for 2027 session) or latest active rate
+  const targetCurrentMonth = isSession2027 ? 'January 2027' : 'September 2026';
   const activeNowBreakdown =
-    monthWiseTuitionBreakdown.find((b) => matchMonth(b.month, 'September 2026')) ||
+    monthWiseTuitionBreakdown.find((b) => matchMonth(b.month, targetCurrentMonth)) ||
     monthWiseTuitionBreakdown.filter((b) => !b.isPreEnrollment).slice(-1)[0] ||
     monthWiseTuitionBreakdown[0];
   const isPrimary = ['1', '2', '3', '4'].includes(student.classLevel);
@@ -607,7 +716,7 @@ export function computeStudentFeeSummary(
     : Math.round((structure.materialsFee ?? 50) * (enrolledCount / (totalAvailableCount || 1)));
 
   // Exam fee terms: 2 terms for students enrolled in H1 (Jan-Jun), 1 term for students enrolled in H2 (Jul-Dec)
-  const enrollmentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enrollmentMonth));
+  const enrollmentMonthIdx = sessionMonths.findIndex((m) => matchMonth(m, enrollmentMonth));
   const applicableExamTerms = enrollmentMonthIdx <= 6 ? 2 : 1;
   const totalExamFee = structure.examFeePerTerm * applicableExamTerms;
 
@@ -652,7 +761,7 @@ export function computeStudentFeeSummary(
     coachingMode,
     enrollmentMonth,
     applicableMonthsCount,
-    sessionEndMonth: 'December 2026',
+    sessionEndMonth,
     applicableMonths,
     subjectEnrollments: allEnrollments,
     monthWiseTuitionBreakdown,
@@ -768,8 +877,9 @@ export function getStudentFeeHeadsSubmissionStatus(
   const annualDevRequired = structure.annualDevelopmentFee ?? 50;
   const materialsRequired = effectiveMaterialsFee;
 
+  const sessionMonths = getStudentSessionMonths(student);
   const enrollmentMonth = getStudentEnrollmentMonth(student);
-  const enrollmentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enrollmentMonth));
+  const enrollmentMonthIdx = sessionMonths.findIndex((m) => matchMonth(m, enrollmentMonth));
   const totalExamTerms = enrollmentMonthIdx <= 6 ? 2 : 1;
   const examRequired = (structure.examFeePerTerm || 100) * totalExamTerms;
 
@@ -840,8 +950,8 @@ export function getStudentFeeHeadsSubmissionStatus(
 
 export interface CandidateCurrentMonthDuesSummary {
   studentId: string;
-  currentSessionMonth: string; // e.g. "September 2026"
-  enrollmentMonth: string; // e.g. "April 2026"
+  currentSessionMonth: string; // e.g. "September 2026" or "January 2027"
+  enrollmentMonth: string; // e.g. "April 2026" or "January 2027"
   elapsedMonthsCount: number; // e.g. 9
   applicableElapsedMonthsCount: number; // e.g. 6 (April to September)
   applicableMonthsInSessionCount: number; // e.g. 9 (April to December)
@@ -866,31 +976,44 @@ export interface CandidateCurrentMonthDuesSummary {
  * Calculates a candidate's remaining dues and payment balance up to the current session month.
  * Strictly adheres to:
  * - Tuition calculated from subject enrollment month to current month.
+ * - For New Session 2027 admissions taken in Nov/Dec 2026, tuition begins in January 2027,
+ *   while admission and non-tuition fees are immediately payable.
  * - One-time fees (Admission, Material & Lab, Annual Dev) submitted once.
  */
 export function computeCandidateDuesTillCurrentMonth(
   student: Student,
   deposits: FeeDeposit[],
-  currentSessionMonth: string = 'September 2026',
+  currentSessionMonth?: string,
   feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
   subjects?: Subject[]
 ): CandidateCurrentMonthDuesSummary {
-  const currentMonthIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, currentSessionMonth));
-  const effectiveCurrentIdx = currentMonthIdx >= 0 ? currentMonthIdx : 8; // default to September 2026 (index 8)
-  const elapsedMonthsCount = effectiveCurrentIdx + 1; // 9 months overall in session
+  const sessionMonths = getStudentSessionMonths(student);
+  const is2027 = getStudentSession(student) === '2027';
+  const defaultCurrentMonth = is2027 ? 'January 2027' : 'September 2026';
+  const effectiveMonthStr = currentSessionMonth || defaultCurrentMonth;
+
+  let currentMonthIdx = sessionMonths.findIndex((m) => matchMonth(m, effectiveMonthStr));
+
+  // If student is enrolled for 2027 session and current date is still in 2026 (Nov/Dec 2026 early intake),
+  // classes have not started yet (0 elapsed tuition months).
+  const isPreSessionCommencement = is2027 && (effectiveMonthStr.includes('2026') || currentMonthIdx < 0);
+  const effectiveCurrentIdx = isPreSessionCommencement ? -1 : (currentMonthIdx >= 0 ? currentMonthIdx : 0);
+  const elapsedMonthsCount = effectiveCurrentIdx >= 0 ? effectiveCurrentIdx + 1 : 0;
 
   const enrollmentMonth = getStudentEnrollmentMonth(student);
 
-  // Calculate tuition sum across elapsed months (0 to effectiveCurrentIdx) based on active subjects in each month
+  // Calculate tuition sum across elapsed months based on active subjects in each month
   let totalTuitionDueTillCurrentMonth = 0;
   const applicableElapsedMonths: string[] = [];
 
-  for (let i = 0; i <= effectiveCurrentIdx; i++) {
-    const monthName = ACADEMIC_SESSION_MONTHS[i];
-    const rate = getStudentMonthTuitionRate(student, monthName, feeStructures, subjects);
-    totalTuitionDueTillCurrentMonth += rate.requiredTuition;
-    if (!rate.isPreEnrollment) {
-      applicableElapsedMonths.push(monthName);
+  if (effectiveCurrentIdx >= 0) {
+    for (let i = 0; i <= effectiveCurrentIdx; i++) {
+      const monthName = sessionMonths[i];
+      const rate = getStudentMonthTuitionRate(student, monthName, feeStructures, subjects);
+      totalTuitionDueTillCurrentMonth += rate.requiredTuition;
+      if (!rate.isPreEnrollment) {
+        applicableElapsedMonths.push(monthName);
+      }
     }
   }
 
@@ -907,7 +1030,7 @@ export function computeCandidateDuesTillCurrentMonth(
     structure.admissionFee +
     tracking.materialsAndLab.requiredAmount +
     tracking.annualDevelopment.requiredAmount +
-    examFeeApplicable;
+    (isPreSessionCommencement ? 0 : examFeeApplicable);
 
   const grossPayableTillCurrentMonth = totalTuitionDueTillCurrentMonth + nonTuitionDueTillCurrentMonth;
   const scholarshipDiscountTillCurrentMonth = Math.round(
@@ -922,10 +1045,11 @@ export function computeCandidateDuesTillCurrentMonth(
   const advanceCreditTillCurrentMonth = Math.max(0, totalPaidTillDate - netPayableTillCurrentMonth);
 
   // Calculate unpaid elapsed tuition months
+  const monthsToEvaluate = effectiveCurrentIdx >= 0 ? sessionMonths.slice(0, effectiveCurrentIdx + 1) : [];
   const monthStatuses = getStudentTuitionMonthsStatus(
     student,
     deposits,
-    ACADEMIC_SESSION_MONTHS.slice(0, effectiveCurrentIdx + 1),
+    monthsToEvaluate,
     feeStructures,
     subjects
   );
@@ -936,7 +1060,7 @@ export function computeCandidateDuesTillCurrentMonth(
 
   return {
     studentId: student.id,
-    currentSessionMonth: ACADEMIC_SESSION_MONTHS[effectiveCurrentIdx] || currentSessionMonth,
+    currentSessionMonth: effectiveCurrentIdx >= 0 ? sessionMonths[effectiveCurrentIdx] : (is2027 ? 'Session 2027 Intake' : effectiveMonthStr),
     enrollmentMonth,
     elapsedMonthsCount,
     applicableElapsedMonthsCount,
@@ -1002,12 +1126,13 @@ export interface StudentMonthTuitionStatus {
 export function getStudentTuitionMonthsStatus(
   studentOrId: Student | string,
   deposits: FeeDeposit[],
-  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS,
+  sessionMonths?: readonly string[],
   feeStructures: Record<string, FeeStructure> = DEFAULT_FEE_STRUCTURE,
   subjects?: Subject[]
 ): StudentMonthTuitionStatus[] {
   const studentId = typeof studentOrId === 'string' ? studentOrId : studentOrId.id;
   const student = typeof studentOrId === 'object' ? studentOrId : null;
+  const effectiveMonths = sessionMonths || (student ? getStudentSessionMonths(student) : ACADEMIC_SESSION_MONTHS);
 
   // Find all tuition deposits for this student
   const studentTuitionDeposits = deposits.filter((d) => {
@@ -1019,7 +1144,7 @@ export function getStudentTuitionMonthsStatus(
     return isTuition;
   });
 
-  return sessionMonths.map((sessionMonth) => {
+  return effectiveMonths.map((sessionMonth) => {
     let isPreEnrollment = false;
     let activeSubjectCount: number | undefined = undefined;
     let activeSubjectNames: string[] | undefined = undefined;
@@ -1032,9 +1157,9 @@ export function getStudentTuitionMonthsStatus(
       activeSubjectNames = rate.activeSubjectNames;
       requiredTuition = rate.requiredTuition;
     } else {
-      const enrollmentMonth = 'January 2026';
-      const enrollmentIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, enrollmentMonth));
-      const sessionIdx = ACADEMIC_SESSION_MONTHS.findIndex((m) => matchMonth(m, sessionMonth));
+      const enrollmentMonth = effectiveMonths[0] || 'January 2026';
+      const enrollmentIdx = effectiveMonths.findIndex((m) => matchMonth(m, enrollmentMonth));
+      const sessionIdx = effectiveMonths.findIndex((m) => matchMonth(m, sessionMonth));
       isPreEnrollment = sessionIdx >= 0 && sessionIdx < (enrollmentIdx >= 0 ? enrollmentIdx : 0);
     }
 
@@ -1066,9 +1191,11 @@ export function getStudentTuitionMonthsStatus(
 export function getNextUnpaidTuitionMonth(
   studentOrId: Student | string,
   deposits: FeeDeposit[],
-  sessionMonths: readonly string[] = ACADEMIC_SESSION_MONTHS
+  sessionMonths?: readonly string[]
 ): string | null {
-  const statuses = getStudentTuitionMonthsStatus(studentOrId, deposits, sessionMonths);
+  const student = typeof studentOrId === 'object' ? studentOrId : null;
+  const effectiveMonths = sessionMonths || (student ? getStudentSessionMonths(student) : ACADEMIC_SESSION_MONTHS);
+  const statuses = getStudentTuitionMonthsStatus(studentOrId, deposits, effectiveMonths);
   const unpaid = statuses.find((s) => !s.isPreEnrollment && !s.isPaid);
   return unpaid ? unpaid.month : null;
 }

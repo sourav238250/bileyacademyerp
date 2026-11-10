@@ -2558,6 +2558,78 @@ export const INITIAL_STUDENTS: Student[] = [
       "SUB-WB-02-MATH"
     ],
     "enrollmentType": "Single Subject"
+  },
+  {
+    "id": "BA-2027-1001",
+    "rollNo": "10-WB-05",
+    "name": "Debolina Sen",
+    "classLevel": "10",
+    "curriculum": "W.B. Board",
+    "stream": "General",
+    "batch": "Evening Batch (4:00 PM - 8:30 PM)",
+    "gender": "Female",
+    "dob": "2011-03-14",
+    "admissionDate": "2026-11-12",
+    "guardianName": "Subir Sen",
+    "guardianRelation": "Father",
+    "contactNumber": "+91 98305 77120",
+    "email": "debolina.sen@gmail.com",
+    "address": "42 Gariahat Road, South Kolkata",
+    "previousSchool": "Patha Bhavan (WBBSE)",
+    "previousScorePercentage": 91,
+    "scholarshipPercent": 10,
+    "status": "Active",
+    "bloodGroup": "B+",
+    "academicSession": "2027",
+    "enrollmentMonth": "January 2027",
+    "notes": "Advance admission intake registered in November 2026 for New Session 2027 (Jan-Dec 2027). Madhyamik 2027 target batch.",
+    "enrolledSubjectIds": [
+      "SUB-WB-10-MATH",
+      "SUB-WB-10-SCI",
+      "SUB-WB-10-ENG",
+      "SUB-WB-10-CA"
+    ],
+    "subjectEnrollments": [
+      { "subjectId": "SUB-WB-10-MATH", "enrollmentMonth": "January 2027" },
+      { "subjectId": "SUB-WB-10-SCI", "enrollmentMonth": "January 2027" },
+      { "subjectId": "SUB-WB-10-ENG", "enrollmentMonth": "January 2027" },
+      { "subjectId": "SUB-WB-10-CA", "enrollmentMonth": "January 2027" }
+    ],
+    "enrollmentType": "All Subjects Combo"
+  },
+  {
+    "id": "BA-2027-1101",
+    "rollNo": "11-SCI-CBSE-04",
+    "name": "Aarav Banerjee",
+    "classLevel": "11",
+    "curriculum": "CBSE",
+    "stream": "Science",
+    "batch": "Morning Batch (6:30 AM - 9:00 AM)",
+    "gender": "Male",
+    "dob": "2010-07-19",
+    "admissionDate": "2026-11-18",
+    "guardianName": "Dr. Kaushik Banerjee",
+    "guardianRelation": "Father",
+    "contactNumber": "+91 98311 88234",
+    "email": "aarav.banerjee@gmail.com",
+    "address": "18 Southern Avenue, Kolkata",
+    "previousSchool": "South Point High School (CBSE)",
+    "previousScorePercentage": 94,
+    "scholarshipPercent": 15,
+    "status": "Active",
+    "bloodGroup": "O+",
+    "academicSession": "2027",
+    "enrollmentMonth": "January 2027",
+    "notes": "Early admission intake in November 2026 for New Academic Session 2027 (Jan-Dec 2027). Enrolled in Mathematics & Physics.",
+    "enrolledSubjectIds": [
+      "SUB-11-MATH",
+      "SUB-11-PHY"
+    ],
+    "subjectEnrollments": [
+      { "subjectId": "SUB-11-MATH", "enrollmentMonth": "January 2027" },
+      { "subjectId": "SUB-11-PHY", "enrollmentMonth": "January 2027" }
+    ],
+    "enrollmentType": "Multiple Subjects"
   }
 ];
 
@@ -3347,6 +3419,24 @@ export const INITIAL_DEPOSITS: FeeDeposit[] = [
     transactionRef: 'UPI/26012588102',
     collectedBy: 'Accounts Dept - S. Dinda',
     remarks: '4 Months Primary foundation package (CBSE).',
+  },
+  {
+    id: 'REC-2026-120',
+    receiptNo: 'REC-2026-120-4102',
+    studentId: 'BA-2027-1001',
+    depositDate: '2026-11-12',
+    amountPaid: 250,
+    feeHead: 'Admission Fee',
+    selectedFeeHeads: ['Admission Fee', 'Study Material & Lab Fee', 'Annual Development Fee'],
+    headBreakdown: [
+      { head: 'Admission Fee', amount: 100 },
+      { head: 'Study Material & Lab Fee', amount: 50 },
+      { head: 'Annual Development Fee', amount: 100 }
+    ],
+    paymentMode: 'UPI / GPay / PhonePe',
+    transactionRef: 'UPI/261112998410',
+    collectedBy: 'Accounts Dept - S. Dinda',
+    remarks: 'Early admission registration fee for New Academic Session 2027 (Jan-Dec 2027). Teaching commences Jan 2027.',
   }
 ];
 

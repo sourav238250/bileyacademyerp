@@ -27,6 +27,11 @@ import {
   formatCurrency,
   generateStudentId,
   ACADEMIC_SESSION_MONTHS,
+  ACADEMIC_SESSION_2026_MONTHS,
+  ACADEMIC_SESSION_2027_MONTHS,
+  ALL_ACADEMIC_SESSION_MONTHS,
+  getStudentSession,
+  getStudentSessionMonths,
   getSessionMonthFromDate,
   getSubjectEffectiveMonth,
 } from '../../utils/academicUtils';
@@ -123,6 +128,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const triggerIdCard = onOpenIdCardModal || onViewIdCard || (() => {});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCurriculum, setSelectedCurriculum] = useState<string>('all');
+  const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [selectedFeeStatus, setSelectedFeeStatus] = useState<string>('all');
@@ -282,7 +288,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const initialCurriculum: import('../../types').CurriculumBoard = selectedCurriculum === 'W.B. Board' ? 'W.B. Board' : 'CBSE';
     const available = getAvailableSubjectsForStudent(initialClass, initialStream, subjects, initialCurriculum);
     
-    const defaultAdmMonth = getSessionMonthFromDate(new Date().toISOString().split('T')[0]);
+    const todayStr = new Date().toISOString().split('T')[0];
+    // Early admission intake for New Academic Session 2027 opens in November 2026
+    const isNov2026OrLater = todayStr >= '2026-11-01';
+    const initialSession: '2026' | '2027' = isNov2026OrLater ? '2027' : '2026';
+    const defaultAdmMonth = getSessionMonthFromDate(todayStr, initialSession);
     const initialDetails = available.map((s) => ({
       subjectId: s.id,
       effectiveMonth: defaultAdmMonth,
@@ -292,11 +302,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       name: '',
       classLevel: initialClass,
       curriculum: initialCurriculum,
+      academicSession: initialSession,
       stream: initialStream,
       batch: 'Evening Batch (4:00 PM - 8:30 PM)',
       gender: 'Male',
       dob: '2010-01-01',
-      admissionDate: new Date().toISOString().split('T')[0],
+      admissionDate: todayStr,
       guardianName: '',
       guardianRelation: 'Father',
       contactNumber: '',
@@ -308,7 +319,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       status: 'Active',
       bloodGroup: 'O+',
       emergencyContact: '',
-      notes: '',
+      notes: initialSession === '2027' ? 'New Session 2027 (Jan-Dec 2027) admission taken in November 2026.' : '',
       enrolledSubjectIds: available.map((s) => s.id),
       enrollmentType: 'All Subjects Combo',
       enrolledSubjectsDetails: initialDetails,
@@ -319,6 +330,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const handleOpenEdit = (student: Student) => {
     setEditingStudent(student);
     const studentCurriculum = student.curriculum || 'CBSE';
+    const studentSession = getStudentSession(student);
     const available = getAvailableSubjectsForStudent(student.classLevel, student.stream, subjects, studentCurriculum);
     const enrolledIds = student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0
       ? student.enrolledSubjectIds
@@ -331,7 +343,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       else mode = 'All Subjects Combo';
     }
 
-    const defaultEffectiveMonth = getSessionMonthFromDate(student.admissionDate);
+    const defaultEffectiveMonth = getSessionMonthFromDate(student.admissionDate, studentSession);
     const existingEnrollments = student.subjectEnrollments || [];
     const details = enrolledIds.map((subId) => {
       const found = existingEnrollments.find((e) => e.subjectId === subId);
@@ -343,6 +355,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
     setFormData({
       ...student,
+      academicSession: student.academicSession || studentSession,
       enrolledSubjectIds: enrolledIds,
       enrollmentType: mode,
       enrolledSubjectsDetails: details,
@@ -518,7 +531,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     else if (enrolled.length < available.length) finalMode = 'Multiple Subjects';
     else finalMode = 'All Subjects Combo';
 
-    const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate);
+    const studentSession = (formData.academicSession as ('2026' | '2027')) || '2026';
+    const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate, studentSession);
     const resolvedEnrollments = enrolled.map((subId) => {
       const customDetail = (formData.enrolledSubjectsDetails || []).find((d) => d.subjectId === subId);
       const existingEnr = (formData.subjectEnrollments || []).find((e) => e.subjectId === subId);
@@ -535,6 +549,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         ...editingStudent,
         ...(formData as Student),
         curriculum: formData.curriculum || editingStudent.curriculum || 'CBSE',
+        academicSession: studentSession,
         enrolledSubjectIds: enrolled,
         enrollmentType: finalMode,
         subjectEnrollments: resolvedEnrollments,
@@ -547,7 +562,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         setViewingStudent(updated);
       }
     } else {
-      const newId = generateStudentId(formData.classLevel as ClassLevel, students.length);
+      const sessionYear = studentSession === '2027' ? '2027' : new Date().getFullYear();
+      const sequence = String(students.length + 1).padStart(3, '0');
+      const classPadded = String(formData.classLevel || '10').padStart(2, '0');
+      const newId = `BA-${sessionYear}-${classPadded}${sequence}`;
+
       const rollSuffix = String(
         students.filter((s) => s.classLevel === formData.classLevel).length + 1
       ).padStart(2, '0');
@@ -562,6 +581,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         name: formData.name || '',
         classLevel: formData.classLevel as ClassLevel,
         curriculum: formData.curriculum || 'CBSE',
+        academicSession: studentSession,
         stream: (formData.stream as StreamType) || 'General',
         batch: (formData.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
         gender: (formData.gender as Gender) || 'Male',
@@ -631,7 +651,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       selectedSubjectFilter === 'all' ||
       enrolledSubs.some((s) => s.name.toLowerCase() === selectedSubjectFilter.toLowerCase() || s.code.toLowerCase() === selectedSubjectFilter.toLowerCase());
 
-    return matchesSearch && matchesCurriculum && matchesClass && matchesStream && matchesFee && matchesEnrollmentMode && matchesSubject;
+    const matchesSession =
+      selectedSessionFilter === 'all' ||
+      getStudentSession(st) === selectedSessionFilter;
+
+    return matchesSearch && matchesCurriculum && matchesClass && matchesStream && matchesFee && matchesEnrollmentMode && matchesSubject && matchesSession;
   });
 
   return (
@@ -692,45 +716,135 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         )}
       </div>
 
+      {/* New Academic Session 2027 Admissions Announcement Banner */}
+      <div className="p-4 bg-gradient-to-r from-teal-900 via-slate-900 to-indigo-950 text-white rounded-2xl shadow-md border border-teal-700/40 relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-36 h-36 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-teal-400" /> New Session Intake
+              </span>
+              <span className="text-xs font-bold text-amber-300">
+                Session (Jan–Dec 2027) Admissions Open
+              </span>
+            </div>
+            <h4 className="text-sm sm:text-base font-extrabold text-white">
+              Advance Admission Intake: Admissions taking place in November 2026 for New Session 2027
+            </h4>
+            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+              Annual academy calendar operates January to December. Candidates admitted in November 2026 join the New Session 2027. One-time admission &amp; material fees are collected at admission, while teaching and subject tuition commence January 2027.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSelectedSessionFilter(selectedSessionFilter === '2027' ? 'all' : '2027')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                selectedSessionFilter === '2027'
+                  ? 'bg-teal-400 text-slate-950 border-teal-300 shadow-sm'
+                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+              }`}
+            >
+              {selectedSessionFilter === '2027' ? '✓ Showing Session 2027' : `Filter Session 2027 (${students.filter((s) => getStudentSession(s) === '2027').length})`}
+            </button>
+            {auth.canWrite && !isAdmissionLocked && (
+              <button
+                type="button"
+                onClick={handleOpenAdmission}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Admit for 2027
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Filters & Search Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-        {/* Curriculum Board Tabs */}
-        <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setSelectedCurriculum('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center ${
-              selectedCurriculum === 'all'
-                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            All Boards ({students.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedCurriculum('CBSE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
-              selectedCurriculum === 'CBSE'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-blue-300"></span>
-            CBSE Curriculum ({students.filter((s) => s.curriculum === 'CBSE').length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedCurriculum('W.B. Board')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
-              selectedCurriculum === 'W.B. Board'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
-            W.B. Board Curriculum ({students.filter((s) => s.curriculum === 'W.B. Board').length})
-          </button>
+        {/* Curriculum Board & Academic Session Tabs */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          {/* Curriculum Board Tabs */}
+          <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setSelectedCurriculum('all')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center ${
+                selectedCurriculum === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              All Boards ({students.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCurriculum('CBSE')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
+                selectedCurriculum === 'CBSE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+              CBSE Curriculum ({students.filter((s) => s.curriculum === 'CBSE').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCurriculum('W.B. Board')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 ${
+                selectedCurriculum === 'W.B. Board'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+              W.B. Board Curriculum ({students.filter((s) => s.curriculum === 'W.B. Board').length})
+            </button>
+          </div>
+
+          {/* Academic Session Pills */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+            <span className="text-[10px] font-bold text-slate-500 uppercase px-2 flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-slate-400" /> Session:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedSessionFilter('all')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                selectedSessionFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSessionFilter('2026')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                selectedSessionFilter === '2026'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              2026 (Jan-Dec)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSessionFilter('2027')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                selectedSessionFilter === '2027'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-teal-700 hover:bg-teal-50'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              New Session 2027 ({students.filter((s) => getStudentSession(s) === '2027').length})
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-3">
@@ -898,7 +1012,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </div>
                       </td>
 
-                      {/* Class & Stream & Curriculum */}
+                      {/* Class & Stream & Curriculum & Session */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="inline-block font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
@@ -911,8 +1025,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           }`}>
                             {student.curriculum || 'CBSE'}
                           </span>
+                          {getStudentSession(student) === '2027' ? (
+                            <span className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full text-[9.5px] bg-teal-100 text-teal-800 border border-teal-300">
+                              <Sparkles className="w-2.5 h-2.5 text-teal-600" /> New Session 2027
+                            </span>
+                          ) : (
+                            <span className="inline-block font-semibold px-1.5 py-0.5 rounded text-[9.5px] bg-slate-100 text-slate-600 border border-slate-200">
+                              Session 2026
+                            </span>
+                          )}
                         </div>
-                        <span className="block text-[11px] text-slate-500 mt-0.5">{student.stream}</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] text-slate-500">{student.stream}</span>
+                          {student.admissionDate?.startsWith('2026-11') && (
+                            <span className="text-[9px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+                              Admitted Nov &apos;26
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Enrolled Coaching Subjects */}
@@ -1074,6 +1204,108 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4 text-emerald-600" /> 1. Academic Class & Batch
                 </h4>
+
+                {/* Academic Session Selector Card */}
+                <div className="mb-4 p-3.5 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
+                    <div>
+                      <span className="text-[11px] font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Academic Session
+                      </span>
+                      <p className="text-[10px] text-teal-800">
+                        Annual academy calendar operates from January to December. Admissions for New Session (Jan–Dec 2027) can be registered in November 2026.
+                      </p>
+                    </div>
+                    <span className="self-start sm:self-auto text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                      Nov 2026 Early Intake Active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Option 2027 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAvail = getAvailableSubjectsForStudent(
+                          (formData.classLevel as ClassLevel) || '10',
+                          formData.stream || 'General',
+                          subjects,
+                          formData.curriculum || 'CBSE'
+                        );
+                        const defaultAdmMonth = 'January 2027';
+                        const newDetails = newAvail.map((s) => ({
+                          subjectId: s.id,
+                          effectiveMonth: defaultAdmMonth,
+                        }));
+                        setFormData({
+                          ...formData,
+                          academicSession: '2027',
+                          enrolledSubjectsDetails: newDetails,
+                        });
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        formData.academicSession === '2027'
+                          ? 'bg-white border-teal-600 ring-2 ring-teal-500/30 shadow-xs'
+                          : 'bg-white/60 border-teal-200 hover:bg-white text-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-teal-950 flex items-center gap-1.5">
+                          <CheckSquare className={`w-4 h-4 ${formData.academicSession === '2027' ? 'text-teal-600' : 'text-slate-300'}`} />
+                          New Session 2027 (Jan – Dec 2027)
+                        </span>
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-teal-600 text-white">
+                          New Session
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-teal-700 mt-1 pl-5.5">
+                        Admissions open starting November 2026. Teaching classes &amp; monthly tuition begin in January 2027.
+                      </p>
+                    </button>
+
+                    {/* Option 2026 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAvail = getAvailableSubjectsForStudent(
+                          (formData.classLevel as ClassLevel) || '10',
+                          formData.stream || 'General',
+                          subjects,
+                          formData.curriculum || 'CBSE'
+                        );
+                        const defaultAdmMonth = getSessionMonthFromDate(formData.admissionDate, '2026');
+                        const newDetails = newAvail.map((s) => ({
+                          subjectId: s.id,
+                          effectiveMonth: defaultAdmMonth,
+                        }));
+                        setFormData({
+                          ...formData,
+                          academicSession: '2026',
+                          enrolledSubjectsDetails: newDetails,
+                        });
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        formData.academicSession === '2026'
+                          ? 'bg-white border-slate-700 ring-2 ring-slate-400/30 shadow-xs'
+                          : 'bg-white/60 border-slate-200 hover:bg-white text-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                          <CheckSquare className={`w-4 h-4 ${formData.academicSession === '2026' ? 'text-slate-700' : 'text-slate-300'}`} />
+                          Current Session 2026 (Jan – Dec 2026)
+                        </span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                          Current
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 mt-1 pl-5.5">
+                        Current running academic session (January 2026 to December 2026).
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">
@@ -1265,6 +1497,32 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      Admission Intake Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.admissionDate || new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        const isNovOrDec2026 = newDate >= '2026-11-01';
+                        setFormData({
+                          ...formData,
+                          admissionDate: newDate,
+                          academicSession: formData.academicSession || (isNovOrDec2026 ? '2027' : '2026'),
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                    />
+                    {formData.admissionDate?.startsWith('2026-11') && (
+                      <span className="text-[9.5px] font-semibold text-teal-700 mt-0.5 block">
+                        🗓️ Nov 2026 Intake (Eligible for Session 2027)
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1512,7 +1770,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               <select
                                 value={
                                   (formData.enrolledSubjectsDetails || []).find((d) => d.subjectId === sub.id)?.effectiveMonth ||
-                                  getSessionMonthFromDate(formData.admissionDate)
+                                  getSessionMonthFromDate(formData.admissionDate, formData.academicSession || '2026')
                                 }
                                 onClick={(e) => e.stopPropagation()}
                                 onChange={(e) => {
@@ -1538,7 +1796,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                 }}
                                 className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                               >
-                                {ACADEMIC_SESSION_MONTHS.map((m) => (
+                                {(formData.academicSession === '2027' ? ACADEMIC_SESSION_2027_MONTHS : ACADEMIC_SESSION_2026_MONTHS).map((m) => (
                                   <option key={m} value={m}>
                                     {m}
                                   </option>
@@ -1823,7 +2081,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   {viewingStudent.name.charAt(0)}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-base">{viewingStudent.name}</h3>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       viewingStudent.curriculum === 'W.B. Board'
@@ -1832,6 +2090,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     }`}>
                       {viewingStudent.curriculum || 'CBSE'}
                     </span>
+                    {viewingStudent.academicSession === '2027' ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-400 text-slate-950 flex items-center gap-1 shadow-xs">
+                        <Sparkles className="w-2.5 h-2.5" /> Session 2027 (Jan–Dec)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-300">
+                        Session 2026
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 font-mono">ID: {viewingStudent.id} • Roll: {viewingStudent.rollNo} • Board: {viewingStudent.curriculum || 'CBSE'}</p>
                 </div>
@@ -2050,14 +2317,28 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
               {/* Personal & Guardian Details */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                <h4 className="text-xs font-bold text-slate-900 uppercase">Contact & Personal Profile</h4>
+                <h4 className="text-xs font-bold text-slate-900 uppercase">Contact & Academic Profile</h4>
                 <div className="grid grid-cols-2 gap-2 text-slate-700">
+                  <p>
+                    <span className="text-slate-400">Academic Session:</span>{' '}
+                    <strong className={viewingStudent.academicSession === '2027' ? 'text-teal-700 font-bold' : 'text-slate-900'}>
+                      {viewingStudent.academicSession === '2027' ? 'New Session 2027 (Jan–Dec 2027)' : 'Session 2026 (Jan–Dec 2026)'}
+                    </strong>
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Admission / Intake:</span>{' '}
+                    <strong>{viewingStudent.admissionDate}</strong>
+                    {viewingStudent.admissionDate?.startsWith('2026-11') && (
+                      <span className="ml-1 text-[10px] font-bold text-teal-700 bg-teal-100 px-1.5 py-0.5 rounded">
+                        Nov Intake
+                      </span>
+                    )}
+                  </p>
                   <p><span className="text-slate-400">Guardian:</span> <strong>{viewingStudent.guardianName}</strong> ({viewingStudent.guardianRelation})</p>
                   <p><span className="text-slate-400">Phone:</span> <strong>{viewingStudent.contactNumber}</strong></p>
                   <p><span className="text-slate-400">Email:</span> {viewingStudent.email || 'N/A'}</p>
                   <p><span className="text-slate-400">Batch:</span> {viewingStudent.batch}</p>
                   <p><span className="text-slate-400">Date of Birth:</span> {viewingStudent.dob}</p>
-                  <p><span className="text-slate-400">Admission Date:</span> {viewingStudent.admissionDate}</p>
                   <p><span className="text-slate-400">Address:</span> {viewingStudent.address || 'N/A'}</p>
                   <p><span className="text-slate-400">Scholarship:</span> <strong className="text-amber-700">{viewingStudent.scholarshipPercent}% Concession</strong></p>
                 </div>

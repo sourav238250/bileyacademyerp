@@ -269,10 +269,11 @@ export interface Student {
   bloodGroup?: string;
   emergencyContact?: string;
   notes?: string;
+  academicSession?: '2026' | '2027' | string; // Academic session, e.g. "2026" (Jan-Dec 2026) or "2027" (Jan-Dec 2027 with admissions starting Nov 2026)
   enrolledSubjectIds?: string[]; // Coaching subjects enrolled (Single subject e.g. Math, or multiple subjects)
   subjectEnrollments?: StudentSubjectEnrollment[]; // Individual subject enrollment months and details
   enrollmentType?: 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo';
-  enrollmentMonth?: string; // Earliest subject enrollment month fallback (e.g. "April 2026")
+  enrollmentMonth?: string; // Earliest subject enrollment month fallback (e.g. "April 2026" or "January 2027")
   subjectEnrollmentDate?: string;
 }
 

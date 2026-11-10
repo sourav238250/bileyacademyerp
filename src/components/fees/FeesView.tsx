@@ -17,7 +17,9 @@ import {
   getFeeStructure,
   CLASS_LEVELS,
   ACADEMIC_SESSION_MONTHS,
+  ACADEMIC_SESSION_2027_MONTHS,
   MONTH_SHORT_NAMES,
+  getStudentSessionMonths,
   getStudentTuitionMonthsStatus,
   getNextUnpaidTuitionMonth,
   getStudentFeeHeadsSubmissionStatus,
@@ -341,8 +343,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
     } else if (preselectedMonth) {
       initMonths = [preselectedMonth];
     } else {
-      const nextUnpaid = getNextUnpaidTuitionMonth(sId, deposits);
-      initMonths = [nextUnpaid || ACADEMIC_SESSION_MONTHS[0]];
+      const studentSessionMonths = targetStudent ? getStudentSessionMonths(targetStudent) : ACADEMIC_SESSION_MONTHS;
+      const nextUnpaid = getNextUnpaidTuitionMonth(targetStudent || sId, deposits);
+      initMonths = [nextUnpaid || studentSessionMonths[0]];
     }
 
     const initMonthsCount = Math.max(1, initMonths.length);
@@ -445,8 +448,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
     setTuitionSubjectCount(newSubjCount);
 
     // Auto calculate next unpaid month for this student
-    const nextUnpaid = getNextUnpaidTuitionMonth(newStudentId, deposits);
-    const newMonths = [nextUnpaid || ACADEMIC_SESSION_MONTHS[0]];
+    const studentSessionMonths = targetStudent ? getStudentSessionMonths(targetStudent) : ACADEMIC_SESSION_MONTHS;
+    const nextUnpaid = getNextUnpaidTuitionMonth(targetStudent || newStudentId, deposits);
+    const newMonths = [nextUnpaid || studentSessionMonths[0]];
     setSelectedMonths(newMonths);
     setTuitionMonthsCount(newMonths.length);
 
@@ -495,14 +499,15 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
   const handleApplyMonthPreset = (preset: 'next_1' | 'quarter_3' | 'semester_6' | 'all_unpaid' | 'clear') => {
     const targetStudent = students.find((s) => s.id === selectedStudentId);
-    const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits);
+    const studentSessionMonths = targetStudent ? getStudentSessionMonths(targetStudent) : ACADEMIC_SESSION_MONTHS;
+    const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits, studentSessionMonths);
     const unpaidMonths = studentStatuses.filter((s) => !s.isPreEnrollment && !s.isPaid).map((s) => s.month);
-    const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, ACADEMIC_SESSION_MONTHS) : ACADEMIC_SESSION_MONTHS;
+    const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, studentSessionMonths) : studentSessionMonths;
 
     let nextMonths: string[] = [];
     if (preset === 'next_1') {
       nextMonths = unpaidMonths.slice(0, 1);
-      if (nextMonths.length === 0) nextMonths = [applicableMonths[0] || ACADEMIC_SESSION_MONTHS[0]];
+      if (nextMonths.length === 0) nextMonths = [applicableMonths[0] || studentSessionMonths[0]];
     } else if (preset === 'quarter_3') {
       nextMonths = unpaidMonths.slice(0, 3);
       if (nextMonths.length === 0) nextMonths = applicableMonths.slice(0, 3) as unknown as string[];
@@ -543,9 +548,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
     setIsCustomAmount(false);
 
     // Pick top N unpaid months
-    const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits);
+    const studentSessionMonths = targetStudent ? getStudentSessionMonths(targetStudent) : ACADEMIC_SESSION_MONTHS;
+    const studentStatuses = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits, studentSessionMonths);
     const unpaidMonths = studentStatuses.filter((s) => !s.isPreEnrollment && !s.isPaid).map((s) => s.month);
-    const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, ACADEMIC_SESSION_MONTHS) : ACADEMIC_SESSION_MONTHS;
+    const applicableMonths = targetStudent ? getApplicableSessionMonthsForStudent(targetStudent, studentSessionMonths) : studentSessionMonths;
     const pickedMonths = unpaidMonths.slice(0, newMonthsCount);
     const finalMonths = pickedMonths.length > 0 ? pickedMonths : (applicableMonths.slice(0, newMonthsCount) as unknown as string[]);
     setSelectedMonths(finalMonths);
@@ -2323,10 +2329,22 @@ export const FeesView: React.FC<FeesViewProps> = ({
                     <div>
                       {(() => {
                         const targetStudent = students.find((s) => s.id === selectedStudentId);
-                        const studentStatus = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits, ACADEMIC_SESSION_MONTHS);
+                        const studentSessionMonths = targetStudent ? getStudentSessionMonths(targetStudent) : ACADEMIC_SESSION_MONTHS;
+                        const studentStatus = getStudentTuitionMonthsStatus(targetStudent || selectedStudentId, deposits, studentSessionMonths);
                         return (
-                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
-                            {ACADEMIC_SESSION_MONTHS.map((m) => {
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                              <span>Select Applicable Month(s):</span>
+                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                                targetStudent?.academicSession === '2027'
+                                  ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                Session {targetStudent?.academicSession || '2026'} ({studentSessionMonths[0]} – {studentSessionMonths[11]})
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
+                              {studentSessionMonths.map((m) => {
                               const st = studentStatus.find((s) => s.month === m);
                               const isPaidAlready = st?.isPaid;
                               const isPreEnrollment = st?.isPreEnrollment;
@@ -2380,8 +2398,9 @@ export const FeesView: React.FC<FeesViewProps> = ({
                               );
                             })}
                           </div>
-                        );
-                      })()}
+                        </div>
+                      );
+                    })()}
                     </div>
 
                     {(() => {
