@@ -437,6 +437,41 @@ export interface TimetableSlot {
   facultyId: string;
   room: string;
   teachingMode?: 'Online' | 'Offline' | 'Hybrid';
+  customSubjectName?: string;
+  customFacultyName?: string;
+  isManual?: boolean;
+  manualRoutineId?: string;
+}
+
+export interface ManualRoutineSlot {
+  id: string;
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+  timeSlot: string;
+  subjectId?: string;
+  subjectName: string;
+  facultyId?: string;
+  facultyName: string;
+  room: string;
+  batch: BatchShift | string;
+  curriculum?: CurriculumBoard;
+  teachingMode?: 'Online' | 'Offline' | 'Hybrid';
+}
+
+export interface ManualRoutine {
+  id: string;
+  title: string;
+  routineType: 'class' | 'faculty' | 'custom';
+  classLevel?: ClassLevel;
+  stream?: StreamType;
+  curriculum?: 'CBSE' | 'W.B. Board' | 'Combined';
+  facultyId?: string;
+  academicSession?: string;
+  effectiveFrom?: string;
+  notes?: string;
+  slots: ManualRoutineSlot[];
+  createdAt: string;
+  updatedAt: string;
+  syncedToTimetable?: boolean;
 }
 
 export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';

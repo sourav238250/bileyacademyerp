@@ -1,16 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType } from '../../types';
+import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType, ManualRoutine } from '../../types';
 import { InstituteLogo } from '../common/InstituteLogo';
 import { generateRoutinePDF } from '../../utils/routinePdfGenerator';
 import { Printer, X, Calendar, User, Clock, MapPin, Phone, FileDown, CheckCircle2 } from 'lucide-react';
 
 interface RoutinePrintModalProps {
-  type: 'class' | 'faculty';
+  type: 'class' | 'faculty' | 'manual';
   classLevel?: ClassLevel | string;
   stream?: StreamType | string;
   curriculum?: 'CBSE' | 'W.B. Board';
   facultyMember?: Faculty;
+  manualRoutine?: ManualRoutine;
   timetable: TimetableSlot[];
   faculty: Faculty[];
   subjects: Subject[];
@@ -24,6 +25,7 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
   stream = 'General',
   curriculum,
   facultyMember,
+  manualRoutine,
   timetable,
   faculty,
   subjects,
@@ -60,14 +62,18 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
         classLevel,
         stream,
         facultyMember,
+        manualRoutine,
         timetable,
         faculty,
         subjects,
       });
 
-      const filename = type === 'class'
-        ? `Biley_Academy_Class_${classLevel}_${stream}_Routine_2026-27.pdf`
-        : `Biley_Academy_Routine_${(facultyMember?.name || 'Faculty').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+      const filename =
+        type === 'manual' && manualRoutine
+          ? `Biley_Academy_Manual_${manualRoutine.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+          : type === 'class'
+          ? `Biley_Academy_Class_${classLevel}_${stream}_Routine_2026-27.pdf`
+          : `Biley_Academy_Routine_${(facultyMember?.name || 'Faculty').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
 
       doc.save(filename);
       setDownloadSuccessNotice(`Downloaded ${filename} successfully!`);
@@ -82,14 +88,32 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
   };
 
   // Filter slots
-  const relevantSlots = type === 'class'
-    ? timetable.filter(
-        (s) =>
-          s.classLevel === classLevel &&
-          (classLevel === '11' || classLevel === '12' ? s.stream === stream : true) &&
-          (!curriculum || s.curriculum === curriculum)
-      )
-    : timetable.filter((s) => s.facultyId === facultyMember?.id);
+  const relevantSlots: TimetableSlot[] =
+    type === 'manual' && manualRoutine
+      ? manualRoutine.slots.map((ms) => ({
+          id: ms.id,
+          day: ms.day,
+          timeSlot: ms.timeSlot,
+          classLevel: manualRoutine.classLevel || '10',
+          stream: manualRoutine.stream || 'General',
+          curriculum: ms.curriculum || (manualRoutine.curriculum !== 'Combined' ? manualRoutine.curriculum : undefined),
+          batch: (ms.batch as any) || 'Evening Batch (4:00 PM - 8:30 PM)',
+          subjectId: ms.subjectId || ms.subjectName,
+          facultyId: ms.facultyId || ms.facultyName,
+          room: ms.room,
+          teachingMode: ms.teachingMode,
+          customSubjectName: ms.subjectName,
+          customFacultyName: ms.facultyName,
+          isManual: true,
+        }))
+      : type === 'class'
+      ? timetable.filter(
+          (s) =>
+            s.classLevel === classLevel &&
+            (classLevel === '11' || classLevel === '12' ? s.stream === stream : true) &&
+            (!curriculum || s.curriculum === curriculum)
+        )
+      : timetable.filter((s) => s.facultyId === facultyMember?.id);
 
   // Group slots by day
   const slotsByDay: Record<string, TimetableSlot[]> = {};
@@ -115,9 +139,15 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
             <Calendar className="w-5 h-5 text-amber-400 shrink-0" />
             <div className="min-w-0">
               <h3 className="font-bold text-sm sm:text-base truncate">
-                {type === 'class' ? `Class Routine • Class ${classLevel} (${stream})` : `Faculty Routine • ${facultyMember?.name}`}
+                {type === 'manual' && manualRoutine
+                  ? `Manual Routine • ${manualRoutine.title}`
+                  : type === 'class'
+                  ? `Class Routine • Class ${classLevel} (${stream})`
+                  : `Faculty Routine • ${facultyMember?.name}`}
               </h3>
-              <p className="text-[11px] text-slate-400 truncate">Official Institutional Weekly Schedule</p>
+              <p className="text-[11px] text-slate-400 truncate">
+                {type === 'manual' ? 'Custom Created Institutional Weekly Routine' : 'Official Institutional Weekly Schedule'}
+              </p>
             </div>
           </div>
 
@@ -189,13 +219,17 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
 
               <div className="text-center sm:text-right border-t sm:border-t-0 sm:border-l sm:border-slate-200 pt-3 sm:pt-0 sm:pl-6 shrink-0">
                 <span className="inline-block px-3 py-1 bg-slate-900 text-amber-400 rounded-lg text-xs font-black uppercase tracking-wider mb-1">
-                  {type === 'class' ? 'CLASS ROUTINE' : 'FACULTY DUTY SCHEDULE'}
+                  {type === 'manual' ? 'CUSTOM MANUAL ROUTINE' : type === 'class' ? 'CLASS ROUTINE' : 'FACULTY DUTY SCHEDULE'}
                 </span>
                 <p className="text-xs font-bold text-slate-800">
-                  Academic Session: 2026 – 2027
+                  Academic Session: {manualRoutine?.academicSession || '2026 – 2027'}
                 </p>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  {type === 'class' ? `Target: Class ${classLevel} (${stream})` : `Mentor: ${facultyMember?.name}`}
+                  {type === 'manual' && manualRoutine
+                    ? manualRoutine.title
+                    : type === 'class'
+                    ? `Target: Class ${classLevel} (${stream})`
+                    : `Mentor: ${facultyMember?.name}`}
                 </p>
               </div>
             </div>
@@ -203,7 +237,34 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
 
           {/* Routine Meta Ribbon */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 mb-6 text-xs print:bg-slate-50/70 print:border-slate-300">
-            {type === 'class' ? (
+            {type === 'manual' && manualRoutine ? (
+              <>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Routine Title</span>
+                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">{manualRoutine.title}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Target Scope</span>
+                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">
+                    {manualRoutine.routineType === 'class'
+                      ? `Class ${manualRoutine.classLevel || '10'} (${manualRoutine.curriculum || 'CBSE'})`
+                      : manualRoutine.routineType === 'faculty'
+                      ? faculty.find((f) => f.id === manualRoutine.facultyId)?.name || 'Faculty'
+                      : 'Custom Batch'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Weekly Lectures</span>
+                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">{totalPeriods} Scheduled Periods</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Effective / Status</span>
+                  <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-800 print:border print:border-purple-300 font-bold rounded text-[10px] uppercase mt-0.5">
+                    {manualRoutine.effectiveFrom ? `From ${manualRoutine.effectiveFrom}` : 'Manual Schedule'}
+                  </span>
+                </div>
+              </>
+            ) : type === 'class' ? (
               <>
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Class Level</span>
@@ -314,17 +375,20 @@ export const RoutinePrintModal: React.FC<RoutinePrintModalProps> = ({
 
                               <div className="flex items-center justify-between text-[11px]">
                                 <span className="font-bold text-slate-900">
-                                  {subject?.name || slot.subjectId} {type === 'faculty' ? `(Class ${slot.classLevel})` : ''}
+                                  {slot.customSubjectName || subject?.name || slot.subjectId} {type === 'faculty' ? `(Class ${slot.classLevel})` : ''}
                                 </span>
                                 <span className="text-[10px] text-slate-500 font-semibold">
                                   {slot.batch.split('(')[0]}
                                 </span>
                               </div>
 
-                              {type === 'class' && (
+                              {(type === 'class' || type === 'manual') && (
                                 <div className="text-[10px] text-slate-600 flex items-center gap-1 pt-1 border-t border-slate-200/60">
                                   <User className="w-3 h-3 text-slate-400" />
-                                  <span>Faculty: <strong className="text-slate-800">{teacher?.name || 'Unassigned'}</strong> ({teacher?.designation})</span>
+                                  <span>
+                                    Faculty: <strong className="text-slate-800">{slot.customFacultyName || teacher?.name || 'Unassigned'}</strong>
+                                    {teacher?.designation ? ` (${teacher.designation})` : ''}
+                                  </span>
                                 </div>
                               )}
                             </div>

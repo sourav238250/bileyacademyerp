@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType, BatchShift, AdminUser } from '../../types';
+import {
+  Faculty,
+  Subject,
+  TimetableSlot,
+  ClassLevel,
+  StreamType,
+  BatchShift,
+  AdminUser,
+  ManualRoutine,
+} from '../../types';
 import { CLASS_LEVELS, STREAMS_FOR_CLASS, ACADEMY_ROOMS, MAX_CONCURRENT_ROOMS } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
 import { RoutinePrintModal } from './RoutinePrintModal';
+import { ManualRoutineModal } from './ManualRoutineModal';
 import {
   Users,
   Plus,
@@ -31,18 +41,29 @@ import {
   AlertTriangle,
   DoorClosed,
   Check,
+  FileEdit,
+  Copy,
+  RefreshCw,
 } from 'lucide-react';
 
 interface FacultyViewProps {
   faculty: Faculty[];
   subjects: Subject[];
   timetable: TimetableSlot[];
+  manualRoutines?: ManualRoutine[];
   onAddFaculty: (fac: Faculty) => void;
   onUpdateFaculty: (fac: Faculty) => void;
   onDeleteFaculty: (facultyId: string) => void;
   onAddTimetableSlot: (slot: TimetableSlot) => void;
   onUpdateTimetableSlot: (slot: TimetableSlot) => void;
   onDeleteTimetableSlot: (slotId: string) => void;
+  onBulkAddTimetableSlots?: (
+    newSlots: TimetableSlot[],
+    replacePredicate?: (existing: TimetableSlot) => boolean
+  ) => void;
+  onAddManualRoutine?: (routine: ManualRoutine) => void;
+  onUpdateManualRoutine?: (routine: ManualRoutine) => void;
+  onDeleteManualRoutine?: (routineId: string) => void;
   currentAdmin?: AdminUser | null;
   onOpenAdminLogin?: () => void;
   onOpenPermissionsMatrix?: () => void;
@@ -80,12 +101,17 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   faculty,
   subjects,
   timetable,
+  manualRoutines = [],
   onAddFaculty,
   onUpdateFaculty,
   onDeleteFaculty,
   onAddTimetableSlot,
   onUpdateTimetableSlot,
   onDeleteTimetableSlot,
+  onBulkAddTimetableSlots,
+  onAddManualRoutine,
+  onUpdateManualRoutine,
+  onDeleteManualRoutine,
   currentAdmin,
   onOpenAdminLogin,
   onOpenPermissionsMatrix,
@@ -95,7 +121,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   const canManageTimetable = auth.canWrite && hasPermission(currentAdmin, 'TIMETABLE_MANAGE');
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<'class-routine' | 'faculty-routine' | 'room-allocation' | 'timetable' | 'directory'>('class-routine');
+  const [activeTab, setActiveTab] = useState<'class-routine' | 'faculty-routine' | 'manual-routine' | 'room-allocation' | 'timetable' | 'directory'>('class-routine');
   
   // Class Routine View State
   const [selectedClassRoutine, setSelectedClassRoutine] = useState<ClassLevel>('10');
@@ -112,15 +138,21 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
   // Print Modal State
   const [printModalConfig, setPrintModalConfig] = useState<{
     isOpen: boolean;
-    type: 'class' | 'faculty';
+    type: 'class' | 'faculty' | 'manual';
     classLevel?: ClassLevel;
     stream?: StreamType;
     curriculum?: 'CBSE' | 'W.B. Board';
     facultyMember?: Faculty;
+    manualRoutine?: ManualRoutine;
   }>({
     isOpen: false,
     type: 'class',
   });
+
+  // Manual Routine Modal & Preview State
+  const [isManualRoutineModalOpen, setIsManualRoutineModalOpen] = useState(false);
+  const [editingManualRoutine, setEditingManualRoutine] = useState<ManualRoutine | null>(null);
+  const [expandedManualRoutineId, setExpandedManualRoutineId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -302,24 +334,30 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         (!editingTimetableSlot || s.id !== editingTimetableSlot.id)
     );
 
-    // 1. Room double-booking conflict check
-    const roomConflict = otherSlotsInSameSlot.find((s) => s.room.toLowerCase() === targetRoom.toLowerCase());
-    if (roomConflict) {
-      const conflictSub = subjects.find((sub) => sub.id === roomConflict.subjectId)?.name || roomConflict.subjectId;
-      const conflictTeacher = faculty.find((f) => f.id === roomConflict.facultyId)?.name || 'Teacher';
-      alert(
-        `Room Allocation Conflict: ${targetRoom} is already in use by Class ${roomConflict.classLevel} (${conflictSub} - ${conflictTeacher}) on ${day} at ${timeSlot}. Please choose another available room from ROOM-1 through ROOM-8.`
-      );
-      return;
-    }
+    const isPhysicalRoom = ACADEMY_ROOMS.includes(targetRoom as any);
 
-    // 2. Maximum concurrent rooms (6 out of 8) allocation limit check
-    const distinctRoomsInSlot = new Set(otherSlotsInSameSlot.map((s) => s.room));
-    if (!distinctRoomsInSlot.has(targetRoom) && distinctRoomsInSlot.size >= MAX_CONCURRENT_ROOMS) {
-      alert(
-        `Institutional Room Limit Exceeded: At most ${MAX_CONCURRENT_ROOMS} out of ${ACADEMY_ROOMS.length} rooms can be allocated concurrently for classes (Policy: ${ACADEMY_ROOMS.length} Available Rooms, Max ${MAX_CONCURRENT_ROOMS} active at a time). Current allocated rooms on ${day} (${timeSlot}): ${Array.from(distinctRoomsInSlot).join(', ')}.`
+    // 1. Room double-booking conflict check (physical rooms)
+    if (isPhysicalRoom) {
+      const roomConflict = otherSlotsInSameSlot.find((s) => s.room.toLowerCase() === targetRoom.toLowerCase());
+      if (roomConflict) {
+        const conflictSub = subjects.find((sub) => sub.id === roomConflict.subjectId)?.name || roomConflict.subjectId;
+        const conflictTeacher = faculty.find((f) => f.id === roomConflict.facultyId)?.name || 'Teacher';
+        alert(
+          `Room Allocation Conflict: ${targetRoom} is already in use by Class ${roomConflict.classLevel} (${conflictSub} - ${conflictTeacher}) on ${day} at ${timeSlot}. Please choose another available room from ROOM-1 through ROOM-8.`
+        );
+        return;
+      }
+
+      // 2. Maximum concurrent rooms (6 out of 8) allocation limit check
+      const distinctPhysicalRoomsInSlot = new Set(
+        otherSlotsInSameSlot.map((s) => s.room).filter((r) => ACADEMY_ROOMS.includes(r as any))
       );
-      return;
+      if (!distinctPhysicalRoomsInSlot.has(targetRoom) && distinctPhysicalRoomsInSlot.size >= MAX_CONCURRENT_ROOMS) {
+        alert(
+          `Institutional Room Limit Exceeded: At most ${MAX_CONCURRENT_ROOMS} out of ${ACADEMY_ROOMS.length} rooms can be allocated concurrently for classes (Policy: ${ACADEMY_ROOMS.length} Available Rooms, Max ${MAX_CONCURRENT_ROOMS} active at a time). Current allocated rooms on ${day} (${timeSlot}): ${Array.from(distinctPhysicalRoomsInSlot).join(', ')}.`
+        );
+        return;
+      }
     }
 
     // 3. Faculty clash check (teacher cannot be in two classrooms at the same time)
@@ -333,7 +371,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     }
 
     const subObj = subjects.find((s) => s.id === slotFormData.subjectId);
-    const resolvedCurriculum = subObj?.curriculum || slotFormData.curriculum || 'CBSE';
+    const resolvedCurriculum = slotFormData.curriculum || subObj?.curriculum || 'CBSE';
 
     if (editingTimetableSlot) {
       const updated: TimetableSlot = {
@@ -347,6 +385,8 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         subjectId: slotFormData.subjectId,
         facultyId: chosenFacultyId,
         room: targetRoom,
+        teachingMode: targetRoom.includes('Online') ? 'Online' : 'Offline',
+        isManual: true,
       };
       onUpdateTimetableSlot(updated);
     } else {
@@ -361,10 +401,133 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         subjectId: slotFormData.subjectId,
         facultyId: chosenFacultyId,
         room: targetRoom,
+        teachingMode: targetRoom.includes('Online') ? 'Online' : 'Offline',
+        isManual: true,
       };
       onAddTimetableSlot(newSlot);
     }
     setIsTimetableModalOpen(false);
+  };
+
+  const handleOpenCreateManualRoutine = () => {
+    setEditingManualRoutine(null);
+    setIsManualRoutineModalOpen(true);
+  };
+
+  const handleSaveManualRoutine = (
+    routine: ManualRoutine,
+    syncOptions?: { syncToTimetable: boolean; replaceExisting: boolean }
+  ) => {
+    if (editingManualRoutine) {
+      onUpdateManualRoutine?.(routine);
+    } else {
+      onAddManualRoutine?.(routine);
+    }
+
+    if (syncOptions?.syncToTimetable && onBulkAddTimetableSlots) {
+      const mappedSlots: TimetableSlot[] = routine.slots.map((ms, idx) => ({
+        id: `TS-MR-${routine.id}-${idx}-${Date.now()}`,
+        day: ms.day,
+        timeSlot: ms.timeSlot,
+        classLevel: routine.classLevel || '10',
+        stream: routine.stream || 'General',
+        curriculum:
+          ms.curriculum ||
+          (routine.curriculum && routine.curriculum !== 'Combined' ? routine.curriculum : 'CBSE'),
+        batch: (ms.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
+        subjectId: ms.subjectId || ms.subjectName,
+        facultyId: ms.facultyId || routine.facultyId || ms.facultyName,
+        room: ms.room,
+        teachingMode: ms.teachingMode || (ms.room.includes('Online') ? 'Online' : 'Offline'),
+        customSubjectName: ms.subjectName,
+        customFacultyName: ms.facultyName,
+        isManual: true,
+        manualRoutineId: routine.id,
+      }));
+
+      const replacePredicate = syncOptions.replaceExisting
+        ? (existing: TimetableSlot) => {
+            if (routine.routineType === 'faculty' && routine.facultyId) {
+              return existing.facultyId === routine.facultyId;
+            }
+            if (routine.routineType === 'class' && routine.classLevel) {
+              const sameClass = existing.classLevel === routine.classLevel;
+              const sameStream =
+                routine.classLevel === '11' || routine.classLevel === '12'
+                  ? existing.stream === routine.stream
+                  : true;
+              const sameBoard =
+                !routine.curriculum ||
+                routine.curriculum === 'Combined' ||
+                existing.curriculum === routine.curriculum;
+              return sameClass && sameStream && sameBoard;
+            }
+            return false;
+          }
+        : undefined;
+
+      onBulkAddTimetableSlots(mappedSlots, replacePredicate);
+    }
+
+    setIsManualRoutineModalOpen(false);
+    setEditingManualRoutine(null);
+    setActiveTab('manual-routine');
+    setExpandedManualRoutineId(routine.id);
+  };
+
+  const handleDuplicateManualRoutine = (mr: ManualRoutine) => {
+    const now = new Date().toISOString();
+    const copyId = `MR-${Date.now()}`;
+    const duplicated: ManualRoutine = {
+      ...mr,
+      id: copyId,
+      title: `${mr.title} (Copy)`,
+      slots: mr.slots.map((s, idx) => ({
+        ...s,
+        id: `MRS-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+      })),
+      createdAt: now,
+      updatedAt: now,
+      syncedToTimetable: false,
+    };
+    onAddManualRoutine?.(duplicated);
+    setExpandedManualRoutineId(copyId);
+  };
+
+  const handleSyncManualRoutineToTimetable = (mr: ManualRoutine) => {
+    if (!onBulkAddTimetableSlots) return;
+    if (mr.slots.length === 0) {
+      alert('This manual routine has no scheduled periods to publish.');
+      return;
+    }
+
+    const mappedSlots: TimetableSlot[] = mr.slots.map((ms, idx) => ({
+      id: `TS-MR-${mr.id}-${idx}-${Date.now()}`,
+      day: ms.day,
+      timeSlot: ms.timeSlot,
+      classLevel: mr.classLevel || '10',
+      stream: mr.stream || 'General',
+      curriculum:
+        ms.curriculum ||
+        (mr.curriculum && mr.curriculum !== 'Combined' ? mr.curriculum : 'CBSE'),
+      batch: (ms.batch as BatchShift) || 'Evening Batch (4:00 PM - 8:30 PM)',
+      subjectId: ms.subjectId || ms.subjectName,
+      facultyId: ms.facultyId || mr.facultyId || ms.facultyName,
+      room: ms.room,
+      teachingMode: ms.teachingMode || (ms.room.includes('Online') ? 'Online' : 'Offline'),
+      customSubjectName: ms.subjectName,
+      customFacultyName: ms.facultyName,
+      isManual: true,
+      manualRoutineId: mr.id,
+    }));
+
+    const replacePredicate = (existing: TimetableSlot) => existing.manualRoutineId === mr.id;
+    onBulkAddTimetableSlots(mappedSlots, replacePredicate);
+    onUpdateManualRoutine?.({
+      ...mr,
+      syncedToTimetable: true,
+      updatedAt: new Date().toISOString(),
+    });
   };
 
   const filteredFaculty = faculty.filter((f) => {
@@ -439,6 +602,19 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('manual-routine')}
+              id="manual-routine-tab-btn"
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'manual-routine'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-950'
+              }`}
+            >
+              <FileEdit className="w-3.5 h-3.5" />
+              <span>Manual Routine ({manualRoutines.length})</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('room-allocation')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'room-allocation'
@@ -503,7 +679,18 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 <p className="text-xs text-slate-500">View complete weekly timetable schedule for any coaching batch.</p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {canManageTimetable && (
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateManualRoutine}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    <FileEdit className="w-4 h-4" />
+                    <span>Create Manual Routine</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() =>
                     setPrintModalConfig({
@@ -751,23 +938,36 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
 
                                   <div>
                                     <p className="font-bold text-purple-950 text-[11px] truncate">
-                                      {subject?.name || slot.subjectId}
+                                      {slot.customSubjectName || subject?.name || slot.subjectId}
                                     </p>
                                     <p className="text-[10px] text-slate-600 truncate mt-0.5">
-                                      👨‍🏫 {teacher?.name?.split(' ').slice(-2).join(' ') || 'Unassigned'}
+                                      👨‍🏫 {slot.customFacultyName || teacher?.name?.split(' ').slice(-2).join(' ') || 'Unassigned'}
                                     </p>
                                   </div>
 
                                   <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-200/50">
                                     <span className="truncate">{slot.batch.split('(')[0]}</span>
                                     {canManageTimetable && (
-                                      <button
-                                        onClick={() => handleOpenEditSlot(slot)}
-                                        className="text-purple-600 hover:text-purple-900 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
-                                        title="Edit slot"
-                                      >
-                                        <Edit2 className="w-2.5 h-2.5" />
-                                      </button>
+                                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          onClick={() => handleOpenEditSlot(slot)}
+                                          className="text-purple-600 hover:text-purple-900 p-0.5 cursor-pointer"
+                                          title="Edit slot"
+                                        >
+                                          <Edit2 className="w-2.5 h-2.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (confirm(`Remove "${slot.customSubjectName || subject?.name || slot.subjectId}" (${slot.timeSlot}) from ${day}?`)) {
+                                              onDeleteTimetableSlot(slot.id);
+                                            }
+                                          }}
+                                          className="text-rose-500 hover:text-rose-700 p-0.5 cursor-pointer"
+                                          title="Delete slot"
+                                        >
+                                          <Trash2 className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
@@ -802,7 +1002,27 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 <p className="text-xs text-slate-500">View weekly lecture timetable, room assignments, and teaching hours per teacher.</p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {canManageTimetable && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleOpenAddSlot}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Add Slot</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenCreateManualRoutine}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <FileEdit className="w-3.5 h-3.5" />
+                      <span>Create Manual Routine</span>
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() =>
                     setPrintModalConfig({
@@ -950,20 +1170,33 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                                       Class {slot.classLevel} ({slot.stream})
                                     </p>
                                     <p className="text-[10px] text-purple-900 font-semibold truncate mt-0.5">
-                                      📖 {subject?.name || slot.subjectId}
+                                      📖 {slot.customSubjectName || subject?.name || slot.subjectId}
                                     </p>
                                   </div>
 
                                   <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-purple-100">
                                     <span className="truncate">{slot.batch.split('(')[0]}</span>
                                     {canManageTimetable && (
-                                      <button
-                                        onClick={() => handleOpenEditSlot(slot)}
-                                        className="text-purple-600 hover:text-purple-900 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
-                                        title="Edit slot"
-                                      >
-                                        <Edit2 className="w-2.5 h-2.5" />
-                                      </button>
+                                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          onClick={() => handleOpenEditSlot(slot)}
+                                          className="text-purple-600 hover:text-purple-900 p-0.5 cursor-pointer"
+                                          title="Edit slot"
+                                        >
+                                          <Edit2 className="w-2.5 h-2.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (confirm(`Remove "${slot.customSubjectName || subject?.name || slot.subjectId}" (${slot.timeSlot}) from ${day}?`)) {
+                                              onDeleteTimetableSlot(slot.id);
+                                            }
+                                          }}
+                                          className="text-rose-500 hover:text-rose-700 p-0.5 cursor-pointer"
+                                          title="Delete slot"
+                                        >
+                                          <Trash2 className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
@@ -983,7 +1216,323 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
         </div>
       )}
 
-      {/* TAB: ROOM ALLOCATION & CAPACITY (MAX 5 OF 8 ROOMS) */}
+      {/* TAB: MANUAL ROUTINE BUILDER & SAVED CUSTOM ROUTINES */}
+      {activeTab === 'manual-routine' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200 flex items-center gap-1.5">
+                    <FileEdit className="w-3.5 h-3.5" />
+                    MANUAL ROUTINE STUDIO
+                  </span>
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    Custom Class • Faculty • Exam / Doubt Batches
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mt-1.5">
+                  Create & Manage Custom Manual Routines
+                </h3>
+                <p className="text-xs text-slate-600 mt-1 max-w-3xl">
+                  Build completely custom 7-day routines from scratch or clone any existing class/faculty schedule, assign custom subjects or mentors, use physical classrooms (max {MAX_CONCURRENT_ROOMS}/{ACADEMY_ROOMS.length}) or Online Virtual Labs, publish to the live academy timetable, and export official PDFs.
+                </p>
+              </div>
+
+              {canManageTimetable ? (
+                <button
+                  type="button"
+                  onClick={handleOpenCreateManualRoutine}
+                  className="px-4 py-2.5 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 shrink-0 self-start lg:self-center"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Create Manual Routine</span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200 shrink-0">
+                  <Lock className="w-3.5 h-3.5" />
+                  Timetable Write Access Required
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Empty State or Saved Manual Routines List */}
+          {manualRoutines.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-purple-300 p-10 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center mx-auto border border-purple-200">
+                <FileEdit className="w-7 h-7" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h4 className="text-base font-bold text-slate-900">No Manual Routines Created Yet</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Create a dedicated routine for a special Board Revision batch, Sunday Mock Test schedule, custom Faculty duty roster, or a tailored Class 1–12 timetable.
+                </p>
+              </div>
+              {canManageTimetable && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreateManualRoutine}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl shadow-sm transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <span>Create Your First Manual Routine</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {manualRoutines.map((mr) => {
+                const isExpanded = expandedManualRoutineId === mr.id;
+                const activeDaysCount = new Set(mr.slots.map((s) => s.day)).size;
+                const linkedFaculty = mr.facultyId ? faculty.find((f) => f.id === mr.facultyId) : undefined;
+                const scopeLabel =
+                  mr.routineType === 'class'
+                    ? `Class ${mr.classLevel || '10'}${mr.stream && mr.stream !== 'General' ? ` • ${mr.stream}` : ''}`
+                    : mr.routineType === 'faculty'
+                    ? `Faculty • ${linkedFaculty?.name || mr.facultyId || 'Assigned Mentor'}`
+                    : 'Custom Batch / Special Schedule';
+
+                return (
+                  <div
+                    key={mr.id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition-all"
+                  >
+                    {/* Card Header */}
+                    <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/60 border-b border-slate-100">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
+                              mr.routineType === 'class'
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : mr.routineType === 'faculty'
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}
+                          >
+                            {scopeLabel}
+                          </span>
+                          {mr.curriculum && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              {mr.curriculum}
+                            </span>
+                          )}
+                          {mr.academicSession && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white text-slate-600 border border-slate-200">
+                              Session: {mr.academicSession}
+                            </span>
+                          )}
+                          {mr.syncedToTimetable ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Published to Live Timetable
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                              Draft / Standalone Routine
+                            </span>
+                          )}
+                        </div>
+
+                        <h4 className="text-base font-extrabold text-slate-900">{mr.title}</h4>
+
+                        <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500">
+                          <span className="font-semibold text-slate-700">
+                            {mr.slots.length} Period{mr.slots.length === 1 ? '' : 's'} across {activeDaysCount} Day{activeDaysCount === 1 ? '' : 's'}
+                          </span>
+                          {mr.effectiveFrom && (
+                            <span>Effective From: <strong className="text-slate-700">{mr.effectiveFrom}</strong></span>
+                          )}
+                          <span>Updated: {new Date(mr.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                        {mr.notes && (
+                          <p className="text-xs text-slate-600 italic mt-1">Note: {mr.notes}</p>
+                        )}
+                      </div>
+
+                      {/* Card Actions */}
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedManualRoutineId(isExpanded ? null : mr.id)
+                          }
+                          className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"
+                        >
+                          {isExpanded ? 'Hide Grid' : 'Preview 7-Day Grid'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPrintModalConfig({
+                              isOpen: true,
+                              type: 'manual',
+                              manualRoutine: mr,
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Print / PDF</span>
+                        </button>
+
+                        {canManageTimetable && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleSyncManualRoutineToTimetable(mr)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-colors cursor-pointer ${
+                                mr.syncedToTimetable
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-slate-900'
+                              }`}
+                              title="Publish or re-sync periods into the live academy timetable"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>{mr.syncedToTimetable ? 'Re-Sync' : 'Sync to Timetable'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingManualRoutine(mr);
+                                setIsManualRoutineModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDuplicateManualRoutine(mr)}
+                              className="inline-flex items-center gap-1 px-2.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                              title="Duplicate routine"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Delete manual routine "${mr.title}"?`)) {
+                                  onDeleteManualRoutine?.(mr.id);
+                                  if (expandedManualRoutineId === mr.id) {
+                                    setExpandedManualRoutineId(null);
+                                  }
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                              title="Delete manual routine"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expandable 7-Day Grid Preview */}
+                    {isExpanded && (
+                      <div className="p-5 bg-white">
+                        {mr.slots.length === 0 ? (
+                          <p className="text-xs text-slate-500 italic text-center py-6">
+                            No periods added to this manual routine yet. Click Edit to add slots.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
+                            {daysOfWeek.map((day) => {
+                              const dayPeriods = mr.slots.filter((s) => s.day === day);
+                              const isOff = dayPeriods.length === 0;
+
+                              return (
+                                <div
+                                  key={day}
+                                  className={`flex flex-col rounded-xl border p-3 min-h-[180px] ${
+                                    isOff
+                                      ? 'bg-slate-50/50 border-slate-200 text-slate-400'
+                                      : 'bg-white border-purple-300 shadow-xs'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                                    <span className="font-extrabold text-xs uppercase tracking-wider text-slate-900">
+                                      {day.slice(0, 3)}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                        isOff
+                                          ? 'bg-slate-200 text-slate-500'
+                                          : 'bg-purple-100 text-purple-800'
+                                      }`}
+                                    >
+                                      {dayPeriods.length}
+                                    </span>
+                                  </div>
+
+                                  {isOff ? (
+                                    <div className="flex-1 flex items-center justify-center text-[10px] italic text-slate-400">
+                                      No classes
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2 flex-1">
+                                      {dayPeriods.map((slot) => (
+                                        <div
+                                          key={slot.id}
+                                          className="p-2 rounded-lg bg-purple-50/50 border border-purple-200 text-xs space-y-1"
+                                        >
+                                          <div className="flex items-start justify-between gap-1">
+                                            <span className="font-mono font-bold text-[10px] text-purple-950">
+                                              {slot.timeSlot}
+                                            </span>
+                                            <span
+                                              className={`text-[9px] font-bold px-1 rounded ${
+                                                slot.teachingMode === 'Online' || slot.room.includes('Online')
+                                                  ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                                                  : 'bg-emerald-100 text-emerald-800'
+                                              }`}
+                                            >
+                                              {slot.teachingMode === 'Online' || slot.room.includes('Online')
+                                                ? '🌐 Online'
+                                                : slot.room}
+                                            </span>
+                                          </div>
+
+                                          <p className="font-bold text-slate-900 text-[11px] leading-snug">
+                                            {slot.subjectName}
+                                          </p>
+                                          <p className="text-[10px] text-slate-600 truncate">
+                                            👤 {slot.facultyName}
+                                          </p>
+                                          <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-purple-100">
+                                            <span className="truncate">{String(slot.batch).split('(')[0]}</span>
+                                            {slot.curriculum && (
+                                              <span className="font-bold text-purple-800">{slot.curriculum}</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: ROOM ALLOCATION & CAPACITY (MAX 6 OF 8 ROOMS) */}
       {activeTab === 'room-allocation' && (
         <div className="space-y-6">
           {/* Institutional Capacity & Policy Banner */}
@@ -1307,16 +1856,26 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 ))}
               </div>
 
-              {/* Add New Slot Button */}
+              {/* Add New Slot & Create Manual Routine Buttons */}
               {canManageTimetable && (
-                <button
-                  id="add-timetable-slot-btn"
-                  onClick={handleOpenAddSlot}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4 text-amber-400" />
-                  <span>+ Schedule Time Slot</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    id="add-timetable-slot-btn"
+                    onClick={handleOpenAddSlot}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4 text-amber-400" />
+                    <span>+ Schedule Time Slot</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateManualRoutine}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    <FileEdit className="w-4 h-4" />
+                    <span>Create Manual Routine</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1381,10 +1940,10 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                             <span className="block text-[10px] text-slate-500 mt-0.5">{slot.batch.split('(')[0]}</span>
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-slate-800">
-                            {subject?.name || slot.subjectId}
+                            {slot.customSubjectName || subject?.name || slot.subjectId}
                           </td>
                           <td className="py-3.5 px-4 font-medium text-slate-800">
-                            {teacher?.name || 'Unassigned'}
+                            {slot.customFacultyName || teacher?.name || 'Unassigned'}
                           </td>
                           <td className="py-3.5 px-4">
                             <span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px] border border-emerald-200">
@@ -1605,10 +2164,29 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
           stream={printModalConfig.stream}
           curriculum={printModalConfig.curriculum}
           facultyMember={printModalConfig.facultyMember}
+          manualRoutine={printModalConfig.manualRoutine}
           timetable={timetable}
           faculty={faculty}
           subjects={subjects}
           onClose={() => setPrintModalConfig({ ...printModalConfig, isOpen: false })}
+        />
+      )}
+
+      {/* Create / Edit Manual Routine Modal */}
+      {isManualRoutineModalOpen && (
+        <ManualRoutineModal
+          existingRoutine={editingManualRoutine}
+          faculty={faculty}
+          subjects={subjects}
+          timetable={timetable}
+          defaultClassLevel={selectedClassRoutine}
+          defaultStream={selectedStreamRoutine}
+          defaultFacultyId={selectedFacultyId}
+          onSave={handleSaveManualRoutine}
+          onClose={() => {
+            setIsManualRoutineModalOpen(false);
+            setEditingManualRoutine(null);
+          }}
         />
       )}
 
@@ -1737,20 +2315,34 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                 </div>
               </div>
 
-              {/* Batch Shift */}
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Batch / Shift</label>
-                <select
-                  value={slotFormData.batch || BATCH_OPTIONS[0]}
-                  onChange={(e) => setSlotFormData({ ...slotFormData, batch: e.target.value as BatchShift })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-                >
-                  {BATCH_OPTIONS.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
+              {/* Batch Shift & Curriculum Board */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Batch / Shift</label>
+                  <select
+                    value={slotFormData.batch || BATCH_OPTIONS[0]}
+                    onChange={(e) => setSlotFormData({ ...slotFormData, batch: e.target.value as BatchShift })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  >
+                    {BATCH_OPTIONS.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Curriculum Board</label>
+                  <select
+                    value={slotFormData.curriculum || 'CBSE'}
+                    onChange={(e) => setSlotFormData({ ...slotFormData, curriculum: e.target.value as 'CBSE' | 'W.B. Board' })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  >
+                    <option value="CBSE">CBSE</option>
+                    <option value="W.B. Board">W.B. Board</option>
+                  </select>
+                </div>
               </div>
 
               {/* Subject Selector */}
@@ -1800,16 +2392,18 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                   {(() => {
                     const currentDay = slotFormData.day || 'Monday';
                     const currentTime = slotFormData.timeSlot || '04:00 PM - 05:30 PM';
-                    const activeSlots = timetable.filter(
+                    const activePhysicalSlots = timetable.filter(
                       (s) =>
                         s.day === currentDay &&
                         s.timeSlot === currentTime &&
+                        ACADEMY_ROOMS.includes(s.room as any) &&
                         (!editingTimetableSlot || s.id !== editingTimetableSlot.id)
                     );
-                    const occupiedMap = new Map<string, TimetableSlot>(activeSlots.map((s) => [s.room, s]));
-                    const isSelectedRoomOccupied = occupiedMap.has(slotFormData.room || '');
+                    const occupiedMap = new Map<string, TimetableSlot>(activePhysicalSlots.map((s) => [s.room, s]));
+                    const isPhysicalSelection = ACADEMY_ROOMS.includes((slotFormData.room || '') as any);
+                    const isSelectedRoomOccupied = isPhysicalSelection && occupiedMap.has(slotFormData.room || '');
                     const currentOccupiedCount = occupiedMap.size;
-                    const willExceed = !isSelectedRoomOccupied && currentOccupiedCount >= MAX_CONCURRENT_ROOMS;
+                    const willExceed = isPhysicalSelection && !isSelectedRoomOccupied && currentOccupiedCount >= MAX_CONCURRENT_ROOMS;
 
                     return (
                       <div className="space-y-1.5">
@@ -1833,6 +2427,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                               </option>
                             );
                           })}
+                          <option value="Online (Virtual Lab)">Online (Virtual Lab)</option>
                         </select>
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500">

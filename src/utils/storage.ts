@@ -18,6 +18,7 @@ import {
   AdminUser,
   Book,
   BookIssueRecord,
+  ManualRoutine,
 } from '../types';
 import {
   INITIAL_ATTENDANCE,
@@ -139,6 +140,7 @@ export interface AppStateData {
   investors?: Investor[];
   investorTransactions?: InvestorTransaction[];
   timetable: TimetableSlot[];
+  manualRoutines?: ManualRoutine[];
   attendance: AttendanceRecord[];
   questionBank: QuestionBankItem[];
   assignments: AssignmentSet[];
@@ -158,6 +160,7 @@ const STORAGE_KEYS = {
   INVESTORS: 'biley_academy_investors_v1',
   INVESTOR_TRANSACTIONS: 'biley_academy_investor_transactions_v1',
   TIMETABLE: 'biley_academy_timetable_v1',
+  MANUAL_ROUTINES: 'biley_academy_manual_routines_v1',
   ATTENDANCE: 'biley_academy_attendance_v1',
   QUESTION_BANK: 'biley_academy_question_bank_v1',
   ASSIGNMENTS: 'biley_academy_assignments_v1',
@@ -415,33 +418,39 @@ export function loadInitialState(): AppStateData {
   }
 
   const loadedTimetable = loadFromStorage<TimetableSlot[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
-  // If stored timetable is legacy or incomplete (< 100 slots), sync with pristine INITIAL_TIMETABLE
+  // Preserve all manual/custom slots and user customizations, while repairing legacy records if needed
   let mergedTimetable: TimetableSlot[] = [];
-  if (loadedTimetable.length < 100) {
+  if (!Array.isArray(loadedTimetable) || loadedTimetable.length === 0) {
     mergedTimetable = [...INITIAL_TIMETABLE];
   } else {
-    const sanitizedLoadedTimetable = loadedTimetable.filter((slot) => {
-      if (standardClassLevels.includes(slot.classLevel)) {
-        return INITIAL_TIMETABLE.some((init) => init.id === slot.id);
-      }
-      return true;
-    });
-    const timetableMap = new Set(sanitizedLoadedTimetable.map((t) => t.id));
-    mergedTimetable = sanitizedLoadedTimetable.map((slot) => {
+    const normalizedLoaded = loadedTimetable.map((slot) => {
       const initSlot = INITIAL_TIMETABLE.find((t) => t.id === slot.id);
-      if (initSlot && standardClassLevels.includes(slot.classLevel)) {
-        return initSlot;
-      }
-      if (slot.batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)) {
-        return { ...slot, batch: 'Evening Batch (4:00 PM - 8:30 PM)' as BatchShift };
-      }
-      return slot;
+      const updatedBatch =
+        slot.batch === ('Evening Batch (4:00 PM - 7:30 PM)' as any)
+          ? ('Evening Batch (4:00 PM - 8:30 PM)' as BatchShift)
+          : slot.batch;
+      return {
+        ...slot,
+        batch: updatedBatch,
+        curriculum: slot.curriculum || initSlot?.curriculum,
+      };
     });
-    for (const initT of INITIAL_TIMETABLE) {
-      if (!timetableMap.has(initT.id)) {
-        mergedTimetable.push(initT);
-        timetableMap.add(initT.id);
+
+    // If stored timetable is legacy (< 100 slots and has no manual slots yet), backfill missing INITIAL_TIMETABLE slots without dropping custom slots
+    const hasManualSlots = normalizedLoaded.some(
+      (s) => s.isManual || !INITIAL_TIMETABLE.some((init) => init.id === s.id)
+    );
+    if (normalizedLoaded.length < 100 && !hasManualSlots) {
+      const existingIds = new Set(normalizedLoaded.map((t) => t.id));
+      mergedTimetable = [...normalizedLoaded];
+      for (const initT of INITIAL_TIMETABLE) {
+        if (!existingIds.has(initT.id)) {
+          mergedTimetable.push(initT);
+          existingIds.add(initT.id);
+        }
       }
+    } else {
+      mergedTimetable = normalizedLoaded;
     }
   }
 
@@ -481,6 +490,7 @@ export function loadInitialState(): AppStateData {
     investors: deduplicateById(loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS)),
     investorTransactions: deduplicateById(loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS)),
     timetable: deduplicateById(mergedTimetable),
+    manualRoutines: deduplicateById(loadFromStorage<ManualRoutine[]>(STORAGE_KEYS.MANUAL_ROUTINES, [])),
     attendance: deduplicateById(sanitizedAttendance),
     questionBank: deduplicateById(loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK)),
     assignments: deduplicateById(loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS)),
@@ -518,7 +528,10 @@ export function saveToStorage(data: AppStateData): void {
     if (data.investorTransactions) {
       saveItemToStorage(STORAGE_KEYS.INVESTOR_TRANSACTIONS, data.investorTransactions);
     }
-    saveItemToStorage(STORAGE_KEYS.TIMETABLE, data.timetable);
+    saveItemToStorage(STORAGE_KEYS.TIMETABLE, deduplicateById(data.timetable));
+    if (data.manualRoutines) {
+      saveItemToStorage(STORAGE_KEYS.MANUAL_ROUTINES, deduplicateById(data.manualRoutines));
+    }
     saveItemToStorage(STORAGE_KEYS.ATTENDANCE, data.attendance);
     saveItemToStorage(STORAGE_KEYS.QUESTION_BANK, data.questionBank);
     saveItemToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
@@ -544,6 +557,7 @@ export function saveToStorage(data: AppStateData): void {
     localStorage.removeItem(STORAGE_KEYS.INVESTORS);
     localStorage.removeItem(STORAGE_KEYS.INVESTOR_TRANSACTIONS);
     localStorage.removeItem(STORAGE_KEYS.TIMETABLE);
+    localStorage.removeItem(STORAGE_KEYS.MANUAL_ROUTINES);
     localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
     localStorage.removeItem(STORAGE_KEYS.QUESTION_BANK);
     localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS);
@@ -670,6 +684,7 @@ export function parseDatabaseBackup(jsonString: string): AppStateData {
   stateData.exams = deduplicateById(stateData.exams);
   stateData.deposits = deduplicateById(stateData.deposits);
   stateData.timetable = deduplicateById(stateData.timetable);
+  stateData.manualRoutines = deduplicateById(stateData.manualRoutines || []);
 
   return stateData;
 }

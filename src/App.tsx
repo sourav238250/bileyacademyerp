@@ -18,6 +18,7 @@ import {
   Book,
   BookIssueRecord,
   InstitutionalAuthorizationConfig,
+  ManualRoutine,
 } from './types';
 import {
   loadInitialState,
@@ -103,6 +104,7 @@ export default function App() {
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [investorTransactions, setInvestorTransactions] = useState<InvestorTransaction[]>([]);
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
+  const [manualRoutines, setManualRoutines] = useState<ManualRoutine[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [questionBank, setQuestionBank] = useState<QuestionBankItem[]>([]);
   const [assignments, setAssignments] = useState<AssignmentSet[]>([]);
@@ -151,6 +153,7 @@ export default function App() {
     setInvestors(localData.investors || []);
     setInvestorTransactions(localData.investorTransactions || []);
     setTimetable(localData.timetable);
+    setManualRoutines(localData.manualRoutines || []);
     setAttendance(localData.attendance || []);
     setQuestionBank(localData.questionBank || []);
     setAssignments(localData.assignments || []);
@@ -171,6 +174,7 @@ export default function App() {
       setInvestors(cloudData.investors || []);
       setInvestorTransactions(cloudData.investorTransactions || []);
       setTimetable(cloudData.timetable || []);
+      setManualRoutines(deduplicateById(cloudData.manualRoutines || []));
       setAttendance(cloudData.attendance || []);
       setQuestionBank(cloudData.questionBank || []);
       setAssignments(cloudData.assignments || []);
@@ -200,6 +204,7 @@ export default function App() {
       investors,
       investorTransactions,
       timetable,
+      manualRoutines,
       attendance,
       questionBank,
       assignments,
@@ -216,7 +221,7 @@ export default function App() {
 
     // Synchronize to Express backend REST API
     backendApi.pushState(currentState).catch(() => {});
-  }, [students, faculty, subjects, exams, results, deposits, disbursements, investors, investorTransactions, timetable, attendance, questionBank, assignments, books, bookIssues, authConfig, isLoaded]);
+  }, [students, faculty, subjects, exams, results, deposits, disbursements, investors, investorTransactions, timetable, manualRoutines, attendance, questionBank, assignments, books, bookIssues, authConfig, isLoaded]);
 
   // Full Institutional State Refresh Handler
   const handleRefreshAllData = () => {
@@ -231,6 +236,7 @@ export default function App() {
     setInvestors(refreshed.investors || []);
     setInvestorTransactions(refreshed.investorTransactions || []);
     setTimetable(refreshed.timetable);
+    setManualRoutines(refreshed.manualRoutines || []);
     setAttendance(refreshed.attendance || []);
     setQuestionBank(refreshed.questionBank || []);
     setAssignments(refreshed.assignments || []);
@@ -377,6 +383,37 @@ export default function App() {
 
   const handleDeleteTimetableSlot = (slotId: string) => {
     setTimetable((prev) => prev.filter((s) => s.id !== slotId));
+  };
+
+  const handleBulkAddTimetableSlots = (
+    newSlots: TimetableSlot[],
+    replacePredicate?: (existing: TimetableSlot) => boolean
+  ) => {
+    setTimetable((prev) => {
+      const base = replacePredicate ? prev.filter((s) => !replacePredicate(s)) : prev;
+      return deduplicateById([...base, ...newSlots]);
+    });
+  };
+
+  // Manual Routine Handlers
+  const handleAddManualRoutine = (routine: ManualRoutine) => {
+    setManualRoutines((prev) => {
+      if (prev.some((r) => r.id === routine.id)) {
+        return prev.map((r) => (r.id === routine.id ? routine : r));
+      }
+      return [routine, ...prev];
+    });
+  };
+
+  const handleUpdateManualRoutine = (updated: ManualRoutine) => {
+    setManualRoutines((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    );
+  };
+
+  const handleDeleteManualRoutine = (routineId: string) => {
+    setManualRoutines((prev) => prev.filter((r) => r.id !== routineId));
+    // Also clean up any timetable slots tagged with this manualRoutineId if needed? Keep synced slots unless explicitly removed, or let user manage timetable separately
   };
 
   // Exams Handlers
@@ -585,6 +622,7 @@ export default function App() {
       setInvestors(initial.investors || []);
       setInvestorTransactions(initial.investorTransactions || []);
       setTimetable(initial.timetable);
+      setManualRoutines(initial.manualRoutines || []);
       setAttendance(initial.attendance || []);
       setQuestionBank(initial.questionBank || []);
       setAssignments(initial.assignments || []);
@@ -602,6 +640,7 @@ export default function App() {
     setInvestors(restoredData.investors || []);
     setInvestorTransactions(restoredData.investorTransactions || []);
     setTimetable(restoredData.timetable);
+    setManualRoutines(restoredData.manualRoutines || []);
     setAttendance(restoredData.attendance || []);
     setQuestionBank(restoredData.questionBank || []);
     setAssignments(restoredData.assignments || []);
@@ -815,12 +854,17 @@ export default function App() {
               faculty={faculty}
               subjects={subjects}
               timetable={timetable}
+              manualRoutines={manualRoutines}
               onAddFaculty={handleAddFaculty}
               onUpdateFaculty={handleUpdateFaculty}
               onDeleteFaculty={handleDeleteFaculty}
               onAddTimetableSlot={handleAddTimetableSlot}
               onUpdateTimetableSlot={handleUpdateTimetableSlot}
               onDeleteTimetableSlot={handleDeleteTimetableSlot}
+              onBulkAddTimetableSlots={handleBulkAddTimetableSlots}
+              onAddManualRoutine={handleAddManualRoutine}
+              onUpdateManualRoutine={handleUpdateManualRoutine}
+              onDeleteManualRoutine={handleDeleteManualRoutine}
               currentAdmin={currentAdmin}
               onOpenAdminLogin={() => {
                 setLoginModalSectionTitle('Faculty Allocation & Timetable');

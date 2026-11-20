@@ -1,11 +1,12 @@
 import { jsPDF } from 'jspdf';
-import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType } from '../types';
+import { Faculty, Subject, TimetableSlot, ClassLevel, StreamType, ManualRoutine } from '../types';
 
 export interface RoutinePDFOptions {
-  type: 'class' | 'faculty';
+  type: 'class' | 'faculty' | 'manual';
   classLevel?: ClassLevel | string;
   stream?: StreamType | string;
   facultyMember?: Faculty;
+  manualRoutine?: ManualRoutine;
   timetable: TimetableSlot[];
   faculty: Faculty[];
   subjects: Subject[];
@@ -18,6 +19,7 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
     classLevel = '10',
     stream = 'General',
     facultyMember,
+    manualRoutine,
     timetable,
     faculty,
     subjects,
@@ -38,9 +40,27 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Filter slots
-  const relevantSlots = type === 'class'
-    ? timetable.filter((s) => s.classLevel === classLevel && (classLevel === '11' || classLevel === '12' ? s.stream === stream : true))
-    : timetable.filter((s) => s.facultyId === facultyMember?.id);
+  const relevantSlots: TimetableSlot[] =
+    type === 'manual' && manualRoutine
+      ? manualRoutine.slots.map((ms) => ({
+          id: ms.id,
+          day: ms.day,
+          timeSlot: ms.timeSlot,
+          classLevel: manualRoutine.classLevel || '10',
+          stream: manualRoutine.stream || 'General',
+          curriculum: ms.curriculum || (manualRoutine.curriculum !== 'Combined' ? manualRoutine.curriculum : undefined),
+          batch: (ms.batch as any) || 'Evening Batch (4:00 PM - 8:30 PM)',
+          subjectId: ms.subjectId || ms.subjectName,
+          facultyId: ms.facultyId || ms.facultyName,
+          room: ms.room,
+          teachingMode: ms.teachingMode,
+          customSubjectName: ms.subjectName,
+          customFacultyName: ms.facultyName,
+          isManual: true,
+        }))
+      : type === 'class'
+      ? timetable.filter((s) => s.classLevel === classLevel && (classLevel === '11' || classLevel === '12' ? s.stream === stream : true))
+      : timetable.filter((s) => s.facultyId === facultyMember?.id);
 
   // Group slots by day
   const slotsByDay: Record<string, TimetableSlot[]> = {};
@@ -64,9 +84,12 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
     doc.setTextColor(245, 158, 11); // amber-500
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
-    const subTitle = type === 'class'
-      ? `BILEY ACADEMY • CLASS ${classLevel} (${stream}) OFFICIAL ROUTINE • 2026–2027`
-      : `BILEY ACADEMY • ${facultyMember?.name?.toUpperCase()} FACULTY DUTY SCHEDULE • 2026–2027`;
+    const subTitle =
+      type === 'manual' && manualRoutine
+        ? `BILEY ACADEMY • ${manualRoutine.title.toUpperCase()} • ${manualRoutine.academicSession || '2026–2027'}`
+        : type === 'class'
+        ? `BILEY ACADEMY • CLASS ${classLevel} (${stream}) OFFICIAL ROUTINE • 2026–2027`
+        : `BILEY ACADEMY • ${facultyMember?.name?.toUpperCase()} FACULTY DUTY SCHEDULE • 2026–2027`;
     doc.text(subTitle, margin + 4, y + 5.5);
     y += 12;
   };
@@ -96,7 +119,8 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
   doc.text('Jamna, Pingla, Paschim Medinipur, WB-721140 | Helpline: +91 9732531730', margin + 6, y + 18.5);
 
   // Badge on the right
-  const badgeTitle = type === 'class' ? 'CLASS ROUTINE' : 'FACULTY SCHEDULE';
+  const badgeTitle =
+    type === 'manual' ? 'MANUAL ROUTINE' : type === 'class' ? 'CLASS ROUTINE' : 'FACULTY SCHEDULE';
   doc.setFillColor(245, 158, 11); // amber-500
   doc.roundedRect(pageWidth - margin - 52, y + 4, 46, 16, 2, 2, 'F');
   doc.setTextColor(15, 23, 42);
@@ -105,7 +129,7 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
   doc.text(badgeTitle, pageWidth - margin - 29, y + 10, { align: 'center' });
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.text('Session: 2026–2027', pageWidth - margin - 29, y + 15, { align: 'center' });
+  doc.text(`Session: ${manualRoutine?.academicSession || '2026–2027'}`, pageWidth - margin - 29, y + 15, { align: 'center' });
 
   y += 28;
 
@@ -115,7 +139,40 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
   doc.roundedRect(margin, y, contentWidth, 14, 2, 2, 'FD');
 
   doc.setFontSize(7.5);
-  if (type === 'class') {
+  if (type === 'manual' && manualRoutine) {
+    doc.setTextColor(100, 116, 139);
+    doc.text('ROUTINE TITLE', margin + 6, y + 5);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(manualRoutine.title.slice(0, 32), margin + 6, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('TARGET SCOPE', margin + 68, y + 5);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    const scopeLabel =
+      manualRoutine.routineType === 'class'
+        ? `Class ${manualRoutine.classLevel || '10'} (${manualRoutine.curriculum || 'CBSE'})`
+        : manualRoutine.routineType === 'faculty'
+        ? `${faculty.find((f) => f.id === manualRoutine.facultyId)?.name || 'Faculty'}`
+        : 'Custom Batch';
+    doc.text(scopeLabel.slice(0, 26), margin + 68, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('WEEKLY LOAD', margin + 122, y + 5);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${totalPeriods} Periods / Week`, margin + 122, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('STATUS', margin + 158, y + 5);
+    doc.setTextColor(126, 34, 206);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Custom Manual', margin + 158, y + 10);
+  } else if (type === 'class') {
     doc.setTextColor(100, 116, 139);
     doc.text('TARGET CLASS', margin + 6, y + 5);
     doc.setTextColor(15, 23, 42);
@@ -242,15 +299,17 @@ export function generateRoutinePDF(options: RoutinePDFOptions): jsPDF {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(15, 23, 42);
-      const subjectText = `${subject?.name || slot.subjectId} ${type === 'faculty' ? `(Class ${slot.classLevel})` : ''}`;
+      const resolvedSubName = slot.customSubjectName || subject?.name || slot.subjectId;
+      const subjectText = `${resolvedSubName} ${type === 'faculty' ? `(Class ${slot.classLevel})` : ''}`;
       doc.text(subjectText, margin + 64, slotY + 2.5);
 
-      // Teacher (for class view) or Batch (for faculty view)
+      // Teacher (for class/manual view) or Batch (for faculty view)
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(71, 85, 105);
-      if (type === 'class') {
-        const teacherName = `Faculty: ${teacher?.name || 'Staff'}`;
+      if (type === 'class' || type === 'manual') {
+        const resolvedTeacherName = slot.customFacultyName || teacher?.name || 'Staff';
+        const teacherName = `Faculty: ${resolvedTeacherName}`;
         doc.text(teacherName, margin + 120, slotY + 2.5);
       } else {
         const batchName = slot.batch.split('(')[0].trim();
