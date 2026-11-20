@@ -196,8 +196,22 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       };
       onUpdateFaculty(updated);
     } else {
+      const existingNums = faculty
+        .map((f) => {
+          const match = f.id.match(/^FAC-(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        })
+        .filter((n) => !Number.isNaN(n));
+      let nextNum = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+      const existingIds = new Set(faculty.map((f) => f.id));
+      let candidateId = `FAC-${String(nextNum).padStart(2, '0')}`;
+      while (existingIds.has(candidateId)) {
+        nextNum += 1;
+        candidateId = `FAC-${String(nextNum).padStart(2, '0')}`;
+      }
+
       const newFaculty: Faculty = {
-        id: `FAC-${String(faculty.length + 1).padStart(2, '0')}`,
+        id: candidateId,
         name: formData.name || '',
         designation: (formData.designation as any) || 'Senior Faculty',
         qualification: formData.qualification || '',

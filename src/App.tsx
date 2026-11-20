@@ -25,6 +25,7 @@ import {
   resetToInitialMockData,
   loadFromStorage,
   saveItemToStorage,
+  deduplicateById,
   AppStateData,
   DEFAULT_AUTHORIZATION_CONFIG,
 } from './utils/storage';
@@ -160,10 +161,10 @@ export default function App() {
 
     // 2. Attach real-time cloud listener to synchronize with Firebase Firestore backend
     const unsubscribe = firebaseSyncService.initRealtimeSync((cloudData) => {
-      setStudents(cloudData.students || []);
-      setFaculty(cloudData.faculty || []);
-      setSubjects(cloudData.subjects || []);
-      setExams(cloudData.exams || []);
+      setStudents(deduplicateById(cloudData.students || []));
+      setFaculty(deduplicateById(cloudData.faculty || []));
+      setSubjects(deduplicateById(cloudData.subjects || []));
+      setExams(deduplicateById(cloudData.exams || []));
       setResults(cloudData.results || []);
       setDeposits(cloudData.deposits || []);
       setDisbursements(cloudData.disbursements || []);
@@ -345,7 +346,12 @@ export default function App() {
 
   // Faculty Handlers
   const handleAddFaculty = (newFaculty: Faculty) => {
-    setFaculty((prev) => [...prev, newFaculty]);
+    setFaculty((prev) => {
+      if (prev.some((f) => f.id === newFaculty.id)) {
+        return prev.map((f) => (f.id === newFaculty.id ? newFaculty : f));
+      }
+      return [...prev, newFaculty];
+    });
   };
 
   const handleUpdateFaculty = (updatedFaculty: Faculty) => {

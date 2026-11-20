@@ -188,6 +188,22 @@ export function saveItemToStorage<T>(key: string, value: T): void {
   }
 }
 
+export function deduplicateById<T extends { id?: string }>(items: T[] | undefined | null): T[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (!item) continue;
+    const id = item.id;
+    if (typeof id === 'string' && id.length > 0) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+    }
+    result.push(item);
+  }
+  return result;
+}
+
 
 export function loadInitialState(): AppStateData {
   const loadedAuthConfig = loadFromStorage<InstitutionalAuthorizationConfig>(STORAGE_KEYS.AUTH_CONFIG, DEFAULT_AUTHORIZATION_CONFIG);
@@ -313,6 +329,7 @@ export function loadInitialState(): AppStateData {
       facultyIdMap.add(initFac.id);
     }
   }
+  const deduplicatedFaculty = deduplicateById(mergedFaculty);
 
   const loadedStudents = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
   const sanitizedStudents: Student[] = loadedStudents.map((st) => {
@@ -443,10 +460,10 @@ export function loadInitialState(): AppStateData {
   const sanitizedDisbursements = isLegacyRe1Test ? INITIAL_DISBURSEMENTS : loadedDisbursements;
 
   return {
-    students: sanitizedStudents,
-    faculty: mergedFaculty,
-    subjects: mergedSubjects,
-    exams: sanitizedExams,
+    students: deduplicateById(sanitizedStudents),
+    faculty: deduplicatedFaculty,
+    subjects: deduplicateById(mergedSubjects),
+    exams: deduplicateById(sanitizedExams),
     results: sanitizedResults,
     deposits: (() => {
       const loaded = loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS);
@@ -458,15 +475,15 @@ export function loadInitialState(): AppStateData {
           depMap.add(initD.id);
         }
       }
-      return merged;
+      return deduplicateById(merged);
     })(),
-    disbursements: sanitizedDisbursements,
-    investors: loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS),
-    investorTransactions: loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS),
-    timetable: mergedTimetable,
-    attendance: sanitizedAttendance,
-    questionBank: loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK),
-    assignments: loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS),
+    disbursements: deduplicateById(sanitizedDisbursements),
+    investors: deduplicateById(loadFromStorage<Investor[]>(STORAGE_KEYS.INVESTORS, INITIAL_INVESTORS)),
+    investorTransactions: deduplicateById(loadFromStorage<InvestorTransaction[]>(STORAGE_KEYS.INVESTOR_TRANSACTIONS, INITIAL_INVESTOR_TRANSACTIONS)),
+    timetable: deduplicateById(mergedTimetable),
+    attendance: deduplicateById(sanitizedAttendance),
+    questionBank: deduplicateById(loadFromStorage<QuestionBankItem[]>(STORAGE_KEYS.QUESTION_BANK, INITIAL_QUESTION_BANK)),
+    assignments: deduplicateById(loadFromStorage<AssignmentSet[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENT_SETS)),
     books: (() => {
       const stored = loadFromStorage<Book[]>(STORAGE_KEYS.BOOKS, INITIAL_BOOKS);
       return (!Array.isArray(stored) || stored.length === 0) ? INITIAL_BOOKS : stored;
@@ -488,13 +505,13 @@ export function saveBookIssuesToPersistentStorage(issues: BookIssueRecord[]): vo
 }
 
 export function saveToStorage(data: AppStateData): void {
-    saveItemToStorage(STORAGE_KEYS.STUDENTS, data.students);
-    saveItemToStorage(STORAGE_KEYS.FACULTY, data.faculty);
-    saveItemToStorage(STORAGE_KEYS.SUBJECTS, data.subjects);
-    saveItemToStorage(STORAGE_KEYS.EXAMS, data.exams);
+    saveItemToStorage(STORAGE_KEYS.STUDENTS, deduplicateById(data.students));
+    saveItemToStorage(STORAGE_KEYS.FACULTY, deduplicateById(data.faculty));
+    saveItemToStorage(STORAGE_KEYS.SUBJECTS, deduplicateById(data.subjects));
+    saveItemToStorage(STORAGE_KEYS.EXAMS, deduplicateById(data.exams));
     saveItemToStorage(STORAGE_KEYS.RESULTS, data.results);
-    saveItemToStorage(STORAGE_KEYS.DEPOSITS, data.deposits);
-    saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, data.disbursements);
+    saveItemToStorage(STORAGE_KEYS.DEPOSITS, deduplicateById(data.deposits));
+    saveItemToStorage(STORAGE_KEYS.DISBURSEMENTS, deduplicateById(data.disbursements));
     if (data.investors) {
       saveItemToStorage(STORAGE_KEYS.INVESTORS, data.investors);
     }
@@ -646,6 +663,13 @@ export function parseDatabaseBackup(jsonString: string): AppStateData {
   if (!Array.isArray(stateData.bookIssues)) {
     stateData.bookIssues = INITIAL_BOOK_ISSUES;
   }
+
+  stateData.students = deduplicateById(stateData.students);
+  stateData.faculty = deduplicateById(stateData.faculty);
+  stateData.subjects = deduplicateById(stateData.subjects);
+  stateData.exams = deduplicateById(stateData.exams);
+  stateData.deposits = deduplicateById(stateData.deposits);
+  stateData.timetable = deduplicateById(stateData.timetable);
 
   return stateData;
 }

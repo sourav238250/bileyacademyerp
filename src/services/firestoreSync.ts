@@ -8,6 +8,7 @@ import {
 import {
   AppStateData,
   DEFAULT_AUTHORIZATION_CONFIG,
+  deduplicateById,
   loadInitialState,
   saveToStorage,
 } from '../utils/storage';
@@ -118,22 +119,38 @@ class FirebaseSyncService {
               ? remoteData.bookIssues
               : (localFallback.bookIssues || []);
 
+            const rawFaculty = remoteData.faculty || [];
+            const cleanFaculty = deduplicateById(rawFaculty);
+            const cleanStudents = deduplicateById(remoteData.students || []);
+            const cleanSubjects = deduplicateById(remoteData.subjects || []);
+            const cleanExams = deduplicateById(remoteData.exams || []);
+            const cleanDeposits = deduplicateById(remoteData.deposits || []);
+            const cleanTimetable = deduplicateById(remoteData.timetable || []);
+
+            const hadDuplicates =
+              cleanFaculty.length !== rawFaculty.length ||
+              cleanStudents.length !== (remoteData.students || []).length ||
+              cleanSubjects.length !== (remoteData.subjects || []).length ||
+              cleanExams.length !== (remoteData.exams || []).length ||
+              cleanDeposits.length !== (remoteData.deposits || []).length ||
+              cleanTimetable.length !== (remoteData.timetable || []).length;
+
             const merged: AppStateData = {
-              students: remoteData.students || [],
-              faculty: remoteData.faculty || [],
-              subjects: remoteData.subjects || [],
-              exams: remoteData.exams || [],
+              students: cleanStudents,
+              faculty: cleanFaculty,
+              subjects: cleanSubjects,
+              exams: cleanExams,
               results: remoteData.results || [],
-              deposits: remoteData.deposits || [],
-              disbursements: remoteData.disbursements || [],
-              investors: remoteData.investors || [],
-              investorTransactions: remoteData.investorTransactions || [],
-              timetable: remoteData.timetable || [],
-              attendance: remoteData.attendance || [],
-              questionBank: remoteData.questionBank || [],
-              assignments: remoteData.assignments || [],
-              books: persistentBooks,
-              bookIssues: persistentBookIssues,
+              deposits: cleanDeposits,
+              disbursements: deduplicateById(remoteData.disbursements || []),
+              investors: deduplicateById(remoteData.investors || []),
+              investorTransactions: deduplicateById(remoteData.investorTransactions || []),
+              timetable: cleanTimetable,
+              attendance: deduplicateById(remoteData.attendance || []),
+              questionBank: deduplicateById(remoteData.questionBank || []),
+              assignments: deduplicateById(remoteData.assignments || []),
+              books: deduplicateById(persistentBooks),
+              bookIssues: deduplicateById(persistentBookIssues),
               authConfig: remoteData.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
             };
 
@@ -144,7 +161,12 @@ class FirebaseSyncService {
               return;
             }
 
-            this.lastSyncedHash = incomingHash;
+            if (hadDuplicates) {
+              // Keep lastSyncedHash stale so the cleaned array is pushed back to Firestore
+              this.lastSyncedHash = '';
+            } else {
+              this.lastSyncedHash = incomingHash;
+            }
             this.lastCloudSyncTime = new Date();
             this.notifyStatus(null);
 
@@ -156,6 +178,9 @@ class FirebaseSyncService {
             onDataReceived(merged, 'cloud');
             setTimeout(() => {
               this.isRemoteUpdateUnderway = false;
+              if (hadDuplicates) {
+                this.scheduleCloudPush(merged);
+              }
             }, 300);
           } else {
             // First-time database bootstrap
@@ -303,17 +328,17 @@ class FirebaseSyncService {
       if (snapshot.exists()) {
         const remoteData = snapshot.data() as Partial<AppStateData>;
         const merged: AppStateData = {
-          students: remoteData.students || [],
-          faculty: remoteData.faculty || [],
-          subjects: remoteData.subjects || [],
-          exams: remoteData.exams || [],
+          students: deduplicateById(remoteData.students || []),
+          faculty: deduplicateById(remoteData.faculty || []),
+          subjects: deduplicateById(remoteData.subjects || []),
+          exams: deduplicateById(remoteData.exams || []),
           results: remoteData.results || [],
-          deposits: remoteData.deposits || [],
-          disbursements: remoteData.disbursements || [],
-          timetable: remoteData.timetable || [],
-          attendance: remoteData.attendance || [],
-          questionBank: remoteData.questionBank || [],
-          assignments: remoteData.assignments || [],
+          deposits: deduplicateById(remoteData.deposits || []),
+          disbursements: deduplicateById(remoteData.disbursements || []),
+          timetable: deduplicateById(remoteData.timetable || []),
+          attendance: deduplicateById(remoteData.attendance || []),
+          questionBank: deduplicateById(remoteData.questionBank || []),
+          assignments: deduplicateById(remoteData.assignments || []),
           authConfig: remoteData.authConfig || DEFAULT_AUTHORIZATION_CONFIG,
         };
         this.lastSyncedHash = createDataHash(merged);
