@@ -59,7 +59,7 @@ export const ACADEMY_ROOMS = [
 
 export type AcademyRoom = (typeof ACADEMY_ROOMS)[number];
 
-export const MAX_CONCURRENT_ROOMS = 5;
+export const MAX_CONCURRENT_ROOMS = 6;
 
 export const STREAMS_FOR_CLASS: Record<ClassLevel, string[]> = {
   '1': ['General'],

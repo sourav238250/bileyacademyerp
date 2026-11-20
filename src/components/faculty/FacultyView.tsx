@@ -259,7 +259,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
     setIsTimetableModalOpen(true);
   };
 
-  // Handle Timetable Slot Submit with 5 concurrent rooms validation
+  // Handle Timetable Slot Submit with max concurrent rooms (6 out of 8) validation
   const handleSlotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const day = (slotFormData.day as any) || 'Monday';
@@ -299,11 +299,11 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
       return;
     }
 
-    // 2. Maximum 5 concurrent rooms allocation limit check
+    // 2. Maximum concurrent rooms (6 out of 8) allocation limit check
     const distinctRoomsInSlot = new Set(otherSlotsInSameSlot.map((s) => s.room));
     if (!distinctRoomsInSlot.has(targetRoom) && distinctRoomsInSlot.size >= MAX_CONCURRENT_ROOMS) {
       alert(
-        `Institutional Room Limit Exceeded: At most ${MAX_CONCURRENT_ROOMS} rooms can be allocated concurrently for classes (Policy: 8 Available Rooms, Max ${MAX_CONCURRENT_ROOMS} active at a time). Current allocated rooms on ${day} (${timeSlot}): ${Array.from(distinctRoomsInSlot).join(', ')}.`
+        `Institutional Room Limit Exceeded: At most ${MAX_CONCURRENT_ROOMS} out of ${ACADEMY_ROOMS.length} rooms can be allocated concurrently for classes (Policy: ${ACADEMY_ROOMS.length} Available Rooms, Max ${MAX_CONCURRENT_ROOMS} active at a time). Current allocated rooms on ${day} (${timeSlot}): ${Array.from(distinctRoomsInSlot).join(', ')}.`
       );
       return;
     }
@@ -433,7 +433,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
               }`}
             >
               <Building className="w-3.5 h-3.5" />
-              <span>Room Allocations (Max 5/8)</span>
+              <span>Room Allocations (Max {MAX_CONCURRENT_ROOMS}/{ACADEMY_ROOMS.length})</span>
             </button>
 
             <button
@@ -986,12 +986,12 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
                   </span>
                 </div>
                 <h3 className="text-lg font-black text-slate-900 mt-1.5 flex items-center gap-2">
-                  <span>8 Available Classrooms (ROOM-1 to ROOM-8)</span>
+                  <span>{ACADEMY_ROOMS.length} Available Classrooms (ROOM-1 to ROOM-8)</span>
                   <span className="text-purple-600">•</span>
-                  <span className="text-purple-700">Max 5 Concurrent Rooms Allocated</span>
+                  <span className="text-purple-700">Max {MAX_CONCURRENT_ROOMS} Concurrent Rooms Allocated</span>
                 </h3>
                 <p className="text-xs text-slate-600 mt-1">
-                  The academy infrastructure comprises 8 fully-equipped classrooms. To ensure optimal acoustics, mentor invigilation, and student corridor safety, at any given time slot a maximum of <strong>5 rooms</strong> are allocated for lectures, while remaining rooms serve as self-study lounges or contingency reserves.
+                  The academy infrastructure comprises {ACADEMY_ROOMS.length} fully-equipped classrooms. To ensure optimal acoustics, mentor invigilation, and student corridor safety, at any given time slot a maximum of <strong>{MAX_CONCURRENT_ROOMS} out of {ACADEMY_ROOMS.length} rooms</strong> are allocated for lectures, while remaining rooms serve as self-study lounges or contingency reserves.
                 </p>
               </div>
 
@@ -1781,7 +1781,7 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
 
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">
-                    Room Assignment (8 Rooms, Max 5 Concurrent) *
+                    Room Assignment ({ACADEMY_ROOMS.length} Rooms, Max {MAX_CONCURRENT_ROOMS} Concurrent) *
                   </label>
                   {(() => {
                     const currentDay = slotFormData.day || 'Monday';
@@ -1823,10 +1823,10 @@ export const FacultyView: React.FC<FacultyViewProps> = ({
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500">
                           <span className="font-semibold">
-                            Slot Concurrency: <strong className={currentOccupiedCount >= 5 ? 'text-amber-700' : 'text-emerald-700'}>{currentOccupiedCount} / {MAX_CONCURRENT_ROOMS} Active</strong>
+                            Slot Concurrency: <strong className={currentOccupiedCount >= MAX_CONCURRENT_ROOMS ? 'text-amber-700' : 'text-emerald-700'}>{currentOccupiedCount} / {MAX_CONCURRENT_ROOMS} Active</strong>
                           </span>
                           {willExceed && (
-                            <span className="text-rose-600 font-bold">Max 5 room limit reached</span>
+                            <span className="text-rose-600 font-bold">Max {MAX_CONCURRENT_ROOMS} room limit reached</span>
                           )}
                           {isSelectedRoomOccupied && (
                             <span className="text-amber-700 font-bold">Room already in use</span>
