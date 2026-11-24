@@ -24,6 +24,9 @@ import {
   DEFAULT_FEE_STRUCTURE,
   ACADEMIC_SESSION_MONTHS,
   getStudentTuitionMonthsStatus,
+  getStudentSession,
+  getStudentSessionMonths,
+  getSessionDisplayLabel,
 } from '../../utils/academicUtils';
 import { downloadAssignmentPDF } from '../../utils/pdfGenerator';
 import { PrintPreviewModal } from '../question-bank/PrintPreviewModal';
@@ -1431,6 +1434,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           {/* Academic Session Monthly Tuition Fee Tracker Card */}
           {(() => {
             const monthsStatus = getStudentTuitionMonthsStatus(student, deposits);
+            const studentSession = getStudentSession(student);
+            const studentSessionMonths = getStudentSessionMonths(student);
+            const sessionLabel = getSessionDisplayLabel(studentSession, student.curriculum, student.classLevel);
+            const sessionEndMonth = studentSessionMonths[studentSessionMonths.length - 1] || 'December 2026';
             const applicableStatus = monthsStatus.filter((m) => !m.isPreEnrollment);
             const paidCount = applicableStatus.filter((m) => m.isPaid).length;
             const dueCount = applicableStatus.length - paidCount;
@@ -1441,10 +1448,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-emerald-600" />
-                      Academic Session Monthly Tuition Track (Jan – Dec 2026)
+                      Academic Session Monthly Tuition Track ({sessionLabel})
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Fees calculated from subject enrollment months to session end (Dec 2026) • Current Active Rate: {formatCurrency(feeSummary.monthlyTuitionFee)}/month
+                      Fees calculated from subject enrollment months to {student.curriculum || 'CBSE'} session end ({sessionEndMonth}) • Current Active Rate: {formatCurrency(feeSummary.monthlyTuitionFee)}/month
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

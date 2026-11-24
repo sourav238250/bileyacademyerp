@@ -242,7 +242,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Sparkles className="w-3.5 h-3.5" />
                   {currentAdmin ? `Logged In: ${currentAdmin.role}` : 'Staff & Admin ERP System'}
                 </span>
-                <span className="text-xs text-slate-300">Session 2025–2026 • Since 2026</span>
+                <span className="text-xs text-slate-300">CBSE &amp; W.B. 11–12 (Apr–Mar) • W.B. 1–10 (Jan–Dec) • 2026–2027</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 {currentAdmin ? `Welcome back, ${currentAdmin.name}` : 'Biley Academy Management'}

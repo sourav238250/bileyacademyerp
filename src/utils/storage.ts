@@ -20,6 +20,7 @@ import {
   BookIssueRecord,
   ManualRoutine,
 } from '../types';
+import { isAprilToMarchCalendar } from './academicUtils';
 import {
   INITIAL_ATTENDANCE,
   INITIAL_FACULTY,
@@ -345,6 +346,27 @@ export function loadInitialState(): AppStateData {
     const curriculum = st.curriculum || (initSt ? initSt.curriculum : 'CBSE');
     const academicSession = st.academicSession || (initSt ? initSt.academicSession : undefined) || (st.id.startsWith('BA-2027-') || st.enrollmentMonth?.includes('2027') ? '2027' : '2026');
 
+    const normalizeAprMarMonth = (month?: string) => {
+      if (!isAprilToMarchCalendar(curriculum, st.classLevel) || !month) return month;
+      if (academicSession === '2027' && ['January 2027', 'February 2027', 'March 2027'].includes(month)) {
+        return 'April 2027';
+      }
+      if (academicSession !== '2027' && ['January 2026', 'February 2026', 'March 2026'].includes(month)) {
+        return 'April 2026';
+      }
+      return month;
+    };
+
+    const normalizedEnrollmentMonth = normalizeAprMarMonth(st.enrollmentMonth);
+    const normalizedSubjectEnrollments = st.subjectEnrollments?.map((e) => ({
+      ...e,
+      enrollmentMonth: normalizeAprMarMonth(e.enrollmentMonth) || 'April 2026',
+    }));
+    const normalizedNotes =
+      st.id === 'BA-2027-1101' && st.notes?.includes('Jan-Dec 2027') && initSt?.notes
+        ? initSt.notes
+        : st.notes;
+
     if (standardClassLevels.includes(st.classLevel) && st.enrolledSubjectIds) {
       const filteredEnrolled = st.enrolledSubjectIds.filter((id) => validSubjectIds.has(id));
       if (filteredEnrolled.length === 0) {
@@ -357,6 +379,9 @@ export function loadInitialState(): AppStateData {
           curriculum,
           batch,
           academicSession,
+          enrollmentMonth: normalizedEnrollmentMonth,
+          subjectEnrollments: normalizedSubjectEnrollments,
+          notes: normalizedNotes,
           enrolledSubjectIds: classSubs,
         };
       }
@@ -365,6 +390,9 @@ export function loadInitialState(): AppStateData {
         curriculum,
         batch,
         academicSession,
+        enrollmentMonth: normalizedEnrollmentMonth,
+        subjectEnrollments: normalizedSubjectEnrollments,
+        notes: normalizedNotes,
         enrolledSubjectIds: filteredEnrolled,
       };
     }
@@ -373,6 +401,9 @@ export function loadInitialState(): AppStateData {
       curriculum,
       batch,
       academicSession,
+      enrollmentMonth: normalizedEnrollmentMonth,
+      subjectEnrollments: normalizedSubjectEnrollments,
+      notes: normalizedNotes,
     };
   });
 
@@ -476,8 +507,16 @@ export function loadInitialState(): AppStateData {
     results: sanitizedResults,
     deposits: (() => {
       const loaded = loadFromStorage<FeeDeposit[]>(STORAGE_KEYS.DEPOSITS, INITIAL_DEPOSITS);
-      const depMap = new Set(loaded.map((d) => d.id));
-      const merged = [...loaded];
+      const legacyAprMarSeedIds = new Set(['REC-2026-001', 'REC-2026-003', 'REC-2026-005', 'REC-2026-006']);
+      const normalized = loaded.map((dep) => {
+        if (legacyAprMarSeedIds.has(dep.id) && dep.monthsCovered?.includes('January 2026')) {
+          const updatedInit = INITIAL_DEPOSITS.find((d) => d.id === dep.id);
+          if (updatedInit) return updatedInit;
+        }
+        return dep;
+      });
+      const depMap = new Set(normalized.map((d) => d.id));
+      const merged = [...normalized];
       for (const initD of INITIAL_DEPOSITS) {
         if (!depMap.has(initD.id)) {
           merged.push(initD);

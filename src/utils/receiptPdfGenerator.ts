@@ -3,6 +3,7 @@ import { FeeDeposit, Student, InstitutionalAuthorizationConfig } from '../types'
 import {
   computeCandidateDuesTillCurrentMonth,
   getCandidatePreviousTransactions,
+  getStudentSession,
 } from './academicUtils';
 
 export interface ReceiptPDFOptions {
@@ -34,7 +35,8 @@ export function generateFeeReceiptPDF(
 
   const allDeposits = deposits.length > 0 ? deposits : [deposit];
   const previousTransactions = getCandidatePreviousTransactions(student.id, deposit.receiptNo || deposit.id, allDeposits);
-  const duesSummary = computeCandidateDuesTillCurrentMonth(student, allDeposits, 'September 2026');
+  const evalMonth = getStudentSession(student) === '2027' ? 'November 2026' : 'September 2026';
+  const duesSummary = computeCandidateDuesTillCurrentMonth(student, allDeposits, evalMonth);
 
   const doc = new jsPDF({
     orientation: 'portrait',

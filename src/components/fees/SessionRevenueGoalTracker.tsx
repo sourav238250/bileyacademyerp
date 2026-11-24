@@ -80,20 +80,23 @@ export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps>
     return Math.min(100, Math.max(0, (totalCollectedGross / totalTargetRevenue) * 100));
   }, [totalCollectedGross, totalTargetRevenue]);
 
-  // Academic year months (January to December 2026)
+  // Academic session months covering Jan 2026 - Mar 2027 (W.B. Cls 1–10 Jan–Dec 2026 & CBSE + W.B. Cls 11–12 Apr 2026–Mar 2027)
   const sessionMonths = useMemo(() => [
-    { key: '01', label: 'Jan', fullName: 'January 2026' },
-    { key: '02', label: 'Feb', fullName: 'February 2026' },
-    { key: '03', label: 'Mar', fullName: 'March 2026' },
-    { key: '04', label: 'Apr', fullName: 'April 2026' },
-    { key: '05', label: 'May', fullName: 'May 2026' },
-    { key: '06', label: 'Jun', fullName: 'June 2026' },
-    { key: '07', label: 'Jul', fullName: 'July 2026' },
-    { key: '08', label: 'Aug', fullName: 'August 2026' },
-    { key: '09', label: 'Sep', fullName: 'September 2026' },
-    { key: '10', label: 'Oct', fullName: 'October 2026' },
-    { key: '11', label: 'Nov', fullName: 'November 2026' },
-    { key: '12', label: 'Dec', fullName: 'December 2026' },
+    { key: '2026-01', label: 'Jan', fullName: 'January 2026' },
+    { key: '2026-02', label: 'Feb', fullName: 'February 2026' },
+    { key: '2026-03', label: 'Mar', fullName: 'March 2026' },
+    { key: '2026-04', label: 'Apr', fullName: 'April 2026' },
+    { key: '2026-05', label: 'May', fullName: 'May 2026' },
+    { key: '2026-06', label: 'Jun', fullName: 'June 2026' },
+    { key: '2026-07', label: 'Jul', fullName: 'July 2026' },
+    { key: '2026-08', label: 'Aug', fullName: 'August 2026' },
+    { key: '2026-09', label: 'Sep', fullName: 'September 2026' },
+    { key: '2026-10', label: 'Oct', fullName: 'October 2026' },
+    { key: '2026-11', label: 'Nov', fullName: 'November 2026' },
+    { key: '2026-12', label: 'Dec', fullName: 'December 2026' },
+    { key: '2027-01', label: "Jan '27", fullName: 'January 2027' },
+    { key: '2027-02', label: "Feb '27", fullName: 'February 2027' },
+    { key: '2027-03', label: "Mar '27", fullName: 'March 2027' },
   ], []);
 
   // Compute monthly timeline data for Sparkline Chart
@@ -102,11 +105,10 @@ export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps>
     const totalMonths = sessionMonths.length;
 
     return sessionMonths.map((m, idx) => {
-      // Find deposits that fall into this month
+      // Find deposits that fall into this month (YYYY-MM)
       const monthDeposits = deposits.filter((d) => {
         if (!d.depositDate) return false;
-        const depositMonth = d.depositDate.split('-')[1];
-        return depositMonth === m.key;
+        return d.depositDate.slice(0, 7) === m.key;
       });
 
       const monthlyAmount = monthDeposits.reduce((acc, curr) => acc + curr.amountPaid, 0);
@@ -201,10 +203,10 @@ export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold tracking-wide uppercase">
                 <Target className="w-3.5 h-3.5" />
-                Session 2025–2026 Target Goal
+                Session 2026–2027 Target Goal (CBSE &amp; WB 11–12 Apr–Mar • WB 1–10 Jan–Dec)
               </span>
               <span className="text-xs text-slate-300">
-                {students.length} Enrolled Students (Class 5–12)
+                {students.length} Enrolled Students (Class 1–12)
               </span>
             </div>
 
@@ -510,10 +512,10 @@ export const SessionRevenueGoalTracker: React.FC<SessionRevenueGoalTrackerProps>
           <div className="pt-2 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Class 5 to 12 Target Goal & Collection Breakdown
+                Class 1 to 12 Target Goal & Collection Breakdown
               </h4>
               <span className="text-[11px] text-slate-500">
-                8 Academic Standard Batches
+                {CLASS_LEVELS.length} Academic Standard Batches
               </span>
             </div>
 

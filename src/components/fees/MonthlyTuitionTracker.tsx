@@ -6,9 +6,11 @@ import {
   StreamType,
   Subject,
   InstitutionalAuthorizationConfig,
+  AdminUser,
 } from '../../types';
 import {
-  ACADEMIC_SESSION_MONTHS,
+  ACADEMIC_SESSION_2026_MONTHS,
+  ACADEMIC_SESSION_2027_MONTHS,
   MONTH_SHORT_NAMES,
   getStudentTuitionMonthsStatus,
   getTuitionMonthCollectionStats,
@@ -16,6 +18,12 @@ import {
   getStudentFeeHeadsSubmissionStatus,
   getStudentEnrollmentMonth,
   getApplicableSessionMonthsForStudent,
+  getStudentSession,
+  getStudentSessionMonths,
+  getSessionMonthsForBoard,
+  getSessionDisplayLabel,
+  isAprilToMarchCalendar,
+  matchMonth,
   formatCurrency,
   CLASS_LEVELS,
 } from '../../utils/academicUtils';
@@ -46,6 +54,7 @@ interface MonthlyTuitionTrackerProps {
   students: Student[];
   deposits: FeeDeposit[];
   subjects?: Subject[];
+  currentAdmin?: AdminUser | null;
   onOpenFeeDepositModal: (studentId: string, preselectedMonth?: string) => void;
   onViewReceipt: (deposit: FeeDeposit) => void;
   authConfig?: InstitutionalAuthorizationConfig;
@@ -59,6 +68,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
   onViewReceipt,
   authConfig,
 }) => {
+  const [selectedSession, setSelectedSession] = useState<'2026' | '2027'>('2026');
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
   const [selectedStream, setSelectedStream] = useState<string>('ALL');
   const [selectedCurriculum, setSelectedCurriculum] = useState<string>('ALL');
@@ -68,14 +78,40 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
   const [sortBy, setSortBy] = useState<'name' | 'class' | 'paidCount' | 'dues'>('class');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // Compute stats for all 12 academic months
+  const displayedSessionMonths = useMemo(() => {
+    const classArg = selectedClass === 'ALL' ? undefined : selectedClass;
+    if (selectedCurriculum === 'CBSE') {
+      return getSessionMonthsForBoard(selectedSession, 'CBSE', classArg);
+    }
+    if (selectedCurriculum === 'W.B. Board' && selectedClass !== 'ALL') {
+      return getSessionMonthsForBoard(selectedSession, 'W.B. Board', selectedClass);
+    }
+    if (selectedClass === '11' || selectedClass === '12') {
+      // Both CBSE and W.B. Board Classes 11-12 follow April to March
+      return getSessionMonthsForBoard(selectedSession, 'CBSE', selectedClass);
+    }
+    if (selectedSession === '2027') {
+      return [...ACADEMIC_SESSION_2027_MONTHS, 'January 2028', 'February 2028', 'March 2028'] as const;
+    }
+    return [...ACADEMIC_SESSION_2026_MONTHS, 'January 2027', 'February 2027', 'March 2027'] as const;
+  }, [selectedSession, selectedCurriculum, selectedClass]);
+
+  const activeSessionStudents = useMemo(() => {
+    return students.filter((s) => {
+      if (s.status !== 'Active') return false;
+      if (getStudentSession(s) !== selectedSession) return false;
+      if (selectedCurriculum !== 'ALL' && (s.curriculum || 'CBSE') !== selectedCurriculum) return false;
+      return true;
+    });
+  }, [students, selectedSession, selectedCurriculum]);
+
+  // Compute stats for displayed academic months
   const monthlyStats = useMemo(() => {
-    return getTuitionMonthCollectionStats(students, deposits, ACADEMIC_SESSION_MONTHS);
-  }, [students, deposits]);
+    return getTuitionMonthCollectionStats(activeSessionStudents, deposits, displayedSessionMonths);
+  }, [activeSessionStudents, deposits, displayedSessionMonths]);
 
   // Overall session summary
   const sessionSummary = useMemo(() => {
-    const active = students.filter((s) => s.status === 'Active');
     let totalMonthsPaid = 0;
     let totalMonthsPossible = 0;
 
@@ -84,13 +120,14 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
     let studyMaterialLabSubmittedCount = 0;
     let annualDevSubmittedCount = 0;
 
-    active.forEach((student) => {
-      const applicable = getApplicableSessionMonthsForStudent(student, ACADEMIC_SESSION_MONTHS);
+    activeSessionStudents.forEach((student) => {
+      const stMonths = getStudentSessionMonths(student);
+      const applicable = getApplicableSessionMonthsForStudent(student, stMonths);
       totalMonthsPossible += applicable.length;
-      const monthStatuses = getStudentTuitionMonthsStatus(student, deposits, ACADEMIC_SESSION_MONTHS);
+      const monthStatuses = getStudentTuitionMonthsStatus(student, deposits, stMonths, undefined, subjects);
       totalMonthsPaid += monthStatuses.filter((m) => !m.isPreEnrollment && m.isPaid).length;
 
-      const heads = getStudentFeeHeadsSubmissionStatus(student, deposits);
+      const heads = getStudentFeeHeadsSubmissionStatus(student, deposits, undefined, subjects);
       if (heads.admission.isSubmitted) admissionSubmittedCount++;
       if (heads.exam.isSubmitted) examFeeSubmittedCount++;
       if (heads.materialsAndLab.isSubmitted) studyMaterialLabSubmittedCount++;
@@ -98,12 +135,13 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
     });
 
     const overallPace = totalMonthsPossible > 0 ? Math.round((totalMonthsPaid / totalMonthsPossible) * 100) : 0;
+    const activeIds = new Set(activeSessionStudents.map((s) => s.id));
     const totalCollectedAmount = deposits
-      .filter((d) => d.feeHead === 'Tuition Fee' || d.selectedFeeHeads?.includes('Tuition Fee'))
+      .filter((d) => activeIds.has(d.studentId) && (d.feeHead === 'Tuition Fee' || d.selectedFeeHeads?.includes('Tuition Fee')))
       .reduce((sum, d) => sum + d.amountPaid, 0);
 
     return {
-      totalActiveStudents: active.length,
+      totalActiveStudents: activeSessionStudents.length,
       totalMonthsPaid,
       totalMonthsPossible,
       overallPace,
@@ -113,54 +151,60 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       studyMaterialLabSubmittedCount,
       annualDevSubmittedCount,
     };
-  }, [students, deposits]);
+  }, [activeSessionStudents, deposits, subjects]);
 
   // Process student tuition month rows
   const studentRows = useMemo(() => {
-    return students
-      .filter((s) => s.status === 'Active')
-      .map((student) => {
-        const enrollmentMonth = getStudentEnrollmentMonth(student);
-        const applicableMonths = getApplicableSessionMonthsForStudent(student, ACADEMIC_SESSION_MONTHS);
-        const applicableCount = applicableMonths.length;
-        const monthStatuses = getStudentTuitionMonthsStatus(student, deposits, ACADEMIC_SESSION_MONTHS);
-        const paidCount = monthStatuses.filter((m) => !m.isPreEnrollment && m.isPaid).length;
-        const unpaidCount = Math.max(0, applicableCount - paidCount);
-        const nextUnpaid = getNextUnpaidTuitionMonth(student, deposits);
-        const feeHeadsStatus = getStudentFeeHeadsSubmissionStatus(student, deposits);
-        
-        // Check if student has enrolled subjects
-        const enrolledCount = student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0
-          ? student.enrolledSubjectIds.length
-          : 4;
+    return activeSessionStudents.map((student) => {
+      const studentMonths = getStudentSessionMonths(student);
+      const enrollmentMonth = getStudentEnrollmentMonth(student);
+      const applicableMonths = getApplicableSessionMonthsForStudent(student, studentMonths);
+      const applicableCount = applicableMonths.length;
+      const ownMonthStatuses = getStudentTuitionMonthsStatus(student, deposits, studentMonths, undefined, subjects);
+      const paidCount = ownMonthStatuses.filter((m) => !m.isPreEnrollment && m.isPaid).length;
+      const unpaidCount = Math.max(0, applicableCount - paidCount);
+      const nextUnpaid = getNextUnpaidTuitionMonth(student, deposits, studentMonths);
+      const feeHeadsStatus = getStudentFeeHeadsSubmissionStatus(student, deposits, undefined, subjects);
 
+      const monthStatuses = displayedSessionMonths.map((month) => {
+        const own = ownMonthStatuses.find((m) => matchMonth(m.month, month));
+        if (own) return { ...own, isOutOfBoardCalendar: false };
         return {
-          student,
-          enrollmentMonth,
-          applicableCount,
-          monthStatuses,
-          paidCount,
-          unpaidCount,
-          nextUnpaid,
-          enrolledCount,
-          feeHeadsStatus,
+          month,
+          shortMonth: MONTH_SHORT_NAMES[month] || month.slice(0, 3),
+          isPaid: false,
+          isPreEnrollment: true,
+          isOutOfBoardCalendar: true,
         };
       });
-  }, [students, deposits]);
+
+      const enrolledCount = student.enrolledSubjectIds && student.enrolledSubjectIds.length > 0
+        ? student.enrolledSubjectIds.length
+        : 4;
+
+      return {
+        student,
+        enrollmentMonth,
+        applicableCount,
+        monthStatuses,
+        paidCount,
+        unpaidCount,
+        nextUnpaid,
+        enrolledCount,
+        feeHeadsStatus,
+      };
+    });
+  }, [activeSessionStudents, deposits, displayedSessionMonths, subjects]);
 
   // Filtered rows
   const filteredRows = useMemo(() => {
-    return studentRows.filter(({ student, monthStatuses, paidCount, unpaidCount }) => {
+    return studentRows.filter(({ student, monthStatuses, unpaidCount }) => {
       // Class filter
       if (selectedClass !== 'ALL' && student.classLevel !== selectedClass) {
         return false;
       }
       // Stream filter
       if (selectedStream !== 'ALL' && student.stream !== selectedStream) {
-        return false;
-      }
-      // Curriculum filter
-      if (selectedCurriculum !== 'ALL' && (student.curriculum || 'CBSE') !== selectedCurriculum) {
         return false;
       }
       // Search query
@@ -178,15 +222,16 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       if (statusFilter === 'DEFICIT' && unpaidCount === 0) return false;
       if (statusFilter === 'CLEARED' && unpaidCount > 0) return false;
       if (statusFilter === 'CURRENT_DUE') {
-        // Find if unpaid in the current calendar month
-        const currentMonthName = 'September 2026';
-        const currentStatus = monthStatuses.find((m) => m.month === currentMonthName);
-        if (currentStatus?.isPaid) return false;
+        const currentMonthName = selectedSession === '2027'
+          ? (isAprilToMarchCalendar(student.curriculum || 'CBSE', student.classLevel) ? 'April 2027' : 'January 2027')
+          : 'September 2026';
+        const currentStatus = monthStatuses.find((m) => matchMonth(m.month, currentMonthName));
+        if (!currentStatus || currentStatus.isPreEnrollment || currentStatus.isPaid) return false;
       }
       // Focus month filter
       if (selectedFocusMonth !== 'ALL') {
         const monthMatch = monthStatuses.find((m) => m.month === selectedFocusMonth);
-        if (monthMatch?.isPaid) return false; // Show students who haven't paid this month
+        if (!monthMatch || monthMatch.isPreEnrollment || monthMatch.isPaid) return false;
       }
 
       return true;
@@ -203,13 +248,15 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       }
       return sortOrder === 'asc' ? cmp : -cmp;
     });
-  }, [studentRows, selectedClass, selectedStream, selectedCurriculum, searchQuery, statusFilter, selectedFocusMonth, sortBy, sortOrder]);
+  }, [studentRows, selectedClass, selectedStream, searchQuery, statusFilter, selectedFocusMonth, sortBy, sortOrder, selectedSession]);
 
   // Export Matrix to CSV
   const handleExportCSV = () => {
     const headers = [
       'Student ID',
       'Student Name',
+      'Board',
+      'Session',
       'Class Level',
       'Stream',
       'Roll No',
@@ -217,14 +264,18 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
       'Paid Months Count',
       'Unpaid Months Count',
       'Next Due Month',
-      ...ACADEMIC_SESSION_MONTHS,
+      ...displayedSessionMonths,
     ];
 
     const rows = filteredRows.map(({ student, monthStatuses, paidCount, unpaidCount, nextUnpaid }) => {
-      const monthCols = monthStatuses.map((m) => (m.isPaid ? `PAID (${m.receiptNo || 'Yes'})` : 'DUE'));
+      const monthCols = monthStatuses.map((m) =>
+        m.isPreEnrollment ? 'N/A' : m.isPaid ? `PAID (${m.receiptNo || 'Yes'})` : 'DUE'
+      );
       return [
         student.id,
         `"${student.name}"`,
+        student.curriculum || 'CBSE',
+        getSessionDisplayLabel(getStudentSession(student), student.curriculum, student.classLevel),
         `Class ${student.classLevel}`,
         student.stream,
         student.rollNo,
@@ -240,7 +291,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `biley_academy_monthly_tuition_tracker_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `biley_academy_monthly_tuition_tracker_${selectedSession}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -258,7 +309,11 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                 Financial Operations
               </span>
               <span className="px-2 py-0.5 bg-white/10 text-amber-300 text-[10px] font-mono rounded">
-                Session 2026 (Jan – Dec)
+                {getSessionDisplayLabel(
+                  selectedSession,
+                  selectedCurriculum === 'ALL' ? undefined : selectedCurriculum,
+                  selectedClass === 'ALL' ? undefined : selectedClass
+                )}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
@@ -266,7 +321,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
               Monthly Tuition Fee Tracking Matrix
             </h2>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Real-time audit of monthly coaching tuition collections across all 12 academic months (January 2026 to December 2026). Identify pending months, collect dues with one click, and track session pacing.
+              Real-time audit of monthly coaching tuition collections across board-aligned 12-month calendars (<strong>CBSE Cls 1–12 &amp; W.B. Board Cls 11–12: April – March</strong>; <strong>W.B. Board Cls 1–10: January – December</strong>). Identify pending months and collect dues with one click.
             </p>
           </div>
 
@@ -395,12 +450,12 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-amber-400" />
-              Academic Month Collection Health (12 Months Session)
+              Academic Month Collection Health ({displayedSessionMonths.length} Months View)
             </span>
             <span className="text-[10px] text-slate-400">Click any month to filter pending students</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 ${displayedSessionMonths.length === 12 ? 'xl:grid-cols-12' : 'xl:grid-cols-8'} gap-2`}>
             {monthlyStats.map((st) => {
               const isSelected = selectedFocusMonth === st.month;
               return (
@@ -524,17 +579,36 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
             </select>
           </div>
 
+          {/* Session Filter */}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500 font-semibold text-[11px]">Session:</span>
+            <select
+              value={selectedSession}
+              onChange={(e) => {
+                setSelectedSession(e.target.value as '2026' | '2027');
+                setSelectedFocusMonth('ALL');
+              }}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="2026">Session 2026 (2026–27)</option>
+              <option value="2027">New Session 2027 (2027–28)</option>
+            </select>
+          </div>
+
           {/* Curriculum Board Filter */}
           <div className="flex items-center gap-1">
             <span className="text-slate-500 font-semibold text-[11px]">Board:</span>
             <select
               value={selectedCurriculum}
-              onChange={(e) => setSelectedCurriculum(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+              onChange={(e) => {
+                setSelectedCurriculum(e.target.value);
+                setSelectedFocusMonth('ALL');
+              }}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="ALL">All Boards</option>
-              <option value="CBSE">CBSE Board</option>
-              <option value="W.B. Board">W.B. Board</option>
+              <option value="CBSE">CBSE Board (Apr–Mar)</option>
+              <option value="W.B. Board">W.B. Board (1–10 Jan–Dec • 11–12 Apr–Mar)</option>
             </select>
           </div>
 
@@ -620,8 +694,8 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                   <span>Fee Heads (Adm/Exam/Lab/Dev)</span>
                 </th>
 
-                {/* 12 Month Column Headers */}
-                {ACADEMIC_SESSION_MONTHS.map((month) => (
+                {/* Month Column Headers */}
+                {displayedSessionMonths.map((month) => (
                   <th
                     key={month}
                     className={`py-3 px-1.5 text-center min-w-[68px] ${
@@ -644,7 +718,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
             <tbody className="divide-y divide-slate-200">
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={16} className="py-12 text-center text-slate-500">
+                  <td colSpan={displayedSessionMonths.length + 5} className="py-12 text-center text-slate-500">
                     <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                     <p className="font-bold text-slate-700">No students found matching current filters</p>
                     <p className="text-xs text-slate-400 mt-1">Try resetting search query or month filters</p>
@@ -822,7 +896,11 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
                           >
                             {st.isPreEnrollment ? (
                               <div
-                                title={`Candidate enrolled in ${enrollmentMonth}.\nPre-enrollment month not payable.`}
+                                title={
+                                  (st as { isOutOfBoardCalendar?: boolean }).isOutOfBoardCalendar
+                                    ? `${student.curriculum || 'CBSE'} (Class ${student.classLevel}) follows ${isAprilToMarchCalendar(student.curriculum || 'CBSE', student.classLevel) ? 'April–March' : 'January–December'} session. Not applicable.`
+                                    : `Candidate enrolled in ${enrollmentMonth}.\nPre-enrollment month not payable.`
+                                }
                                 className="w-full py-1.5 px-1 bg-slate-100 border border-slate-200/80 rounded-lg text-slate-400 font-bold text-[8px] flex flex-col items-center justify-center gap-0.5 select-none"
                               >
                                 <span className="w-1.5 h-0.5 bg-slate-300 rounded-full"></span>
@@ -905,7 +983,7 @@ export const MonthlyTuitionTracker: React.FC<MonthlyTuitionTrackerProps> = ({
           </div>
 
           <div className="text-[11px] text-slate-500">
-            Official Academic Session: <strong>January 2026 – December 2026</strong>
+            Academic Calendar: <strong>CBSE (1–12) &amp; W.B. Board (11–12): Apr – Mar</strong> • <strong>W.B. Board (1–10): Jan – Dec</strong>
           </div>
         </div>
       </div>

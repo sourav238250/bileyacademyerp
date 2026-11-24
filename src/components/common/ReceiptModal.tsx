@@ -4,6 +4,7 @@ import {
   formatCurrency,
   computeCandidateDuesTillCurrentMonth,
   getCandidatePreviousTransactions,
+  getStudentSession,
 } from '../../utils/academicUtils';
 import { DEFAULT_AUTHORIZATION_CONFIG } from '../../utils/storage';
 import { generateFeeReceiptPDF } from '../../utils/receiptPdfGenerator';
@@ -81,7 +82,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     (sum, d) => sum + (Number(d.amountPaid) || 0),
     0
   );
-  const duesSummary = computeCandidateDuesTillCurrentMonth(student, allDeposits, 'September 2026');
+  const evalMonth = getStudentSession(student) === '2027' ? 'November 2026' : 'September 2026';
+  const duesSummary = computeCandidateDuesTillCurrentMonth(student, allDeposits, evalMonth);
 
   const handlePrint = () => {
     setIsPrinting(true);

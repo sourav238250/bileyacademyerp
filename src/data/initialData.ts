@@ -2084,7 +2084,7 @@ export const INITIAL_STUDENTS: Student[] = [
     "subjectEnrollments": [
       {
         "subjectId": "SUB-12-BIO",
-        "enrollmentMonth": "January 2026"
+        "enrollmentMonth": "April 2026"
       },
       {
         "subjectId": "SUB-12-CHEM",
@@ -2122,7 +2122,7 @@ export const INITIAL_STUDENTS: Student[] = [
     "subjectEnrollments": [
       {
         "subjectId": "SUB-12-CA",
-        "enrollmentMonth": "January 2026"
+        "enrollmentMonth": "April 2026"
       },
       {
         "subjectId": "SUB-12-MATH",
@@ -2344,7 +2344,7 @@ export const INITIAL_STUDENTS: Student[] = [
     "subjectEnrollments": [
       {
         "subjectId": "SUB-WB-12-PHY",
-        "enrollmentMonth": "January 2026"
+        "enrollmentMonth": "April 2026"
       },
       {
         "subjectId": "SUB-WB-12-CHEM",
@@ -2619,15 +2619,15 @@ export const INITIAL_STUDENTS: Student[] = [
     "status": "Active",
     "bloodGroup": "O+",
     "academicSession": "2027",
-    "enrollmentMonth": "January 2027",
-    "notes": "Early admission intake in November 2026 for New Academic Session 2027 (Jan-Dec 2027). Enrolled in Mathematics & Physics.",
+    "enrollmentMonth": "April 2027",
+    "notes": "Early admission intake in November 2026 for New CBSE Session 2027–28 (Apr 2027 – Mar 2028). Enrolled in Mathematics & Physics.",
     "enrolledSubjectIds": [
       "SUB-11-MATH",
       "SUB-11-PHY"
     ],
     "subjectEnrollments": [
-      { "subjectId": "SUB-11-MATH", "enrollmentMonth": "January 2027" },
-      { "subjectId": "SUB-11-PHY", "enrollmentMonth": "January 2027" }
+      { "subjectId": "SUB-11-MATH", "enrollmentMonth": "April 2027" },
+      { "subjectId": "SUB-11-PHY", "enrollmentMonth": "April 2027" }
     ],
     "enrollmentType": "Multiple Subjects"
   }
@@ -2643,7 +2643,7 @@ export const INITIAL_EXAMS: Exam[] = [
     "stream": "Science",
     "startDate": "2026-08-01",
     "endDate": "2026-08-08",
-    "academicYear": "2025-2026",
+    "academicYear": "2026-2027",
     "status": "Results Published",
     "subjectsSchedule": [
       {
@@ -2702,7 +2702,7 @@ export const INITIAL_EXAMS: Exam[] = [
     "stream": "General",
     "startDate": "2026-08-10",
     "endDate": "2026-08-18",
-    "academicYear": "2025-2026",
+    "academicYear": "2026-2027",
     "status": "Results Published",
     "subjectsSchedule": [
       {
@@ -2879,7 +2879,7 @@ export const INITIAL_EXAMS: Exam[] = [
     "stream": "Science",
     "startDate": "2026-08-02",
     "endDate": "2026-08-09",
-    "academicYear": "2025-2026",
+    "academicYear": "2026-2027",
     "status": "Results Published",
     "subjectsSchedule": [
       {
@@ -3345,14 +3345,14 @@ export const INITIAL_DEPOSITS: FeeDeposit[] = [
     id: 'REC-2026-001',
     receiptNo: 'REC-2026-001-9205',
     studentId: 'BA-2026-1201',
-    depositDate: '2026-01-10',
+    depositDate: '2026-04-10',
     amountPaid: 28000,
     feeHead: 'Tuition Fee',
-    monthsCovered: ['January 2026', 'February 2026', 'March 2026', 'April 2026', 'May 2026', 'June 2026'],
+    monthsCovered: ['April 2026', 'May 2026', 'June 2026', 'July 2026', 'August 2026', 'September 2026'],
     paymentMode: 'Net Banking',
     transactionRef: 'NEFT/SBIN2601108849',
     collectedBy: 'Accounts Dept - S. Dinda',
-    remarks: '6 Months advance tuition deposit for Class 12 W.B. Board Science combo with 20% scholarship.',
+    remarks: '6 Months advance tuition deposit (Apr–Sep 2026) for Class 12 W.B. Board Science combo with 20% scholarship.',
     discountApplied: 11580,
   },
   {
@@ -3371,14 +3371,14 @@ export const INITIAL_DEPOSITS: FeeDeposit[] = [
     id: 'REC-2026-003',
     receiptNo: 'REC-2026-003-7221',
     studentId: 'BA-2026-1202',
-    depositDate: '2026-01-18',
+    depositDate: '2026-04-18',
     amountPaid: 35000,
     feeHead: 'Tuition Fee',
-    monthsCovered: ['January 2026', 'February 2026', 'March 2026', 'April 2026', 'May 2026', 'June 2026', 'July 2026', 'August 2026'],
+    monthsCovered: ['April 2026', 'May 2026', 'June 2026', 'July 2026', 'August 2026', 'September 2026', 'October 2026', 'November 2026'],
     paymentMode: 'Net Banking',
     transactionRef: 'HDFC298810294',
     collectedBy: 'Accounts Dept - S. Dinda',
-    remarks: 'Pre-payment for 8 months tuition + Materials fee + 25% Merit Scholarship applied (CBSE).',
+    remarks: 'Pre-payment for 8 months tuition (Apr–Nov 2026) + Materials fee + 25% Merit Scholarship applied (CBSE).',
     discountApplied: 14475,
   },
   {
@@ -3398,27 +3398,27 @@ export const INITIAL_DEPOSITS: FeeDeposit[] = [
     id: 'REC-2026-005',
     receiptNo: 'REC-2026-005-5419',
     studentId: 'BA-2026-1002',
-    depositDate: '2026-01-22',
+    depositDate: '2026-04-22',
     amountPaid: 8400,
     feeHead: 'Tuition Fee',
-    monthsCovered: ['January 2026', 'February 2026', 'March 2026'],
+    monthsCovered: ['April 2026', 'May 2026', 'June 2026'],
     paymentMode: 'Debit/Credit Card',
     transactionRef: 'POS-TXN-881923',
     collectedBy: 'Accounts Dept - S. Dinda',
-    remarks: 'Quarter 1 Tuition fee paid (CBSE).',
+    remarks: 'Quarter 1 (Apr–Jun 2026) Tuition fee paid (CBSE).',
   },
   {
     id: 'REC-2026-006',
     receiptNo: 'REC-2026-006-4190',
     studentId: 'BA-2026-0501',
-    depositDate: '2026-01-25',
+    depositDate: '2026-04-25',
     amountPaid: 7200,
     feeHead: 'Tuition Fee',
-    monthsCovered: ['January 2026', 'February 2026', 'March 2026', 'April 2026'],
+    monthsCovered: ['April 2026', 'May 2026', 'June 2026', 'July 2026'],
     paymentMode: 'UPI / GPay / PhonePe',
     transactionRef: 'UPI/26012588102',
     collectedBy: 'Accounts Dept - S. Dinda',
-    remarks: '4 Months Primary foundation package (CBSE).',
+    remarks: '4 Months (Apr–Jul 2026) Primary foundation package (CBSE).',
   },
   {
     id: 'REC-2026-120',

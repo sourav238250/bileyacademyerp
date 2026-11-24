@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Exam, Subject, ClassLevel, StreamType, ExamType, AdminUser, CurriculumBoard } from '../../types';
-import { CLASS_LEVELS, STREAMS_FOR_CLASS } from '../../utils/academicUtils';
+import { CLASS_LEVELS, STREAMS_FOR_CLASS, isAprilToMarchCalendar } from '../../utils/academicUtils';
 import { evaluateSectionAuthorization, hasPermission } from '../../utils/auth';
 import { SectionAuthHeader } from '../common/SectionAuthHeader';
 import {
@@ -59,7 +59,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
     stream: 'General',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-    academicYear: '2025-2026',
+    academicYear: '2026-2027',
     status: 'Upcoming',
     subjectsSchedule: [],
   });
@@ -86,7 +86,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
       stream: 'General',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      academicYear: '2025-2026',
+      academicYear: isAprilToMarchCalendar(chosenCurriculum, '10') ? '2026-2027' : '2026',
       status: 'Upcoming',
       subjectsSchedule: defaultSchedule,
     });
@@ -126,7 +126,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
         stream: (formData.stream as StreamType) || 'General',
         startDate: formData.startDate || new Date().toISOString().split('T')[0],
         endDate: formData.endDate || new Date().toISOString().split('T')[0],
-        academicYear: formData.academicYear || '2025-2026',
+        academicYear: formData.academicYear || (isAprilToMarchCalendar(curBoard, formData.classLevel || '10') ? '2026-2027' : '2026'),
         status: formData.status || 'Upcoming',
         subjectsSchedule: formData.subjectsSchedule || [],
       };
@@ -460,10 +460,12 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
                     onChange={(e) => {
                       const newCls = e.target.value as ClassLevel;
                       const validStreams = STREAMS_FOR_CLASS[newCls];
+                      const curBoard = formData.curriculum || 'CBSE';
                       setFormData({
                         ...formData,
                         classLevel: newCls,
                         stream: validStreams[0] as StreamType,
+                        academicYear: editingExam ? formData.academicYear : (isAprilToMarchCalendar(curBoard, newCls) ? '2026-2027' : '2026'),
                       });
                     }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"

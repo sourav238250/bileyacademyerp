@@ -79,9 +79,11 @@ const BATCH_OPTIONS: BatchShift[] = [
 ];
 
 const SESSION_OPTIONS = [
+  '2026–2027 (CBSE & W.B. 11–12 Apr–Mar)',
+  '2027–2028 (CBSE & W.B. 11–12 Apr–Mar)',
+  'New Session 2027 (W.B. 1–10 Jan–Dec)',
+  '2026 (W.B. 1–10 Jan–Dec)',
   '2026–2027',
-  'New Session 2027 (Jan–Dec 2027)',
-  '2026 (Jan–Dec 2026)',
 ];
 
 export const ManualRoutineModal: React.FC<ManualRoutineModalProps> = ({

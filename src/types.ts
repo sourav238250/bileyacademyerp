@@ -269,11 +269,11 @@ export interface Student {
   bloodGroup?: string;
   emergencyContact?: string;
   notes?: string;
-  academicSession?: '2026' | '2027' | string; // Academic session, e.g. "2026" (Jan-Dec 2026) or "2027" (Jan-Dec 2027 with admissions starting Nov 2026)
+  academicSession?: '2026' | '2027' | string; // Academic session: W.B. Board Classes 1–10 operate Jan-Dec ("2026", "2027"); CBSE (Classes 1–12) & W.B. Board Classes 11–12 (WBCHSE) operate Apr-Mar ("2026" = Apr 2026-Mar 2027, "2027" = Apr 2027-Mar 2028)
   enrolledSubjectIds?: string[]; // Coaching subjects enrolled (Single subject e.g. Math, or multiple subjects)
   subjectEnrollments?: StudentSubjectEnrollment[]; // Individual subject enrollment months and details
   enrollmentType?: 'Single Subject' | 'Multiple Subjects' | 'All Subjects Combo';
-  enrollmentMonth?: string; // Earliest subject enrollment month fallback (e.g. "April 2026" or "January 2027")
+  enrollmentMonth?: string; // Earliest subject enrollment month fallback (e.g. "April 2026", "January 2027", "April 2027")
   subjectEnrollmentDate?: string;
 }
 

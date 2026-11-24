@@ -19,7 +19,9 @@ import {
   ACADEMIC_SESSION_MONTHS,
   ACADEMIC_SESSION_2027_MONTHS,
   MONTH_SHORT_NAMES,
+  getStudentSession,
   getStudentSessionMonths,
+  getSessionDisplayLabel,
   getStudentTuitionMonthsStatus,
   getNextUnpaidTuitionMonth,
   getStudentFeeHeadsSubmissionStatus,
@@ -1427,7 +1429,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="px-2.5 py-1 bg-amber-400 text-slate-950 text-[11px] font-extrabold rounded-full flex items-center gap-1.5 uppercase tracking-wider">
                     <Sparkles className="w-3 h-3" />
-                    Active Fee Policy (2025–2026)
+                    Active Fee Policy (2026–2027)
                   </span>
                   <span className="px-2.5 py-1 bg-slate-800 text-slate-300 text-[11px] font-semibold rounded-full border border-slate-700">
                     Classes 1 to 12 Covered
@@ -2227,17 +2229,22 @@ export const FeesView: React.FC<FeesViewProps> = ({
                   <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2.5">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
-                        <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
-                          Tuition Fee Academic Months (2026: Jan – Dec)
-                        </span>
                         {(() => {
                           const targetStudent = students.find((s) => s.id === selectedStudentId);
-                          const enrMonth = targetStudent ? getStudentEnrollmentMonth(targetStudent) : 'January 2026';
+                          const stSession = getStudentSession(targetStudent);
+                          const stMonths = targetStudent ? getStudentSessionMonths(targetStudent) : ACADEMIC_SESSION_MONTHS;
+                          const enrMonth = targetStudent ? getStudentEnrollmentMonth(targetStudent) : stMonths[0];
+                          const sessionEnd = stMonths[stMonths.length - 1];
                           return (
-                            <span className="text-[10px] text-amber-800 font-medium block mt-0.5">
-                              Prorated from enrollment month ({enrMonth}) to session end (Dec 2026)
-                            </span>
+                            <>
+                              <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                                <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                                Tuition Fee Academic Months ({getSessionDisplayLabel(stSession, targetStudent?.curriculum, targetStudent?.classLevel)})
+                              </span>
+                              <span className="text-[10px] text-amber-800 font-medium block mt-0.5">
+                                Prorated from enrollment month ({enrMonth}) to {targetStudent?.curriculum || 'CBSE'} session end ({sessionEnd})
+                              </span>
+                            </>
                           );
                         })()}
                       </div>
@@ -2336,11 +2343,11 @@ export const FeesView: React.FC<FeesViewProps> = ({
                             <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
                               <span>Select Applicable Month(s):</span>
                               <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                                targetStudent?.academicSession === '2027'
+                                getStudentSession(targetStudent) === '2027'
                                   ? 'bg-teal-100 text-teal-800 border border-teal-200'
                                   : 'bg-slate-100 text-slate-700'
                               }`}>
-                                Session {targetStudent?.academicSession || '2026'} ({studentSessionMonths[0]} – {studentSessionMonths[11]})
+                                Session {getSessionDisplayLabel(getStudentSession(targetStudent), targetStudent?.curriculum, targetStudent?.classLevel)}
                               </span>
                             </div>
                             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
